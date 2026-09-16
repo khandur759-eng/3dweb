@@ -513,7 +513,7 @@ const HAND_MODEL_URL =
 // Reaching volume: maps user's hand position across webcam to virtual first-person space
 const REACH_SPAN_X = 2.4;     // lateral reaching span across view
 const REACH_SPAN_Y = 1.8;     // vertical reaching span
-const REACH_OFFSET_Y = 0.28;  // ergonomically lowered for natural first-person arm angle
+const REACH_OFFSET_Y = 0.40;  // ergonomically lowered to match table-height pedestals
 
 // True-to-life human hand anatomical dimensions:
 // In real life, wrist (0) to middle MCP knuckle (9) is ~0.092 meters (9.2 cm)
@@ -521,21 +521,21 @@ const REACH_OFFSET_Y = 0.28;  // ergonomically lowered for natural first-person 
 const REAL_HAND_METERS = 0.092;
 
 // Depth mapping configuration:
-const DEPTH_PUSHED_Z = -2.8; // forward reaching towards pedestals
-const DEPTH_PULLED_Z = -1.1; // pulled back close to chest
-const SPAN_CLOSE_CAM = 0.32; // hand close to webcam
+const DEPTH_PUSHED_Z = -2.4; // forward reaching towards pedestals
+const DEPTH_PULLED_Z = -0.8; // pulled back close to chest
+const SPAN_CLOSE_CAM = 0.30; // hand close to webcam
 const SPAN_FAR_CAM   = 0.10; // hand further from webcam
 
 let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
 
 const PINCH_ON  = 0.045;   // world distance (4.5 cm) between fingertips to trigger pinch
 const PINCH_OFF = 0.065;   // hysteresis release (6.5 cm)
-const DIRECT_GRAB_RADIUS = 1.15; // direct touch reach
-const AIM_GRAB_RANGE = 9.5;      // magnetic ray / line-of-sight reach
+const PHYSICAL_GRAB_MARGIN = 0.22; // Strict physical touch margin (22cm from object boundary)
 const FOLLOW_LERP = 0.48;
 
 const FLOOR_Y = -1.6;
-const PEDESTAL_HEIGHT = 1.15; // table-height pedestals so objects align naturally with hand
+const PEDESTAL_HEIGHT = 1.35; // Table-height pedestals aligning naturally with hand reach
+const CAMERA_EYE_Y = 0.45;    // First-person eye level (2.05m above floor)
 const WORLD_RADIUS = 16.0;
 const GRAVITY = 8.5;
 const BOUNCE_DAMP = 0.35;
@@ -562,7 +562,7 @@ const player = {
   velocity: new THREE.Vector3(),
   targetYaw: 0
 };
-camera.position.set(player.pos.x, player.pos.y + 1.15, player.pos.z);
+camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
 
 // Ambient & Directional Lighting
 const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
@@ -726,20 +726,21 @@ worldGroup.add(obeliskGroup);
    ============================================================ */
 const pedestals = [];
 const PEDESTAL_CONFIGS = [
-  { x: -1.7, z: 2.1, label: "Alpha Pad", color: 0x5be3ff }, // Front left
-  { x: 0.0,  z: 1.7, label: "Beta Pad",  color: 0x10b981 }, // Front center
-  { x: 1.7,  z: 2.1, label: "Gamma Pad", color: 0xf59e0b }, // Front right
-  { x: -2.8, z: 0.0, label: "Delta Pad", color: 0xec4899 }, // Mid left
-  { x: 2.8,  z: 0.0, label: "Epsilon Pad", color: 0xa855f7 } // Mid right
+  { x: -1.35, z: 2.2, label: "Alpha Pad",  color: 0x5be3ff }, // Front left
+  { x: 0.0,   z: 2.0, label: "Beta Pad",   color: 0x10b981 }, // Front center
+  { x: 1.35,  z: 2.2, label: "Gamma Pad",  color: 0xf59e0b }, // Front right
+  { x: -2.2,  z: 1.2, label: "Delta Pad",  color: 0xec4899 }, // Mid left
+  { x: 2.2,   z: 1.2, label: "Epsilon Pad",color: 0xa855f7 }, // Mid right
+  { x: 0.0,   z: 2.7, label: "Zeta Altar", color: 0x38bdf8 }  // Forefront reach altar
 ];
 
 PEDESTAL_CONFIGS.forEach((cfg) => {
   const pedGroup = new THREE.Group();
   pedGroup.position.set(cfg.x, FLOOR_Y, cfg.z);
 
-  // Pedestal stone base
+  // Pedestal stone base proportioned to resized objects
   const baseMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.65, 0.76, PEDESTAL_HEIGHT, 18),
+    new THREE.CylinderGeometry(0.44, 0.54, PEDESTAL_HEIGHT, 18),
     new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.2 })
   );
   baseMesh.position.y = PEDESTAL_HEIGHT / 2;
@@ -749,7 +750,7 @@ PEDESTAL_CONFIGS.forEach((cfg) => {
 
   // Glowing landing ring
   const padRing = new THREE.Mesh(
-    new THREE.RingGeometry(0.28, 0.60, 24),
+    new THREE.RingGeometry(0.18, 0.40, 24),
     new THREE.MeshStandardMaterial({
       color: cfg.color,
       emissive: cfg.color,
@@ -762,8 +763,8 @@ PEDESTAL_CONFIGS.forEach((cfg) => {
   pedGroup.add(padRing);
 
   // Subtle glow light
-  const pLight = new THREE.PointLight(cfg.color, 0.5, 3.2);
-  pLight.position.set(0, PEDESTAL_HEIGHT + 0.35, 0);
+  const pLight = new THREE.PointLight(cfg.color, 0.45, 2.5);
+  pLight.position.set(0, PEDESTAL_HEIGHT + 0.25, 0);
   pedGroup.add(pLight);
 
   worldGroup.add(pedGroup);
@@ -778,7 +779,7 @@ PEDESTAL_CONFIGS.forEach((cfg) => {
 });
 
 /* ============================================================
-   INTERACTIVE 3D OBJECTS (Variety of Shapes & Colors)
+   INTERACTIVE 3D OBJECTS (Variety of Shapes & Colors - Scaled to 60-70%)
    ============================================================ */
 const pickables = [];
 
@@ -788,16 +789,19 @@ function makeInteractiveObject(geometry, material, initPos, name) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
-  // Compute bounding height
+  // Compute accurate bounding dimensions & sphere for physical proximity checking
   geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
   const box = geometry.boundingBox;
   const halfY = (box.max.y - box.min.y) / 2;
+  const boundingRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : halfY;
 
   mesh.userData = {
     name,
     velocity: new THREE.Vector3(),
     held: false,
     halfY: halfY,
+    boundingRadius: boundingRadius,
     initPos: initPos.clone(),
     origColor: material.color.getHex(),
     origEmissive: material.emissive ? material.emissive.getHex() : 0x000000
@@ -808,8 +812,8 @@ function makeInteractiveObject(geometry, material, initPos, name) {
   return mesh;
 }
 
-// 1. Cyber Cyan Cube (Front Left)
-const cubeSize = 0.72;
+// 1. Cyber Cyan Cube (Front Left) - Reduced to ~64% (0.46m)
+const cubeSize = 0.46;
 makeInteractiveObject(
   new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
   new THREE.MeshStandardMaterial({
@@ -819,13 +823,13 @@ makeInteractiveObject(
     roughness: 0.25,
     metalness: 0.4
   }),
-  new THREE.Vector3(-1.7, FLOOR_Y + PEDESTAL_HEIGHT + cubeSize/2, 2.1),
+  new THREE.Vector3(-1.35, FLOOR_Y + PEDESTAL_HEIGHT + cubeSize/2, 2.2),
   "Cyan Matrix Cube"
 );
 
-// 2. Emerald Torus / Ring (Front Center)
+// 2. Emerald Torus / Ring (Front Center) - Reduced to ~64%
 makeInteractiveObject(
-  new THREE.TorusGeometry(0.44, 0.16, 16, 32),
+  new THREE.TorusGeometry(0.28, 0.10, 16, 32),
   new THREE.MeshStandardMaterial({
     color: 0x10b981,
     emissive: 0x065f46,
@@ -833,12 +837,12 @@ makeInteractiveObject(
     roughness: 0.2,
     metalness: 0.6
   }),
-  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.44, 1.7),
+  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.38, 2.0),
   "Emerald Relic Ring"
 );
 
-// 3. Golden Pyramid / Tetrahedron (Front Right)
-const pyrR = 0.58, pyrH = 0.85;
+// 3. Golden Pyramid / Tetrahedron (Front Right) - Reduced to ~65%
+const pyrR = 0.38, pyrH = 0.55;
 makeInteractiveObject(
   new THREE.ConeGeometry(pyrR, pyrH, 4),
   new THREE.MeshStandardMaterial({
@@ -848,13 +852,13 @@ makeInteractiveObject(
     roughness: 0.3,
     metalness: 0.5
   }),
-  new THREE.Vector3(1.7, FLOOR_Y + PEDESTAL_HEIGHT + pyrH/2, 2.1),
+  new THREE.Vector3(1.35, FLOOR_Y + PEDESTAL_HEIGHT + pyrH/2, 2.2),
   "Solar Pyramid"
 );
 
-// 4. Amethyst Octahedron Gem (Mid Left)
+// 4. Amethyst Octahedron Gem (Mid Left) - Reduced to ~65%
 makeInteractiveObject(
-  new THREE.OctahedronGeometry(0.52),
+  new THREE.OctahedronGeometry(0.34),
   new THREE.MeshStandardMaterial({
     color: 0xc084fc,
     emissive: 0x6b21a8,
@@ -862,12 +866,12 @@ makeInteractiveObject(
     roughness: 0.15,
     metalness: 0.7
   }),
-  new THREE.Vector3(-2.8, FLOOR_Y + PEDESTAL_HEIGHT + 0.52, 0.0),
+  new THREE.Vector3(-2.2, FLOOR_Y + PEDESTAL_HEIGHT + 0.34, 1.2),
   "Amethyst Diamond"
 );
 
-// 5. Ruby Energy Sphere (Mid Right)
-const sphR = 0.48;
+// 5. Ruby Energy Sphere (Mid Right) - Reduced to ~65%
+const sphR = 0.31;
 makeInteractiveObject(
   new THREE.SphereGeometry(sphR, 32, 24),
   new THREE.MeshStandardMaterial({
@@ -877,13 +881,13 @@ makeInteractiveObject(
     roughness: 0.2,
     metalness: 0.3
   }),
-  new THREE.Vector3(2.8, FLOOR_Y + PEDESTAL_HEIGHT + sphR, 0.0),
+  new THREE.Vector3(2.2, FLOOR_Y + PEDESTAL_HEIGHT + sphR, 1.2),
   "Ruby Core Sphere"
 );
 
-// 6. Prismatic D20 Icosahedron (Direct Arm's Reach Altar)
+// 6. Prismatic D20 Icosahedron (Direct Arm's Reach Altar) - Reduced to ~65%
 makeInteractiveObject(
-  new THREE.IcosahedronGeometry(0.46),
+  new THREE.IcosahedronGeometry(0.30),
   new THREE.MeshStandardMaterial({
     color: 0x38bdf8,
     emissive: 0x0369a1,
@@ -891,7 +895,7 @@ makeInteractiveObject(
     roughness: 0.15,
     metalness: 0.8
   }),
-  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.46, 2.6),
+  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.30, 2.7),
   "Prism D20"
 );
 
@@ -1224,7 +1228,7 @@ function releaseHeld() {
   let snapped = false;
   for (const ped of pedestals) {
     const dXZ = Math.hypot(heldObject.position.x - ped.pos.x, heldObject.position.z - ped.pos.z);
-    if (dXZ < 0.95 && Math.abs(heldObject.position.y - ped.pos.y) < 1.4) {
+    if (dXZ < 0.65 && Math.abs(heldObject.position.y - ped.pos.y) < 0.9) {
       heldObject.position.x = ped.pos.x;
       heldObject.position.z = ped.pos.z;
       heldObject.position.y = ped.pos.y + heldObject.userData.halfY;
@@ -1255,7 +1259,7 @@ function resetWorldObjects() {
   });
   player.pos.set(0, 0, 3.8);
   player.yaw = 0;
-  camera.position.set(player.pos.x, player.pos.y + 1.15, player.pos.z);
+  camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
   camera.rotation.set(0, 0, 0);
   playModeFanfare(false);
 }
@@ -1502,34 +1506,20 @@ function updatePickMode(hand, dt) {
     pinchMeterBar.classList.toggle('pinching', isPinchingNow);
   }
 
-  // Construct Ray from camera through hand midWorld for Line-of-Sight / Aim grabbing
-  const camToHand = new THREE.Vector3().subVectors(midWorld, camera.position).normalize();
-  const aimRay = new THREE.Ray(camera.position, camToHand);
-
-  // Identify Candidate Object (Direct Touch or Magnetic Aim)
+  // Identify Candidate Object: hand/pinch point must be physically touching or within close proximity
   let candidate = null;
-  let bestScore = Infinity;
+  let bestDist = Infinity;
 
   if (!heldObject) {
     for (const obj of pickables) {
       const d3d = obj.position.distanceTo(midWorld);
-      if (d3d < DIRECT_GRAB_RADIUS) {
-        // Direct physical reach has highest priority
-        const score = d3d;
-        if (score < bestScore) {
-          bestScore = score;
+      const boundR = obj.userData.boundingRadius || 0.22;
+      const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN;
+      if (d3d <= touchThreshold) {
+        // Physical touch proximity satisfied
+        if (d3d < bestDist) {
+          bestDist = d3d;
           candidate = obj;
-        }
-      } else {
-        // Line-of-sight magnetic aiming
-        const rayDist = aimRay.distanceToPoint(obj.position);
-        const objDist = obj.position.distanceTo(camera.position);
-        if (rayDist < 1.35 && objDist < AIM_GRAB_RANGE) {
-          const score = 2.4 + rayDist * 1.6 + objDist * 0.12;
-          if (score < bestScore) {
-            bestScore = score;
-            candidate = obj;
-          }
         }
       }
     }
@@ -1544,19 +1534,13 @@ function updatePickMode(hand, dt) {
       heldObject.userData.held = true;
       heldObject.userData.velocity.set(0, 0, 0);
 
-      const d3d = candidate.position.distanceTo(midWorld);
-      if (d3d < 2.0) {
-        heldOffsetWorld.subVectors(candidate.position, midWorld);
-      } else {
-        // Magnetic snap directly into grasp
-        heldOffsetWorld.set(0, 0, 0);
-        candidate.position.copy(midWorld);
-      }
+      // Keep smooth grasp offset
+      heldOffsetWorld.subVectors(candidate.position, midWorld);
       setHighlight(heldObject, true);
       playGrabSound();
       statusText.textContent = 'Holding: ' + candidate.userData.name;
     } else {
-      statusText.textContent = 'Pinching (No Object In Sight)';
+      statusText.textContent = 'Pinching (No Object In Reach)';
     }
   } else if (pinching && !isPinchingNow) {
     pinching = false;
@@ -1566,9 +1550,9 @@ function updatePickMode(hand, dt) {
   } else if (!pinching) {
     statusDot.className = 'live';
     if (candidate) {
-      statusText.textContent = `🎯 Ready: ${candidate.userData.name} (Pinch to Grab)`;
+      statusText.textContent = `🎯 In Reach: ${candidate.userData.name} (Pinch to Grab)`;
     } else {
-      statusText.textContent = 'Tracking Hand • Aim & Pinch';
+      statusText.textContent = 'Tracking Hand • Touch an object to grab';
     }
   }
 
@@ -1682,7 +1666,7 @@ function updateWalkMode(hand, dt) {
   }
 
   // Update Camera Rig
-  camera.position.set(player.pos.x, player.pos.y + 1.25, player.pos.z);
+  camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
   camera.rotation.set(0, player.yaw, 0, 'YXZ');
 }
 
