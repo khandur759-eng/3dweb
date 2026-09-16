@@ -1,0 +1,6 @@
+{
+  "name": "Virtual Picker",
+  "description": "Interactive 3D virtual world with webcam hand tracking. Walk around with hand steering, triple-pinch to toggle between Walk and Pick modes, and interact with objects.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

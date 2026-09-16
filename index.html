@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Virtual Hand World & Object Picker</title>
+<meta name="description" content="Interactive 3D virtual world with webcam hand tracking. Walk around with hand steering, triple-pinch to toggle between Walk and Pick modes, and interact with objects." />
+<meta property="og:title" content="Virtual Hand World & Object Picker" />
+<meta property="og:description" content="Interactive 3D virtual world with webcam hand tracking. Walk around with hand steering, triple-pinch to toggle between Walk and Pick modes, and interact with objects." />
+<meta property="og:type" content="website" />
+<style>
+  :root{
+    --cyan: #5be3ff;
+    --cyan-dim: #2a5a66;
+    --emerald: #10b981;
+    --emerald-dim: #064e3b;
+    --gold: #f59e0b;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#07090e; color:#eaeaea;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden; user-select:none;
+  }
+  #sceneCanvas{ position:fixed; inset:0; display:block; width:100%; height:100%; }
+
+  /* ---------- Start / Permission Overlay ---------- */
+  #startOverlay{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #0d131f 0%, #05070a 75%);
+    padding:24px;
+  }
+  #startCard{
+    max-width:480px; width:100%;
+    text-align:center;
+    background:rgba(15, 23, 42, 0.75);
+    border:1px solid rgba(255, 255, 255, 0.1);
+    border-radius:20px;
+    padding:32px 28px;
+    backdrop-filter:blur(12px);
+    box-shadow:0 20px 40px rgba(0,0,0,0.6);
+  }
+  #startCard h1{
+    font-size:24px; font-weight:700; letter-spacing:0.2px;
+    margin:0 0 12px; color:#fff;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+  }
+  #startCard p{
+    font-size:14.5px; line-height:1.6; color:#a3b3c9; margin:0 0 10px;
+  }
+  .feature-pills{
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:18px 0;
+  }
+  .pill{
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+    padding:6px 12px; border-radius:999px; font-size:12px; color:#d1e3f8;
+  }
+  #startCard .privacy{
+    font-size:12px; color:#64748b; margin-top:16px;
+  }
+  #startBtn{
+    margin-top:16px;
+    background:linear-gradient(135deg, #5be3ff, #38bdf8);
+    color:#041a23; border:none;
+    font-size:15px; font-weight:700;
+    padding:13px 34px; border-radius:999px;
+    cursor:pointer; letter-spacing:0.3px;
+    box-shadow:0 0 26px rgba(91,227,255,0.4);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  #startBtn:active{ transform:scale(0.97); }
+  #startBtn:disabled{ opacity:0.5; cursor:default; box-shadow:none; }
+
+  #errBox{
+    display:none; margin-top:18px; font-size:13px; color:#ff8a8a;
+    background:rgba(255,90,90,0.1); border:1px solid rgba(255,90,90,0.3);
+    border-radius:10px; padding:12px 14px; text-align:left;
+  }
+  #errRetryBtn{
+    display:none; margin-top:10px;
+    background:transparent; color:#ff8a8a; border:1px solid rgba(255,138,138,0.45);
+    font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:999px;
+    cursor:pointer;
+  }
+  #loadingNote{
+    display:none; margin-top:16px; font-size:13px; color:#94a3b8;
+  }
+  .spinner{
+    width:14px; height:14px; border-radius:50%;
+    border:2px solid #334155; border-top-color:var(--cyan);
+    display:inline-block; vertical-align:-2px; margin-right:7px;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- Top Bar & Mode Control ---------- */
+  #topBar{
+    position:fixed; top:16px; left:16px; right:230px; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    pointer-events:none; opacity:0; transition:opacity .4s ease;
+  }
+  #topBar.show{ opacity:1; }
+
+  .bar-left{
+    display:flex; align-items:center; gap:12px; pointer-events:auto;
+  }
+  #statusPill{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(15, 23, 42, 0.75);
+    border:1px solid rgba(255, 255, 255, 0.12);
+    padding:6px 14px; border-radius:999px;
+    font-size:12px; letter-spacing:0.3px; color:#cbd5e1;
+    backdrop-filter:blur(8px);
+  }
+  #statusDot{
+    width:8px; height:8px; border-radius:50%; background:#64748b;
+    transition:background .2s ease, box-shadow .2s ease;
+  }
+  #statusDot.live{ background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+  #statusDot.pinch{ background:var(--gold); box-shadow:0 0 10px var(--gold); }
+  #statusDot.walk{ background:var(--emerald); box-shadow:0 0 10px var(--emerald); }
+
+  /* Mode Switcher pill with Triple Pinch Counter */
+  #modeControl{
+    display:flex; align-items:center; gap:10px;
+    background:rgba(15, 23, 42, 0.85);
+    border:1px solid rgba(255, 255, 255, 0.15);
+    padding:4px 6px 4px 14px; border-radius:999px;
+    pointer-events:auto;
+    backdrop-filter:blur(8px);
+    box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  }
+  #modeLabel{
+    font-size:12.5px; font-weight:700; letter-spacing:0.5px;
+    text-transform:uppercase; display:flex; align-items:center; gap:6px;
+  }
+  .mode-badge-pick{ color:var(--cyan); }
+  .mode-badge-walk{ color:var(--emerald); }
+
+  /* 3-pinch dot counters */
+  #pinchCountDots{
+    display:flex; align-items:center; gap:5px; margin:0 4px;
+  }
+  .pinch-dot{
+    width:7px; height:7px; border-radius:50%;
+    background:rgba(255,255,255,0.2);
+    transition:all .15s ease;
+  }
+  .pinch-dot.active{
+    background:var(--gold);
+    box-shadow:0 0 8px var(--gold);
+    transform:scale(1.35);
+  }
+
+  /* Pinch Strength Bar */
+  #pinchMeterWrap{
+    width:52px; height:8px; background:rgba(255,255,255,0.14);
+    border-radius:999px; overflow:hidden; margin:0 4px; border:1px solid rgba(255,255,255,0.15);
+    display:flex; align-items:center;
+  }
+  #pinchMeterBar{
+    width:0%; height:100%; background:var(--cyan);
+    border-radius:999px; transition:width .06s ease-out, background .15s ease;
+  }
+  #pinchMeterBar.pinching{
+    background:var(--gold);
+    box-shadow:0 0 6px var(--gold);
+  }
+
+  /* 3D World Target Lock Indicator */
+  #targetIndicator{
+    position:fixed; z-index:25; pointer-events:none;
+    transform:translate(-50%, -50%);
+    display:none; flex-direction:column; align-items:center; gap:5px;
+    transition:left .04s linear, top .04s linear;
+  }
+  .target-bracket{
+    width:42px; height:42px; border:2px dashed var(--cyan);
+    border-radius:50%; box-shadow:0 0 14px rgba(91, 227, 255, 0.6);
+    animation:reticleSpin 6s linear infinite;
+  }
+  @keyframes reticleSpin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .target-badge{
+    background:rgba(8, 20, 32, 0.88);
+    border:1px solid rgba(91, 227, 255, 0.5);
+    padding:3px 12px; border-radius:999px;
+    font-size:11px; font-weight:700; color:var(--cyan);
+    white-space:nowrap; backdrop-filter:blur(6px);
+    display:flex; align-items:center; gap:6px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.6);
+  }
+  .target-badge .action{
+    color:var(--gold); font-weight:700;
+  }
+
+  #modeToggleBtn{
+    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
+    color:#fff; font-size:11.5px; font-weight:600;
+    padding:6px 12px; border-radius:999px;
+    cursor:pointer; transition:all .2s ease;
+  }
+  #modeToggleBtn:hover{
+    background:rgba(255,255,255,0.2); border-color:rgba(255,255,255,0.3);
+  }
+
+  /* ---------- Mode Flash Banner ---------- */
+  #modeBanner{
+    position:fixed; top:75px; left:50%; transform:translateX(-50%) translateY(-20px);
+    z-index:40; pointer-events:none;
+    padding:10px 24px; border-radius:999px;
+    font-size:14px; font-weight:700; letter-spacing:0.4px;
+    display:flex; align-items:center; gap:8px;
+    opacity:0; transition:all .35s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    backdrop-filter:blur(8px);
+  }
+  #modeBanner.show{
+    opacity:1; transform:translateX(-50%) translateY(0);
+  }
+  #modeBanner.pick{
+    background:rgba(8, 30, 40, 0.9);
+    border:1px solid rgba(91, 227, 255, 0.4);
+    color:var(--cyan);
+  }
+  #modeBanner.walk{
+    background:rgba(6, 40, 30, 0.9);
+    border:1px solid rgba(16, 185, 129, 0.4);
+    color:var(--emerald);
+  }
+
+  /* ---------- Walk Nav Steering Indicator ---------- */
+  #walkSteerOverlay{
+    position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
+    z-index:20; pointer-events:none;
+    display:none; flex-direction:column; align-items:center; gap:6px;
+    transition:opacity .3s ease;
+  }
+  #walkSteerOverlay.active{ display:flex; }
+  .steer-compass{
+    width:90px; height:90px; border-radius:50%;
+    border:2px dashed rgba(16, 185, 129, 0.4);
+    background:rgba(6, 40, 30, 0.25);
+    position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .steer-puck{
+    width:16px; height:16px; border-radius:50%;
+    background:var(--emerald);
+    box-shadow:0 0 12px var(--emerald);
+    transition:transform .08s ease-out;
+  }
+  .steer-label{
+    font-size:11px; font-weight:600; color:rgba(16, 185, 129, 0.9);
+    background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:6px;
+  }
+
+  /* ---------- HUD / Bottom Guidance ---------- */
+  #hud{
+    position:fixed; left:16px; bottom:16px; z-index:20;
+    background:rgba(15, 23, 42, 0.75);
+    border:1px solid rgba(255, 255, 255, 0.12);
+    border-radius:14px; padding:12px 16px;
+    font-size:12.5px; color:#94a3b8; line-height:1.6;
+    max-width:340px; pointer-events:none;
+    opacity:0; transition:opacity .4s ease;
+    backdrop-filter:blur(10px);
+  }
+  #hud.show{ opacity:1; }
+  #hud b{ color:#f1f5f9; }
+  .hud-badge{
+    display:inline-block; font-size:10px; font-weight:700;
+    padding:1px 6px; border-radius:4px; margin-right:4px;
+  }
+  .hud-badge.pick{ background:rgba(91, 227, 255, 0.2); color:var(--cyan); }
+  .hud-badge.walk{ background:rgba(16, 185, 129, 0.2); color:var(--emerald); }
+
+  /* Quick action buttons in bottom right */
+  #actionButtons{
+    position:fixed; right:16px; bottom:16px; z-index:20;
+    display:flex; gap:8px; pointer-events:auto;
+    opacity:0; transition:opacity .4s ease;
+  }
+  #actionButtons.show{ opacity:1; }
+  .tool-btn{
+    background:rgba(15, 23, 42, 0.75);
+    border:1px solid rgba(255, 255, 255, 0.15);
+    color:#e2e8f0; font-size:12px; font-weight:600;
+    padding:8px 14px; border-radius:999px;
+    cursor:pointer; backdrop-filter:blur(8px);
+    transition:all .15s ease;
+  }
+  .tool-btn:hover{
+    background:rgba(255, 255, 255, 0.15);
+    border-color:rgba(255, 255, 255, 0.25);
+  }
+
+  /* ---------- Camera Preview ---------- */
+  #camWrap{
+    position:fixed; top:16px; right:16px; z-index:30;
+    width:190px; height:142px;
+    border-radius:14px; overflow:hidden;
+    border:1px solid rgba(255,255,255,0.18);
+    box-shadow:0 12px 30px rgba(0,0,0,0.6);
+    background:#080c14;
+    opacity:0; transform:translateY(-8px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  #camWrap.show{ opacity:1; transform:translateY(0); }
+  #camWrap video, #camWrap canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    transform:scaleX(-1);
+    object-fit:cover;
+  }
+  #camLabel{
+    position:absolute; left:8px; bottom:6px; z-index:2;
+    font-size:9.5px; letter-spacing:0.6px; color:rgba(255,255,255,0.85);
+    text-transform:uppercase; font-weight:700;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9);
+    display:flex; align-items:center; gap:5px;
+  }
+  #camLabel .dot{
+    width:6px; height:6px; border-radius:50%; background:var(--cyan);
+  }
+
+  @media (max-width:680px){
+    #topBar{ right:16px; top:12px; flex-direction:column; align-items:flex-start; gap:8px; }
+    #camWrap{ width:120px; height:90px; top:auto; bottom:110px; right:12px; }
+    #hud{ max-width:calc(100vw - 24px); left:12px; bottom:12px; font-size:11px; }
+    #actionButtons{ bottom:70px; right:12px; }
+  }
+</style>
+</head>
+<body>
+
+  <canvas id="sceneCanvas"></canvas>
+
+  <!-- Top bar controls & mode indicator -->
+  <div id="topBar">
+    <div class="bar-left">
+      <div id="statusPill">
+        <span id="statusDot"></span>
+        <span id="statusText">Waiting for hand…</span>
+      </div>
+    </div>
+
+    <div id="modeControl">
+      <div id="modeLabel" class="mode-badge-pick">
+        <span id="modeIcon">🖐️</span>
+        <span id="modeText">PICK MODE</span>
+      </div>
+      <!-- Real-time pinch meter -->
+      <div id="pinchMeterWrap" title="Pinch Strength">
+        <div id="pinchMeterBar"></div>
+      </div>
+      <!-- Real-time 3-pinch tracker -->
+      <div id="pinchCountDots" title="Pinch 3 times to switch mode">
+        <span class="pinch-dot" id="dot1"></span>
+        <span class="pinch-dot" id="dot2"></span>
+        <span class="pinch-dot" id="dot3"></span>
+      </div>
+      <button id="modeToggleBtn" type="button">Switch (3x Pinch / Space)</button>
+    </div>
+  </div>
+
+  <!-- Real-time Object Targeting Tag -->
+  <div id="targetIndicator">
+    <div class="target-bracket"></div>
+    <div class="target-badge">
+      <span id="targetName">Cyan Matrix Cube</span>
+      <span class="action" id="targetAction">Pinch to Grab</span>
+    </div>
+  </div>
+
+  <!-- Notification Banner when Mode switches -->
+  <div id="modeBanner" class="pick">
+    <span id="bannerIcon">🖐️</span>
+    <span id="bannerText">PICK MODE ACTIVATED</span>
+  </div>
+
+  <!-- Walk mode joystick / steering overlay -->
+  <div id="walkSteerOverlay">
+    <div class="steer-compass">
+      <div class="steer-puck" id="steerPuck"></div>
+    </div>
+    <div class="steer-label" id="steerLabel">Center Hand (Stopped)</div>
+  </div>
+
+  <!-- Bottom HUD instructions -->
+  <div id="hud">
+    <div id="hudContent">
+      <span class="hud-badge pick" id="hudModeTag">PICK MODE</span>
+      <b id="hudTitle">Grab &amp; Manipulate:</b><br/>
+      • <b>Pinch</b> thumb + index to grab, lift, and throw objects.<br/>
+      • <b>Aim or Reach:</b> Objects in reach or line-of-sight snap to your grasp.<br/>
+      • Move hand <b>closer to camera to push</b> forward into scene.<br/>
+      • <b>Pinch 3 times</b> (or press <kbd style="background:rgba(255,255,255,0.2); padding:1px 5px; border-radius:4px;">Space</kbd>) to shift to <b>Walk Mode</b>.
+    </div>
+  </div>
+
+  <!-- Bottom quick buttons -->
+  <div id="actionButtons">
+    <button class="tool-btn" id="depthToggleBtn" title="Toggle push/pull depth direction">↕ Push Forward</button>
+    <button class="tool-btn" id="resetObjectsBtn" title="Reset all objects back onto pedestals">↺ Reset World</button>
+    <button class="tool-btn" id="audioToggleBtn" title="Toggle sound effects">🔊 Sound: ON</button>
+  </div>
+
+  <!-- Webcam top-right viewer -->
+  <div id="camWrap">
+    <video id="video" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div id="camLabel"><span class="dot"></span>Hand Tracking</div>
+  </div>
+
+  <!-- Start Overlay -->
+  <div id="startOverlay">
+    <div id="startCard">
+      <h1>🌐 Virtual Hand 3D World</h1>
+      <p>Explore an interactive 3D virtual world driven entirely by your hand tracking. Stroll around the plaza, switch modes seamlessly, and manipulate geometric artifacts with natural gestures.</p>
+      
+      <div class="feature-pills">
+        <span class="pill">👌 Triple-Pinch Mode Shift</span>
+        <span class="pill">🚶 Hand Steering Walk Mode</span>
+        <span class="pill">🖐️ 3D Object Grabbing &amp; Tossing</span>
+        <span class="pill">🏛️ Interactive Pedestals &amp; World</span>
+      </div>
+
+      <button id="startBtn">Enable Camera &amp; Enter World</button>
+      <button id="mouseModeBtn" type="button" class="tool-btn" style="width:100%; margin-top:8px; padding:11px; font-size:13px; font-weight:600;">🖱️ Enter with Mouse &amp; Keyboard</button>
+      <div id="loadingNote"><span class="spinner"></span>Loading hand tracking &amp; 3D world…</div>
+
+      <div id="errBox">
+        <div id="errMsg"></div>
+        <button id="errRetryBtn" type="button"></button>
+      </div>
+
+      <div class="privacy">Webcam stream runs 100% locally on your device. Zero video data is recorded or uploaded.</div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script type="module">
+import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+
+/* ============================================================
+   AUDIO SYNTHESIZER (Web Audio API)
+   ============================================================ */
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) audioCtx = new AudioContext();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playTone(freq, duration = 0.1, type = 'sine', gainVal = 0.12) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playPinchPip(step) {
+  const freqs = [520, 680, 920];
+  playTone(freqs[Math.min(step - 1, 2)], 0.08, 'triangle', 0.15);
+}
+
+function playModeFanfare(toWalk) {
+  if (!soundEnabled || !audioCtx) return;
+  const notes = toWalk ? [392, 523, 659, 784] : [784, 659, 523, 440];
+  notes.forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.14, 'sine', 0.18), i * 70);
+  });
+}
+
+function playGrabSound() {
+  playTone(320, 0.12, 'sine', 0.15);
+}
+
+function playReleaseSound() {
+  playTone(480, 0.15, 'triangle', 0.12);
+}
+
+function playPedestalChime() {
+  if (!soundEnabled || !audioCtx) return;
+  [587, 880, 1174].forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.35, 'sine', 0.1), i * 90);
+  });
+}
+
+/* ============================================================
+   CONFIG & CONSTANTS
+   ============================================================ */
+const MP_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+const HAND_MODEL_URL =
+  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+// Hand Reach & Anatomical Scale Configuration:
+// Reaching volume: maps user's hand position across webcam to virtual first-person space
+const REACH_SPAN_X = 2.4;     // lateral reaching span across view
+const REACH_SPAN_Y = 1.8;     // vertical reaching span
+const REACH_OFFSET_Y = 0.28;  // ergonomically lowered for natural first-person arm angle
+
+// True-to-life human hand anatomical dimensions:
+// In real life, wrist (0) to middle MCP knuckle (9) is ~0.092 meters (9.2 cm)
+// and wrist to middle fingertip is ~0.185 meters (18.5 cm).
+const REAL_HAND_METERS = 0.092;
+
+// Depth mapping configuration:
+const DEPTH_PUSHED_Z = -2.8; // forward reaching towards pedestals
+const DEPTH_PULLED_Z = -1.1; // pulled back close to chest
+const SPAN_CLOSE_CAM = 0.32; // hand close to webcam
+const SPAN_FAR_CAM   = 0.10; // hand further from webcam
+
+let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
+
+const PINCH_ON  = 0.045;   // world distance (4.5 cm) between fingertips to trigger pinch
+const PINCH_OFF = 0.065;   // hysteresis release (6.5 cm)
+const DIRECT_GRAB_RADIUS = 1.15; // direct touch reach
+const AIM_GRAB_RANGE = 9.5;      // magnetic ray / line-of-sight reach
+const FOLLOW_LERP = 0.48;
+
+const FLOOR_Y = -1.6;
+const PEDESTAL_HEIGHT = 1.15; // table-height pedestals so objects align naturally with hand
+const WORLD_RADIUS = 16.0;
+const GRAVITY = 8.5;
+const BOUNCE_DAMP = 0.35;
+
+/* ============================================================
+   THREE.JS SCENE, CAMERA & LIGHTING
+   ============================================================ */
+const canvas = document.getElementById('sceneCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060912);
+scene.fog = new THREE.FogExp2(0x060912, 0.035);
+
+// Camera & Player Rig
+const camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 80);
+const player = {
+  pos: new THREE.Vector3(0, 0, 3.8),
+  yaw: 0,
+  velocity: new THREE.Vector3(),
+  targetYaw: 0
+};
+camera.position.set(player.pos.x, player.pos.y + 1.15, player.pos.z);
+
+// Ambient & Directional Lighting
+const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.2);
+sunLight.position.set(12, 18, 10);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 40;
+sunLight.shadow.camera.left = -18;
+sunLight.shadow.camera.right = 18;
+sunLight.shadow.camera.top = 18;
+sunLight.shadow.camera.bottom = -18;
+scene.add(sunLight);
+
+// Subtle Cyan Rim Light
+const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
+rimLight.position.set(-10, 8, -10);
+scene.add(rimLight);
+
+/* ============================================================
+   3D VIRTUAL WORLD ENVIRONMENT
+   ============================================================ */
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+
+// Central Plaza & Pathways
+const floorGeo = new THREE.CircleGeometry(WORLD_RADIUS, 48);
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x131d2e,
+  roughness: 0.75,
+  metalness: 0.15
+});
+const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+floorMesh.rotation.x = -Math.PI / 2;
+floorMesh.position.y = FLOOR_Y;
+floorMesh.receiveShadow = true;
+worldGroup.add(floorMesh);
+
+// Inner decorative plaza ring
+const innerPlazaGeo = new THREE.RingGeometry(0.1, 7.5, 36);
+const innerPlazaMat = new THREE.MeshStandardMaterial({
+  color: 0x1e293b,
+  roughness: 0.6,
+  metalness: 0.2
+});
+const innerPlaza = new THREE.Mesh(innerPlazaGeo, innerPlazaMat);
+innerPlaza.rotation.x = -Math.PI / 2;
+innerPlaza.position.y = FLOOR_Y + 0.005;
+innerPlaza.receiveShadow = true;
+worldGroup.add(innerPlaza);
+
+// Subtle concentric spatial rings
+const ringLinesGeo = new THREE.RingGeometry(3.5, 3.55, 48);
+const ringLinesMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25 });
+const ringMesh = new THREE.Mesh(ringLinesGeo, ringLinesMat);
+ringMesh.rotation.x = -Math.PI / 2;
+ringMesh.position.y = FLOOR_Y + 0.01;
+worldGroup.add(ringMesh);
+
+const outerRingLines = new THREE.Mesh(
+  new THREE.RingGeometry(7.5, 7.58, 48),
+  new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.2 })
+);
+outerRingLines.rotation.x = -Math.PI / 2;
+outerRingLines.position.y = FLOOR_Y + 0.01;
+worldGroup.add(outerRingLines);
+
+// Elegant boundary columns / glow pylons around edge of world
+for (let i = 0; i < 16; i++) {
+  const angle = (i / 16) * Math.PI * 2;
+  const px = Math.cos(angle) * (WORLD_RADIUS - 0.5);
+  const pz = Math.sin(angle) * (WORLD_RADIUS - 0.5);
+
+  const colMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.28, 1.8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+  );
+  colMesh.position.set(px, FLOOR_Y + 0.9, pz);
+  colMesh.castShadow = true;
+  worldGroup.add(colMesh);
+
+  // Pillar top crystal
+  const capMesh = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.18),
+    new THREE.MeshStandardMaterial({
+      color: 0x5be3ff,
+      emissive: 0x174652,
+      emissiveIntensity: 0.8,
+      roughness: 0.2
+    })
+  );
+  capMesh.position.set(px, FLOOR_Y + 1.95, pz);
+  worldGroup.add(capMesh);
+}
+
+// Low-Poly Trees & Rock clusters
+function createLowPolyTree(x, z, scale = 1.0) {
+  const tree = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18 * scale, 0.26 * scale, 1.6 * scale, 6),
+    new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
+  );
+  trunk.position.y = FLOOR_Y + (0.8 * scale);
+  trunk.castShadow = true;
+  tree.add(trunk);
+
+  // Tiered canopy
+  const canopyMat = new THREE.MeshStandardMaterial({
+    color: 0x15803d,
+    roughness: 0.7,
+    flatShading: true
+  });
+  for (let c = 0; c < 3; c++) {
+    const layer = new THREE.Mesh(
+      new THREE.ConeGeometry((1.1 - c * 0.22) * scale, (1.2 - c * 0.15) * scale, 7),
+      canopyMat
+    );
+    layer.position.y = FLOOR_Y + (1.6 + c * 0.75) * scale;
+    layer.castShadow = true;
+    tree.add(layer);
+  }
+  tree.position.set(x, 0, z);
+  worldGroup.add(tree);
+}
+
+// Plant trees around the garden perimeter
+const treePositions = [
+  [-9, -6], [-11, 2], [-8, 9], [7, -10], [10, -3], [9, 8], [-4, -12], [4, 11]
+];
+treePositions.forEach(([tx, tz], idx) => {
+  createLowPolyTree(tx, tz, 0.85 + (idx % 3) * 0.2);
+});
+
+// Central Floating Energy Obelisk / Monolith
+const obeliskGroup = new THREE.Group();
+obeliskGroup.position.set(0, FLOOR_Y + 1.6, 0);
+
+const obeliskMesh = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.02, 0.38, 2.2, 4),
+  new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    emissive: 0x075985,
+    emissiveIntensity: 0.9,
+    metalness: 0.5,
+    roughness: 0.2
+  })
+);
+obeliskGroup.add(obeliskMesh);
+
+const obeliskLight = new THREE.PointLight(0x5be3ff, 1.4, 6);
+obeliskLight.position.set(0, 0, 0);
+obeliskGroup.add(obeliskLight);
+worldGroup.add(obeliskGroup);
+
+/* ============================================================
+   INTERACTIVE PEDESTALS
+   ============================================================ */
+const pedestals = [];
+const PEDESTAL_CONFIGS = [
+  { x: -1.7, z: 2.1, label: "Alpha Pad", color: 0x5be3ff }, // Front left
+  { x: 0.0,  z: 1.7, label: "Beta Pad",  color: 0x10b981 }, // Front center
+  { x: 1.7,  z: 2.1, label: "Gamma Pad", color: 0xf59e0b }, // Front right
+  { x: -2.8, z: 0.0, label: "Delta Pad", color: 0xec4899 }, // Mid left
+  { x: 2.8,  z: 0.0, label: "Epsilon Pad", color: 0xa855f7 } // Mid right
+];
+
+PEDESTAL_CONFIGS.forEach((cfg) => {
+  const pedGroup = new THREE.Group();
+  pedGroup.position.set(cfg.x, FLOOR_Y, cfg.z);
+
+  // Pedestal stone base
+  const baseMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.65, 0.76, PEDESTAL_HEIGHT, 18),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.2 })
+  );
+  baseMesh.position.y = PEDESTAL_HEIGHT / 2;
+  baseMesh.castShadow = true;
+  baseMesh.receiveShadow = true;
+  pedGroup.add(baseMesh);
+
+  // Glowing landing ring
+  const padRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.28, 0.60, 24),
+    new THREE.MeshStandardMaterial({
+      color: cfg.color,
+      emissive: cfg.color,
+      emissiveIntensity: 0.8,
+      roughness: 0.3
+    })
+  );
+  padRing.rotation.x = -Math.PI / 2;
+  padRing.position.y = PEDESTAL_HEIGHT + 0.005;
+  pedGroup.add(padRing);
+
+  // Subtle glow light
+  const pLight = new THREE.PointLight(cfg.color, 0.5, 3.2);
+  pLight.position.set(0, PEDESTAL_HEIGHT + 0.35, 0);
+  pedGroup.add(pLight);
+
+  worldGroup.add(pedGroup);
+  pedestals.push({
+    group: pedGroup,
+    pos: new THREE.Vector3(cfg.x, FLOOR_Y + PEDESTAL_HEIGHT, cfg.z),
+    ring: padRing,
+    light: pLight,
+    baseColor: cfg.color,
+    isOccupied: false
+  });
+});
+
+/* ============================================================
+   INTERACTIVE 3D OBJECTS (Variety of Shapes & Colors)
+   ============================================================ */
+const pickables = [];
+
+function makeInteractiveObject(geometry, material, initPos, name) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(initPos);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
+  // Compute bounding height
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const halfY = (box.max.y - box.min.y) / 2;
+
+  mesh.userData = {
+    name,
+    velocity: new THREE.Vector3(),
+    held: false,
+    halfY: halfY,
+    initPos: initPos.clone(),
+    origColor: material.color.getHex(),
+    origEmissive: material.emissive ? material.emissive.getHex() : 0x000000
+  };
+
+  scene.add(mesh);
+  pickables.push(mesh);
+  return mesh;
+}
+
+// 1. Cyber Cyan Cube (Front Left)
+const cubeSize = 0.72;
+makeInteractiveObject(
+  new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
+  new THREE.MeshStandardMaterial({
+    color: 0x5be3ff,
+    emissive: 0x0369a1,
+    emissiveIntensity: 0.45,
+    roughness: 0.25,
+    metalness: 0.4
+  }),
+  new THREE.Vector3(-1.7, FLOOR_Y + PEDESTAL_HEIGHT + cubeSize/2, 2.1),
+  "Cyan Matrix Cube"
+);
+
+// 2. Emerald Torus / Ring (Front Center)
+makeInteractiveObject(
+  new THREE.TorusGeometry(0.44, 0.16, 16, 32),
+  new THREE.MeshStandardMaterial({
+    color: 0x10b981,
+    emissive: 0x065f46,
+    emissiveIntensity: 0.55,
+    roughness: 0.2,
+    metalness: 0.6
+  }),
+  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.44, 1.7),
+  "Emerald Relic Ring"
+);
+
+// 3. Golden Pyramid / Tetrahedron (Front Right)
+const pyrR = 0.58, pyrH = 0.85;
+makeInteractiveObject(
+  new THREE.ConeGeometry(pyrR, pyrH, 4),
+  new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    emissive: 0x92400e,
+    emissiveIntensity: 0.45,
+    roughness: 0.3,
+    metalness: 0.5
+  }),
+  new THREE.Vector3(1.7, FLOOR_Y + PEDESTAL_HEIGHT + pyrH/2, 2.1),
+  "Solar Pyramid"
+);
+
+// 4. Amethyst Octahedron Gem (Mid Left)
+makeInteractiveObject(
+  new THREE.OctahedronGeometry(0.52),
+  new THREE.MeshStandardMaterial({
+    color: 0xc084fc,
+    emissive: 0x6b21a8,
+    emissiveIntensity: 0.6,
+    roughness: 0.15,
+    metalness: 0.7
+  }),
+  new THREE.Vector3(-2.8, FLOOR_Y + PEDESTAL_HEIGHT + 0.52, 0.0),
+  "Amethyst Diamond"
+);
+
+// 5. Ruby Energy Sphere (Mid Right)
+const sphR = 0.48;
+makeInteractiveObject(
+  new THREE.SphereGeometry(sphR, 32, 24),
+  new THREE.MeshStandardMaterial({
+    color: 0xf43f5e,
+    emissive: 0x9f1239,
+    emissiveIntensity: 0.6,
+    roughness: 0.2,
+    metalness: 0.3
+  }),
+  new THREE.Vector3(2.8, FLOOR_Y + PEDESTAL_HEIGHT + sphR, 0.0),
+  "Ruby Core Sphere"
+);
+
+// 6. Prismatic D20 Icosahedron (Direct Arm's Reach Altar)
+makeInteractiveObject(
+  new THREE.IcosahedronGeometry(0.46),
+  new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    emissive: 0x0369a1,
+    emissiveIntensity: 0.7,
+    roughness: 0.15,
+    metalness: 0.8
+  }),
+  new THREE.Vector3(0.0, FLOOR_Y + PEDESTAL_HEIGHT + 0.46, 2.6),
+  "Prism D20"
+);
+
+/* ============================================================
+   VIRTUAL SKELETAL HAND RIG
+   ============================================================ */
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+
+// Hand is attached to camera so it naturally stays in player's field of view!
+const handGroup = new THREE.Group();
+handGroup.visible = false;
+camera.add(handGroup);
+scene.add(camera);
+
+const jointMat = new THREE.MeshStandardMaterial({
+  color: 0x5be3ff, emissive: 0x0284c7, emissiveIntensity: 0.9, roughness: 0.3
+});
+const boneMat = new THREE.MeshStandardMaterial({
+  color: 0x38bdf8, emissive: 0x0369a1, emissiveIntensity: 0.8, roughness: 0.4
+});
+
+const jointGeo = new THREE.SphereGeometry(1, 12, 10);
+const joints = [];
+for (let i = 0; i < 21; i++) {
+  const s = new THREE.Mesh(jointGeo, jointMat);
+  // Anatomically proportioned joint radii (in meters):
+  // Wrist: ~1.6 cm, Knuckles: ~1.2 cm, Fingertips: ~1.0 cm, Phalanxes: ~0.9 cm
+  const r = (i === 0) ? 0.016 : ([1, 5, 9, 13, 17].includes(i) ? 0.012 : ([4, 8, 12, 16, 20].includes(i) ? 0.010 : 0.009));
+  s.scale.setScalar(r);
+  handGroup.add(s);
+  joints.push(s);
+}
+
+const boneGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
+const bones = [];
+for (let i = 0; i < HAND_CONNECTIONS.length; i++) {
+  const c = new THREE.Mesh(boneGeo, boneMat);
+  // Realistic finger cylinder radius: ~0.0045m (0.9cm diameter)
+  c.scale.set(0.0045, 1, 0.0045);
+  handGroup.add(c);
+  bones.push(c);
+}
+
+// Interaction reticle around hand in Pick Mode (scaled to real fingertip pinch ~3cm)
+const handReticle = new THREE.Mesh(
+  new THREE.RingGeometry(0.024, 0.034, 24),
+  new THREE.MeshBasicMaterial({ color: 0x5be3ff, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+);
+handReticle.visible = false;
+handGroup.add(handReticle);
+
+const BONE_UP = new THREE.Vector3(0, 1, 0);
+function orientBone(mesh, p1, p2) {
+  const dir = new THREE.Vector3().subVectors(p2, p1);
+  const len = dir.length() || 0.0001;
+  mesh.position.copy(p1).addScaledVector(dir, 0.5);
+  mesh.scale.y = len;
+  const q = new THREE.Quaternion().setFromUnitVectors(BONE_UP, dir.clone().normalize());
+  mesh.quaternion.copy(q);
+}
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function mapRange(v, a1, b1, a2, b2) {
+  const t = clamp((v - a1) / (b1 - a1), 0, 1);
+  return a2 + t * (b2 - a2);
+}
+
+// Converts 21 MediaPipe landmarks into realistic human-hand-scaled 3D camera local coordinates
+function updateHandSkeletonLocal(lm, vAspect, baseZ, outArray) {
+  // Hand root (palm center)
+  const palmX = (lm[0].x + lm[9].x) * 0.5;
+  const palmY = (lm[0].y + lm[9].y) * 0.5;
+  const palmZ = ((lm[0].z || 0) + (lm[9].z || 0)) * 0.5;
+
+  // Aspect-corrected pixel span from wrist (0) to middle MCP knuckle (9)
+  const dx = (lm[0].x - lm[9].x) * vAspect;
+  const dy = (lm[0].y - lm[9].y);
+  const span = Math.hypot(dx, dy) || 0.18;
+
+  // Hand root position in camera local space (where user is pointing/reaching)
+  const rootX = (0.5 - palmX) * REACH_SPAN_X;
+  const rootY = (0.5 - palmY) * REACH_SPAN_Y - REACH_OFFSET_Y;
+  const rootZ = baseZ;
+
+  // Real-life metric scaling: ensures the hand is anatomically ~18.5 cm long
+  const metricScale = REAL_HAND_METERS / span;
+
+  for (let i = 0; i < 21; i++) {
+    // Relative displacement from palm center, scaled to real human hand proportions
+    const relX = (palmX - lm[i].x) * vAspect * metricScale;
+    const relY = (palmY - lm[i].y) * metricScale;
+    const relZ = ((lm[i].z || 0) - palmZ) * metricScale * 1.2;
+
+    outArray[i].set(rootX + relX, rootY + relY, rootZ + relZ);
+  }
+
+  return { palmCenter: { x: palmX, y: palmY, z: palmZ }, span };
+}
+
+const _tmpLocal = [];
+for (let i = 0; i < 21; i++) _tmpLocal.push(new THREE.Vector3());
+
+/* ============================================================
+   MODES & TRIPLE PINCH DETECTION
+   ============================================================ */
+let currentMode = 'PICK'; // 'PICK' or 'WALK'
+let pinchCount = 0;
+let lastPinchTime = 0;
+const TRIPLE_PINCH_WINDOW = 950; // ms to chain 3 pinches
+let lastPinchState = false;
+
+// DOM Elements
+const topBar = document.getElementById('topBar');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const modeControl = document.getElementById('modeControl');
+const modeLabel = document.getElementById('modeLabel');
+const modeIcon = document.getElementById('modeIcon');
+const modeText = document.getElementById('modeText');
+const modeToggleBtn = document.getElementById('modeToggleBtn');
+const dot1 = document.getElementById('dot1');
+const dot2 = document.getElementById('dot2');
+const dot3 = document.getElementById('dot3');
+const modeBanner = document.getElementById('modeBanner');
+const bannerIcon = document.getElementById('bannerIcon');
+const bannerText = document.getElementById('bannerText');
+const walkSteerOverlay = document.getElementById('walkSteerOverlay');
+const steerPuck = document.getElementById('steerPuck');
+const steerLabel = document.getElementById('steerLabel');
+const hud = document.getElementById('hud');
+const hudContent = document.getElementById('hudContent');
+const actionButtons = document.getElementById('actionButtons');
+const resetObjectsBtn = document.getElementById('resetObjectsBtn');
+const audioToggleBtn = document.getElementById('audioToggleBtn');
+const depthToggleBtn = document.getElementById('depthToggleBtn');
+
+function updatePinchDotsUI() {
+  dot1.classList.toggle('active', pinchCount >= 1);
+  dot2.classList.toggle('active', pinchCount >= 2);
+  dot3.classList.toggle('active', pinchCount >= 3);
+}
+
+function showBanner(title, icon, modeClass) {
+  bannerText.textContent = title;
+  bannerIcon.textContent = icon;
+  modeBanner.className = 'show ' + modeClass;
+  clearTimeout(modeBanner._timer);
+  modeBanner._timer = setTimeout(() => {
+    modeBanner.classList.remove('show');
+  }, 1900);
+}
+
+function updateHUDForMode() {
+  if (currentMode === 'PICK') {
+    modeLabel.className = 'mode-badge-pick';
+    modeIcon.textContent = '🖐️';
+    modeText.textContent = 'PICK MODE';
+    walkSteerOverlay.classList.remove('active');
+
+    // Update hand bone colors to cyan
+    jointMat.color.setHex(0x5be3ff);
+    jointMat.emissive.setHex(0x0284c7);
+    boneMat.color.setHex(0x38bdf8);
+    boneMat.emissive.setHex(0x0369a1);
+
+    hudContent.innerHTML = `
+      <span class="hud-badge pick">PICK MODE</span>
+      <b>Grab &amp; Manipulate Objects:</b><br/>
+      • <b>Pinch</b> thumb + index to grab, lift, and throw.<br/>
+      • Move hand <b>closer to camera to push</b> forward into scene.<br/>
+      • Pull hand <b>back to draw</b> objects closer.<br/>
+      • <b>Pinch 3 times</b> rapidly to shift to <b>Walk Mode</b>.
+    `;
+  } else {
+    modeLabel.className = 'mode-badge-walk';
+    modeIcon.textContent = '🚶';
+    modeText.textContent = 'WALK MODE';
+    walkSteerOverlay.classList.add('active');
+
+    // Update hand bone colors to emerald
+    jointMat.color.setHex(0x10b981);
+    jointMat.emissive.setHex(0x065f46);
+    boneMat.color.setHex(0x34d399);
+    boneMat.emissive.setHex(0x047857);
+
+    hudContent.innerHTML = `
+      <span class="hud-badge walk">WALK MODE</span>
+      <b>Hand Steering Navigation:</b><br/>
+      • Move hand <b>Up/Forward</b> to walk forward, <b>Down</b> for reverse.<br/>
+      • Move hand <b>Left / Right</b> to turn.<br/>
+      • <b>Pinch 3 times</b> rapidly to return to <b>Pick Mode</b>.<br/>
+      • <i>Tip: WASD / Arrow keys also walk!</i>
+    `;
+  }
+}
+
+function toggleMode() {
+  if (heldObject) releaseHeld();
+  initAudio();
+  currentMode = (currentMode === 'PICK') ? 'WALK' : 'PICK';
+  playModeFanfare(currentMode === 'WALK');
+  showBanner(
+    currentMode === 'WALK' ? 'WALK MODE: STEER WORLD' : 'PICK MODE: GRAB OBJECTS',
+    currentMode === 'WALK' ? '🚶' : '🖐️',
+    currentMode === 'WALK' ? 'walk' : 'pick'
+  );
+  updateHUDForMode();
+}
+
+modeToggleBtn.addEventListener('click', toggleMode);
+
+// Keyboard controls (Space for mode switch, WASD for walking)
+const keys = {};
+window.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    toggleMode();
+  }
+  if (e.code === 'KeyR') {
+    resetWorldObjects();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+/* ============================================================
+   PHYSICS & OBJECT INTERACTIONS
+   ============================================================ */
+let heldObject = null;
+let heldOffsetWorld = new THREE.Vector3();
+let pinching = false;
+let prevPinchMidWorld = new THREE.Vector3();
+let havePrevPinchMid = false;
+let pinchVelocity = new THREE.Vector3();
+let lastHighlighted = null;
+
+function setHighlight(obj, on) {
+  if (!obj) return;
+  if (on) {
+    obj.material.emissive.setHex(0x0284c7);
+    obj.material.emissiveIntensity = 1.0;
+  } else {
+    obj.material.emissive.setHex(obj.userData.origEmissive);
+    obj.material.emissiveIntensity = 0.5;
+  }
+}
+
+function updatePhysics(dt) {
+  // Obelisk idle spin
+  obeliskGroup.rotation.y += dt * 0.45;
+
+  // Check pedestals occupation
+  for (const ped of pedestals) {
+    let occupied = false;
+    for (const obj of pickables) {
+      if (obj.position.distanceTo(ped.pos) < 0.75) {
+        occupied = true;
+        break;
+      }
+    }
+    if (occupied && !ped.isOccupied) {
+      ped.isOccupied = true;
+      ped.light.intensity = 1.6;
+      playPedestalChime();
+    } else if (!occupied && ped.isOccupied) {
+      ped.isOccupied = false;
+      ped.light.intensity = 0.5;
+    }
+  }
+
+  // Update free objects
+  for (const obj of pickables) {
+    if (obj.userData.held) continue;
+    const v = obj.userData.velocity;
+    v.y -= GRAVITY * dt;
+    obj.position.addScaledVector(v, dt);
+
+    // Floor & Pedestal collisions
+    let effectiveFloor = FLOOR_Y + obj.userData.halfY;
+    for (const ped of pedestals) {
+      const distXZ = Math.hypot(obj.position.x - ped.pos.x, obj.position.z - ped.pos.z);
+      if (distXZ < 0.68 && obj.position.y >= ped.pos.y) {
+        effectiveFloor = Math.max(effectiveFloor, ped.pos.y + obj.userData.halfY);
+      }
+    }
+
+    if (obj.position.y <= effectiveFloor) {
+      obj.position.y = effectiveFloor;
+      if (Math.abs(v.y) > 0.8) {
+        v.y = -v.y * BOUNCE_DAMP;
+      } else {
+        v.y = 0;
+      }
+      v.x *= 0.84;
+      v.z *= 0.84;
+    }
+
+    // World boundary bounce
+    const dCenter = Math.hypot(obj.position.x, obj.position.z);
+    if (dCenter > WORLD_RADIUS - 0.7) {
+      const norm = new THREE.Vector2(obj.position.x, obj.position.z).normalize();
+      obj.position.x = norm.x * (WORLD_RADIUS - 0.7);
+      obj.position.z = norm.y * (WORLD_RADIUS - 0.7);
+      v.x = -v.x * 0.5;
+      v.z = -v.z * 0.5;
+    }
+
+    // Subtle idle rotation when at rest
+    if (Math.abs(v.x) + Math.abs(v.z) + Math.abs(v.y) < 0.05) {
+      obj.rotation.y += dt * 0.2;
+    }
+  }
+}
+
+function releaseHeld() {
+  if (!heldObject) return;
+  setHighlight(heldObject, false);
+  heldObject.userData.held = false;
+
+  // Smart pedestal snap when releasing near a pedestal
+  let snapped = false;
+  for (const ped of pedestals) {
+    const dXZ = Math.hypot(heldObject.position.x - ped.pos.x, heldObject.position.z - ped.pos.z);
+    if (dXZ < 0.95 && Math.abs(heldObject.position.y - ped.pos.y) < 1.4) {
+      heldObject.position.x = ped.pos.x;
+      heldObject.position.z = ped.pos.z;
+      heldObject.position.y = ped.pos.y + heldObject.userData.halfY;
+      heldObject.userData.velocity.set(0, 0, 0);
+      playPedestalChime();
+      ped.ring.material.emissiveIntensity = 2.0;
+      setTimeout(() => { ped.ring.material.emissiveIntensity = 0.8; }, 800);
+      snapped = true;
+      break;
+    }
+  }
+
+  if (!snapped) {
+    const throwScale = 0.65;
+    heldObject.userData.velocity.copy(pinchVelocity).multiplyScalar(throwScale);
+    playReleaseSound();
+  }
+  heldObject = null;
+  pinchVelocity.set(0, 0, 0);
+}
+
+function resetWorldObjects() {
+  if (heldObject) releaseHeld();
+  pickables.forEach((obj) => {
+    obj.position.copy(obj.userData.initPos);
+    obj.userData.velocity.set(0, 0, 0);
+    obj.rotation.set(0, 0, 0);
+  });
+  player.pos.set(0, 0, 3.8);
+  player.yaw = 0;
+  camera.position.set(player.pos.x, player.pos.y + 1.15, player.pos.z);
+  camera.rotation.set(0, 0, 0);
+  playModeFanfare(false);
+}
+
+resetObjectsBtn.addEventListener('click', resetWorldObjects);
+
+depthToggleBtn.addEventListener('click', () => {
+  depthPushOnApproach = !depthPushOnApproach;
+  depthToggleBtn.textContent = depthPushOnApproach ? '↕ Push Forward' : '↕ Pull Forward';
+  showBanner(
+    depthPushOnApproach ? 'DEPTH: PUSH ON APPROACH' : 'DEPTH: PULL ON APPROACH',
+    '↕',
+    currentMode === 'WALK' ? 'walk' : 'pick'
+  );
+  playTone(depthPushOnApproach ? 660 : 440, 0.12, 'sine', 0.14);
+});
+
+audioToggleBtn.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  audioToggleBtn.textContent = soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: MUTED';
+  if (soundEnabled) initAudio();
+});
+
+/* ============================================================
+   MEDIAPIPE HAND LANDMARKER
+   ============================================================ */
+let handLandmarker = null;
+let landmarkerReady = false;
+let landmarkerLoading = false;
+
+async function loadLandmarker() {
+  if (landmarkerLoading) return;
+  landmarkerLoading = true;
+  try {
+    const vision = await FilesetResolver.forVisionTasks(`${MP_CDN}/wasm`);
+    try {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numHands: 1,
+        minHandDetectionConfidence: 0.55,
+        minHandPresenceConfidence: 0.55,
+        minTrackingConfidence: 0.55
+      });
+    } catch(gpuErr) {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: "CPU" },
+        runningMode: "VIDEO",
+        numHands: 1,
+        minHandDetectionConfidence: 0.55,
+        minHandPresenceConfidence: 0.55,
+        minTrackingConfidence: 0.55
+      });
+    }
+    landmarkerReady = true;
+  } catch(e) {
+    console.error("Landmarker failed to load", e);
+    landmarkerReady = false;
+  } finally {
+    landmarkerLoading = false;
+  }
+}
+loadLandmarker();
+
+/* ============================================================
+   CAMERA VIDEO & OVERLAY
+   ============================================================ */
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const octx = overlay.getContext('2d');
+let camReady = false;
+
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    const err = new Error("getUserMedia is unavailable.");
+    err.name = "CameraUnavailable";
+    throw err;
+  }
+  if (video.srcObject) {
+    for (const track of video.srcObject.getTracks()) track.stop();
+    video.srcObject = null;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+    audio: false
+  });
+  video.srcObject = stream;
+  await video.play();
+  if (video.readyState < 2) {
+    await new Promise((resolve) => {
+      video.onloadeddata = resolve;
+    });
+  }
+  camReady = true;
+}
+
+function drawOverlay(landmarks) {
+  octx.clearRect(0, 0, overlay.width, overlay.height);
+  if (!landmarks) return;
+  const strokeCol = (currentMode === 'WALK') ? 'rgba(16, 185, 129, 0.85)' : 'rgba(91, 227, 255, 0.85)';
+  const pointCol = (currentMode === 'WALK') ? '#10b981' : '#5be3ff';
+
+  octx.strokeStyle = strokeCol;
+  octx.lineWidth = 2;
+  octx.beginPath();
+  for (const [a, b] of HAND_CONNECTIONS) {
+    const p1 = landmarks[a], p2 = landmarks[b];
+    octx.moveTo(p1.x * overlay.width, p1.y * overlay.height);
+    octx.lineTo(p2.x * overlay.width, p2.y * overlay.height);
+  }
+  octx.stroke();
+
+  octx.fillStyle = pointCol;
+  for (const p of landmarks) {
+    octx.beginPath();
+    octx.arc(p.x * overlay.width, p.y * overlay.height, 2.5, 0, Math.PI * 2);
+    octx.fill();
+  }
+}
+
+/* ============================================================
+   HAND TRACKING PIPELINE & GESTURES
+   ============================================================ */
+function processHand() {
+  if (!camReady || !landmarkerReady || video.readyState < 2) {
+    handGroup.visible = false;
+    return null;
+  }
+  const result = handLandmarker.detectForVideo(video, performance.now());
+  if (!result.landmarks || result.landmarks.length === 0) {
+    handGroup.visible = false;
+    drawOverlay(null);
+    statusDot.className = '';
+    statusText.textContent = 'Waiting for hand…';
+    return null;
+  }
+
+  const lm = result.landmarks[0];
+  drawOverlay(lm);
+
+  // Aspect ratio from video for uniform metric scaling
+  const vAspect = (video.videoWidth && video.videoHeight) ? (video.videoWidth / video.videoHeight) : 1.333;
+
+  // Video span from wrist (0) to middle MCP knuckle (9), aspect-corrected
+  const dx = (lm[0].x - lm[9].x) * vAspect;
+  const dy = (lm[0].y - lm[9].y);
+  const span = Math.hypot(dx, dy) || 0.18;
+
+  // Depth calculation based on span
+  const targetNearZ = depthPushOnApproach ? DEPTH_PULLED_Z : DEPTH_PUSHED_Z;
+  const targetFarZ  = depthPushOnApproach ? DEPTH_PUSHED_Z : DEPTH_PULLED_Z;
+  const baseZ = clamp(mapRange(span, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.2, -0.9);
+
+  // Anatomically convert all 21 landmarks into realistic human hand scale in 3D camera local coordinates
+  const { palmCenter } = updateHandSkeletonLocal(lm, vAspect, baseZ, _tmpLocal);
+
+  for (let i = 0; i < 21; i++) {
+    joints[i].position.copy(_tmpLocal[i]);
+  }
+  for (let i = 0; i < HAND_CONNECTIONS.length; i++) {
+    const [a, b] = HAND_CONNECTIONS[i];
+    orientBone(bones[i], _tmpLocal[a], _tmpLocal[b]);
+  }
+  handGroup.visible = true;
+
+  // Crucial: Update Three.js world matrix hierarchy so getWorldPosition() is exact
+  camera.updateMatrixWorld(true);
+
+  // Convert key tips to World Space
+  const thumbTipWorld = joints[4].getWorldPosition(new THREE.Vector3());
+  const indexTipWorld = joints[8].getWorldPosition(new THREE.Vector3());
+
+  // Scale-invariant pinch ratio
+  const pdx = (lm[4].x - lm[8].x) * vAspect, pdy = lm[4].y - lm[8].y, pdz = ((lm[4].z || 0) - (lm[8].z || 0));
+  const pinchDist3D = Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
+  const pinchRatio = pinchDist3D / span;
+
+  return {
+    rawLandmarks: lm,
+    palmCenter,
+    thumbTipLocal: _tmpLocal[4],
+    indexTipLocal: _tmpLocal[8],
+    thumbTipWorld,
+    indexTipWorld,
+    pinchRatio
+  };
+}
+
+/* ============================================================
+   TRIPLE PINCH GESTURE HANDLER
+   ============================================================ */
+function handleTriplePinch(isPinchingNow) {
+  const now = performance.now();
+
+  // Reset pinch counter if too much time passed
+  if (pinchCount > 0 && now - lastPinchTime > TRIPLE_PINCH_WINDOW) {
+    pinchCount = 0;
+    updatePinchDotsUI();
+  }
+
+  // Trigger on fresh pinch start
+  if (isPinchingNow && !lastPinchState) {
+    pinchCount++;
+    lastPinchTime = now;
+    playPinchPip(pinchCount);
+    updatePinchDotsUI();
+
+    if (pinchCount >= 3) {
+      pinchCount = 0;
+      updatePinchDotsUI();
+      toggleMode();
+    }
+  }
+  lastPinchState = isPinchingNow;
+}
+
+/* ============================================================
+   MODE LOGIC: PICK MODE & WALK MODE
+   ============================================================ */
+function updatePickMode(hand, dt) {
+  if (!hand) {
+    if (heldObject) releaseHeld();
+    havePrevPinchMid = false;
+    handReticle.visible = false;
+    updateTargetIndicator(null);
+    if (pinchMeterBar) pinchMeterBar.style.width = '0%';
+    return;
+  }
+
+  const dist = hand.thumbTipWorld.distanceTo(hand.indexTipWorld);
+  const midWorld = new THREE.Vector3().addVectors(hand.thumbTipWorld, hand.indexTipWorld).multiplyScalar(0.5);
+
+  handReticle.visible = true;
+  handReticle.position.copy(hand.indexTipLocal).lerp(hand.thumbTipLocal, 0.5);
+
+  // Reliable hybrid pinch check: scale-invariant ratio + 3D tip distance
+  const isPinchingNow = (hand.pinchRatio < 0.40) || (dist < PINCH_ON);
+  handleTriplePinch(isPinchingNow);
+
+  // Update UI Pinch Meter
+  if (pinchMeterBar) {
+    const pinchStrength = clamp(mapRange(hand.pinchRatio, 0.72, 0.35, 0, 1), 0, 1);
+    pinchMeterBar.style.width = Math.round(pinchStrength * 100) + '%';
+    pinchMeterBar.classList.toggle('pinching', isPinchingNow);
+  }
+
+  // Construct Ray from camera through hand midWorld for Line-of-Sight / Aim grabbing
+  const camToHand = new THREE.Vector3().subVectors(midWorld, camera.position).normalize();
+  const aimRay = new THREE.Ray(camera.position, camToHand);
+
+  // Identify Candidate Object (Direct Touch or Magnetic Aim)
+  let candidate = null;
+  let bestScore = Infinity;
+
+  if (!heldObject) {
+    for (const obj of pickables) {
+      const d3d = obj.position.distanceTo(midWorld);
+      if (d3d < DIRECT_GRAB_RADIUS) {
+        // Direct physical reach has highest priority
+        const score = d3d;
+        if (score < bestScore) {
+          bestScore = score;
+          candidate = obj;
+        }
+      } else {
+        // Line-of-sight magnetic aiming
+        const rayDist = aimRay.distanceToPoint(obj.position);
+        const objDist = obj.position.distanceTo(camera.position);
+        if (rayDist < 1.35 && objDist < AIM_GRAB_RANGE) {
+          const score = 2.4 + rayDist * 1.6 + objDist * 0.12;
+          if (score < bestScore) {
+            bestScore = score;
+            candidate = obj;
+          }
+        }
+      }
+    }
+  }
+
+  if (!pinching && isPinchingNow) {
+    pinching = true;
+    statusDot.className = 'pinch';
+
+    if (candidate) {
+      heldObject = candidate;
+      heldObject.userData.held = true;
+      heldObject.userData.velocity.set(0, 0, 0);
+
+      const d3d = candidate.position.distanceTo(midWorld);
+      if (d3d < 2.0) {
+        heldOffsetWorld.subVectors(candidate.position, midWorld);
+      } else {
+        // Magnetic snap directly into grasp
+        heldOffsetWorld.set(0, 0, 0);
+        candidate.position.copy(midWorld);
+      }
+      setHighlight(heldObject, true);
+      playGrabSound();
+      statusText.textContent = 'Holding: ' + candidate.userData.name;
+    } else {
+      statusText.textContent = 'Pinching (No Object In Sight)';
+    }
+  } else if (pinching && !isPinchingNow) {
+    pinching = false;
+    statusDot.className = 'live';
+    statusText.textContent = 'Tracking Hand';
+    releaseHeld();
+  } else if (!pinching) {
+    statusDot.className = 'live';
+    if (candidate) {
+      statusText.textContent = `🎯 Ready: ${candidate.userData.name} (Pinch to Grab)`;
+    } else {
+      statusText.textContent = 'Tracking Hand • Aim & Pinch';
+    }
+  }
+
+  // Visual Targeting & Highlighting
+  if (!heldObject) {
+    if (candidate !== lastHighlighted) {
+      if (lastHighlighted) setHighlight(lastHighlighted, false);
+      if (candidate) setHighlight(candidate, true);
+      lastHighlighted = candidate;
+    }
+    updateTargetIndicator(candidate);
+  } else {
+    updateTargetIndicator(null);
+  }
+
+  // Move held object with smooth follow
+  if (heldObject) {
+    const target = new THREE.Vector3().addVectors(midWorld, heldOffsetWorld);
+    heldObject.position.lerp(target, FOLLOW_LERP);
+
+    // Keep above ground
+    const minFloor = FLOOR_Y + heldObject.userData.halfY;
+    if (heldObject.position.y < minFloor) heldObject.position.y = minFloor;
+  }
+
+  // Calculate throw velocity
+  if (havePrevPinchMid && dt > 0) {
+    pinchVelocity.subVectors(midWorld, prevPinchMidWorld).multiplyScalar(1 / dt);
+  }
+  prevPinchMidWorld.copy(midWorld);
+  havePrevPinchMid = true;
+}
+
+function updateWalkMode(hand, dt) {
+  handReticle.visible = false;
+  if (lastHighlighted) {
+    setHighlight(lastHighlighted, false);
+    lastHighlighted = null;
+  }
+
+  let moveForward = 0;
+  let turnAmount = 0;
+
+  // 1. Hand Steering Gestures
+  if (hand) {
+    const dist = hand.thumbTipWorld.distanceTo(hand.indexTipWorld);
+    const isPinchingNow = (hand.pinchRatio < 0.38) || (dist < PINCH_ON);
+    handleTriplePinch(isPinchingNow);
+
+    // Palm center displacement:
+    // Video is mirrored: lm.x < 0.45 is user's right side, lm.x > 0.55 is user's left side
+    // lm.y < 0.45 is user hand raised (Forward), lm.y > 0.65 is user hand lowered (Backward)
+    const px = hand.palmCenter.x;
+    const py = hand.palmCenter.y;
+
+    // Deadbands
+    const deadX = 0.08;
+    const deadY = 0.08;
+
+    // Steer Puck visual feedback
+    const puckX = clamp((0.5 - px) * 70, -32, 32);
+    const puckY = clamp((py - 0.5) * 70, -32, 32);
+    steerPuck.style.transform = `translate(${puckX}px, ${puckY}px)`;
+
+    if (py < 0.5 - deadY) {
+      moveForward = mapRange(0.5 - deadY - py, 0, 0.35, 0.4, 3.8);
+      steerLabel.textContent = "Walking Forward";
+    } else if (py > 0.5 + deadY) {
+      moveForward = -mapRange(py - (0.5 + deadY), 0, 0.35, 0.3, 2.5);
+      steerLabel.textContent = "Walking Backward";
+    } else {
+      steerLabel.textContent = "Neutral / Stopped";
+    }
+
+    if (px > 0.5 + deadX) {
+      // User hand moved left in mirror -> Turn Left
+      turnAmount = mapRange(px - (0.5 + deadX), 0, 0.35, 0.5, 2.0);
+      steerLabel.textContent += " • Turn Left";
+    } else if (px < 0.5 - deadX) {
+      // User hand moved right in mirror -> Turn Right
+      turnAmount = -mapRange(0.5 - deadX - px, 0, 0.35, 0.5, 2.0);
+      steerLabel.textContent += " • Turn Right";
+    }
+
+    statusDot.className = 'walk';
+    statusText.textContent = 'Steering Walk Mode';
+  } else {
+    steerPuck.style.transform = `translate(0px, 0px)`;
+    steerLabel.textContent = "Show hand to steer";
+  }
+
+  // 2. Complementary Keyboard (WASD / Arrows)
+  if (keys['KeyW'] || keys['ArrowUp']) moveForward = Math.max(moveForward, 3.6);
+  if (keys['KeyS'] || keys['ArrowDown']) moveForward = Math.min(moveForward, -2.5);
+  if (keys['KeyA'] || keys['ArrowLeft']) turnAmount = Math.max(turnAmount, 1.8);
+  if (keys['KeyD'] || keys['ArrowRight']) turnAmount = Math.min(turnAmount, -1.8);
+
+  // Apply Player rotation
+  player.yaw += turnAmount * dt;
+
+  // Apply Player movement along camera direction
+  const forwardDir = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  player.pos.addScaledVector(forwardDir, moveForward * dt);
+
+  // Constrain inside world circle
+  const distFromCenter = Math.hypot(player.pos.x, player.pos.z);
+  if (distFromCenter > WORLD_RADIUS - 1.5) {
+    const angle = Math.atan2(player.pos.z, player.pos.x);
+    player.pos.x = Math.cos(angle) * (WORLD_RADIUS - 1.5);
+    player.pos.z = Math.sin(angle) * (WORLD_RADIUS - 1.5);
+  }
+
+  // Update Camera Rig
+  camera.position.set(player.pos.x, player.pos.y + 1.25, player.pos.z);
+  camera.rotation.set(0, player.yaw, 0, 'YXZ');
+}
+
+/* ============================================================
+   STARTUP & APP LIFECYCLE
+   ============================================================ */
+const startOverlay = document.getElementById('startOverlay');
+const startBtn = document.getElementById('startBtn');
+const mouseModeBtn = document.getElementById('mouseModeBtn');
+const errBox = document.getElementById('errBox');
+const errMsg = document.getElementById('errMsg');
+const errRetryBtn = document.getElementById('errRetryBtn');
+const loadingNote = document.getElementById('loadingNote');
+const camWrap = document.getElementById('camWrap');
+const pinchMeterBar = document.getElementById('pinchMeterBar');
+const targetIndicator = document.getElementById('targetIndicator');
+const targetName = document.getElementById('targetName');
+const targetAction = document.getElementById('targetAction');
+
+let running = false;
+let lastTime = performance.now();
+
+function updateTargetIndicator(candidate) {
+  if (!targetIndicator) return;
+  if (!candidate || heldObject) {
+    targetIndicator.style.display = 'none';
+    return;
+  }
+  const screenPos = candidate.position.clone().project(camera);
+  if (screenPos.z > 1.0) {
+    targetIndicator.style.display = 'none';
+    return;
+  }
+  const sx = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+  const sy = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+  targetIndicator.style.display = 'flex';
+  targetIndicator.style.left = `${Math.round(sx)}px`;
+  targetIndicator.style.top = `${Math.round(sy)}px`;
+  if (targetName) targetName.textContent = candidate.userData.name;
+  if (targetAction) targetAction.textContent = pinching ? 'Holding' : 'Pinch to Grab';
+}
+
+function showError(msg, retry) {
+  errMsg.textContent = msg;
+  errBox.style.display = 'block';
+  loadingNote.style.display = 'none';
+  if (retry) {
+    errRetryBtn.textContent = retry.label;
+    errRetryBtn.style.display = 'inline-block';
+    errRetryBtn.onclick = retry.fn;
+  }
+}
+
+async function attemptStart() {
+  initAudio();
+  errBox.style.display = 'none';
+  startBtn.disabled = true;
+  startBtn.textContent = 'Starting Camera…';
+  loadingNote.style.display = 'block';
+
+  try {
+    if (!camReady) await startCamera();
+  } catch(err) {
+    startBtn.disabled = false;
+    startBtn.textContent = 'Enable Camera & Enter World';
+    showError("Could not access webcam: " + (err.message || err.name), { label: 'Retry', fn: attemptStart });
+    return;
+  }
+
+  if (!landmarkerReady) {
+    if (!landmarkerLoading) loadLandmarker();
+    let waited = 0;
+    while (!landmarkerReady && waited < 15000) {
+      await new Promise(r => setTimeout(r, 150));
+      waited += 150;
+    }
+  }
+
+  startOverlay.style.display = 'none';
+  topBar.classList.add('show');
+  hud.classList.add('show');
+  camWrap.classList.add('show');
+  actionButtons.classList.add('show');
+  running = true;
+  updateHUDForMode();
+}
+
+startBtn.addEventListener('click', attemptStart);
+
+if (mouseModeBtn) {
+  mouseModeBtn.addEventListener('click', () => {
+    initAudio();
+    startOverlay.style.display = 'none';
+    topBar.classList.add('show');
+    hud.classList.add('show');
+    actionButtons.classList.add('show');
+    running = true;
+    updateHUDForMode();
+    showBanner('KEYBOARD & MOUSE MODE ACTIVE', '🖱️', 'pick');
+  });
+}
+
+/* ============================================================
+   POINTER / MOUSE DIRECT INTERACTION FALLBACK
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const mouseVec = new THREE.Vector2();
+let mouseDragObj = null;
+const mouseDragPlane = new THREE.Plane();
+const mousePlaneHit = new THREE.Vector3();
+const prevMousePos = new THREE.Vector3();
+const mouseVel = new THREE.Vector3();
+
+window.addEventListener('pointerdown', (e) => {
+  if (!running) return;
+  if (e.target.closest('#topBar, #hud, #actionButtons, #camWrap, #startOverlay, button')) return;
+
+  mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouseVec, camera);
+  const hits = raycaster.intersectObjects(pickables);
+  if (hits.length > 0) {
+    mouseDragObj = hits[0].object;
+    mouseDragObj.userData.held = true;
+    mouseDragObj.userData.velocity.set(0, 0, 0);
+    setHighlight(mouseDragObj, true);
+    playGrabSound();
+
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    mouseDragPlane.setFromNormalAndCoplanarPoint(camDir.negate(), mouseDragObj.position);
+    prevMousePos.copy(mouseDragObj.position);
+  }
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!mouseDragObj) return;
+  mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouseVec, camera);
+  if (raycaster.ray.intersectPlane(mouseDragPlane, mousePlaneHit)) {
+    // Keep above floor
+    mousePlaneHit.y = Math.max(FLOOR_Y + mouseDragObj.userData.halfY, mousePlaneHit.y);
+    mouseDragObj.position.lerp(mousePlaneHit, 0.7);
+    mouseVel.subVectors(mouseDragObj.position, prevMousePos).multiplyScalar(28);
+    prevMousePos.copy(mouseDragObj.position);
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  if (mouseDragObj) {
+    setHighlight(mouseDragObj, false);
+    mouseDragObj.userData.held = false;
+
+    // Check snap to pedestal
+    let snapped = false;
+    for (const ped of pedestals) {
+      const dXZ = Math.hypot(mouseDragObj.position.x - ped.pos.x, mouseDragObj.position.z - ped.pos.z);
+      if (dXZ < 0.95 && Math.abs(mouseDragObj.position.y - ped.pos.y) < 1.4) {
+        mouseDragObj.position.x = ped.pos.x;
+        mouseDragObj.position.z = ped.pos.z;
+        mouseDragObj.position.y = ped.pos.y + mouseDragObj.userData.halfY;
+        mouseDragObj.userData.velocity.set(0, 0, 0);
+        playPedestalChime();
+        ped.ring.material.emissiveIntensity = 2.0;
+        setTimeout(() => { ped.ring.material.emissiveIntensity = 0.8; }, 800);
+        snapped = true;
+        break;
+      }
+    }
+    if (!snapped) {
+      mouseDragObj.userData.velocity.copy(mouseVel).multiplyScalar(0.45);
+      playReleaseSound();
+    }
+    mouseDragObj = null;
+  }
+});
+
+function setOverlaySize() {
+  const rect = camWrap.getBoundingClientRect();
+  overlay.width = Math.round(rect.width);
+  overlay.height = Math.round(rect.height);
+}
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  setOverlaySize();
+});
+setOverlaySize();
+
+// Auto-reconnect camera on tab refocus so it never silently dies
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden && running && !camReady && navigator.mediaDevices?.getUserMedia) {
+    try {
+      await startCamera();
+    } catch (e) {
+      console.warn("Camera auto-recovery notice:", e);
+    }
+  }
+});
+
+/* ============================================================
+   MAIN ANIMATION & RENDER LOOP
+   ============================================================ */
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+
+  if (running) {
+    const hand = processHand();
+    if (currentMode === 'PICK') {
+      updatePickMode(hand, dt);
+    } else {
+      updateWalkMode(hand, dt);
+    }
+  }
+
+  updatePhysics(dt);
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
