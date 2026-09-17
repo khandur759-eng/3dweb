@@ -569,10 +569,12 @@ const SPAN_FAR_CAM   = 0.10; // hand further from webcam
 
 let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
 
-const PINCH_ON  = 0.045;   // world distance (4.5 cm) between fingertips to trigger pinch
-const PINCH_OFF = 0.065;   // hysteresis release (6.5 cm)
-const PHYSICAL_GRAB_MARGIN = 0.24; // Strict physical touch margin (24cm from object boundary)
-const FOLLOW_LERP = 0.50;
+const PINCH_ON  = 0.040;   // world distance (4.0 cm) between fingertips to trigger pinch
+const PINCH_OFF = 0.068;   // hysteresis release (6.8 cm) - wide deadzone prevents accidental drops
+const PINCH_RATIO_GRAB = 0.36;    // Pinch ratio threshold to grab
+const PINCH_RATIO_RELEASE = 0.48; // Pinch ratio threshold to release (hysteresis)
+const PHYSICAL_GRAB_MARGIN = 0.26; // Generous physical touch margin for responsive pickup
+const FOLLOW_LERP = 0.65;  // Responsive, non-laggy follow interpolation
 
 const FLOOR_Y = -1.6;
 const WORLD_RADIUS = 16.0;
@@ -635,6 +637,7 @@ const player = {
 // Initial positioning overlooking the complete table with fixed wide angle
 camera.position.copy(TABLE_CAM_POS);
 camera.lookAt(TABLE_CAM_LOOK);
+const smoothedCameraLookAt = new THREE.Vector3().copy(TABLE_CAM_LOOK);
 
 // Ambient & Directional Lighting
 const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
@@ -1065,6 +1068,107 @@ createLegoObject('sphere', 0.18, 0.18, 0.18, 0x34d399, new THREE.Vector3(1.30, T
 const pedestals = [];
 
 /* ============================================================
+   GHOST SNAP GUIDE (Real-time translucent snap preview)
+   ============================================================ */
+const ghostGuideMat = new THREE.MeshBasicMaterial({
+  color: 0x38bdf8,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.65
+});
+const ghostBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+const ghostSnapGuide = new THREE.Mesh(ghostBoxGeo, ghostGuideMat);
+ghostSnapGuide.visible = false;
+scene.add(ghostSnapGuide);
+
+// Predicts the exact snap docking position for any held object
+function calculateSnapTarget(obj) {
+  if (!obj || !obj.userData) return null;
+  const objHalfX = obj.userData?.halfX || 0.11;
+  const objHalfY = obj.userData?.halfY || 0.11;
+  const objHalfZ = obj.userData?.halfZ || 0.11;
+
+  // 1. Check stacking atop another object
+  let bestSupport = null;
+  let highestSupportY = -Infinity;
+  for (const other of pickables) {
+    if (!other || other === obj || (other.userData && other.userData.held)) continue;
+    const dx = Math.abs(obj.position.x - other.position.x);
+    const dz = Math.abs(obj.position.z - other.position.z);
+    const otherHalfX = other.userData?.halfX || 0.11;
+    const otherHalfY = other.userData?.halfY || 0.11;
+    const otherHalfZ = other.userData?.halfZ || 0.11;
+
+    const overlapX = (objHalfX + otherHalfX) * 1.15;
+    const overlapZ = (objHalfZ + otherHalfZ) * 1.15;
+    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.45) {
+      if (other.position.y > highestSupportY) {
+        highestSupportY = other.position.y;
+        bestSupport = other;
+      }
+    }
+  }
+
+  if (bestSupport) {
+    const bestHalfY = bestSupport.userData?.halfY || 0.11;
+    let targetX = obj.position.x;
+    let targetZ = obj.position.z;
+    let targetRotY = obj.rotation.y;
+    if (snapToLegoGrid) {
+      const halfStep = LEGO_GRID;
+      targetX = Math.round(targetX / halfStep) * halfStep;
+      targetZ = Math.round(targetZ / halfStep) * halfStep;
+      targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
+    }
+    return {
+      pos: new THREE.Vector3(targetX, bestSupport.position.y + bestHalfY + objHalfY, targetZ),
+      rotY: targetRotY,
+      scale: new THREE.Vector3(objHalfX * 2, objHalfY * 2, objHalfZ * 2),
+      isStack: true
+    };
+  }
+
+  // 2. Check workbench table surface
+  const onTableX = Math.abs(obj.position.x - TABLE_X) <= (TABLE_WIDTH / 2 + 0.1);
+  const onTableZ = Math.abs(obj.position.z - TABLE_Z) <= (TABLE_DEPTH / 2 + 0.1);
+  if (onTableX && onTableZ && Math.abs(obj.position.y - TABLE_TOP_Y) < 0.9) {
+    let targetX = obj.position.x;
+    let targetZ = obj.position.z;
+    let targetRotY = obj.rotation.y;
+    if (snapToLegoGrid) {
+      targetX = Math.round((targetX - TABLE_X) / LEGO_GRID) * LEGO_GRID + TABLE_X;
+      targetZ = Math.round((targetZ - TABLE_Z) / LEGO_GRID) * LEGO_GRID + TABLE_Z;
+      targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
+    }
+    return {
+      pos: new THREE.Vector3(targetX, TABLE_TOP_Y + objHalfY, targetZ),
+      rotY: targetRotY,
+      scale: new THREE.Vector3(objHalfX * 2, objHalfY * 2, objHalfZ * 2),
+      isStack: false
+    };
+  }
+
+  return null;
+}
+
+function updateGhostGuide(heldObj) {
+  if (!heldObj || !snapToLegoGrid) {
+    ghostSnapGuide.visible = false;
+    return;
+  }
+  const snap = calculateSnapTarget(heldObj);
+  if (snap) {
+    ghostSnapGuide.position.copy(snap.pos);
+    ghostSnapGuide.rotation.y = snap.rotY;
+    ghostSnapGuide.scale.copy(snap.scale).multiplyScalar(1.02);
+    ghostSnapGuide.visible = true;
+    ghostGuideMat.color.setHex(snap.isStack ? 0x34d399 : 0x38bdf8); // Emerald for stacking, Cyan for table snap
+  } else {
+    ghostSnapGuide.visible = false;
+  }
+}
+
+/* ============================================================
    VIRTUAL SKELETAL HAND RIG
    ============================================================ */
 const HAND_CONNECTIONS = [
@@ -1168,6 +1272,35 @@ function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function mapRange(v, a1, b1, a2, b2) {
   const t = clamp((v - a1) / (b1 - a1), 0, 1);
   return a2 + t * (b2 - a2);
+}
+
+// Exponential Smoothing State for Dual Hands (Eliminates webcam micro-jitter)
+const smoothedLeftLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
+const smoothedRightLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
+let smoothedLeftBaseZ = null;
+let smoothedRightBaseZ = null;
+
+function filterLandmarks(rawLm, smoothedArr) {
+  const filtered = [];
+  for (let i = 0; i < 21; i++) {
+    const raw = rawLm[i];
+    const sm = smoothedArr[i];
+    if (!sm.initialized) {
+      sm.x = raw.x;
+      sm.y = raw.y;
+      sm.z = raw.z || 0;
+      sm.initialized = true;
+    } else {
+      // Adaptive low-pass: quick responsive factor for fast motion, strong damping for still hands
+      const d = Math.hypot(raw.x - sm.x, raw.y - sm.y);
+      const alpha = clamp(0.35 + d * 5.0, 0.35, 0.88);
+      sm.x += (raw.x - sm.x) * alpha;
+      sm.y += (raw.y - sm.y) * alpha;
+      sm.z += ((raw.z || 0) - sm.z) * alpha;
+    }
+    filtered.push({ x: sm.x, y: sm.y, z: sm.z });
+  }
+  return filtered;
 }
 
 // Converts 21 MediaPipe landmarks into realistic human-hand-scaled 3D camera local coordinates
@@ -1492,8 +1625,13 @@ function updatePhysics(dt) {
       } else {
         v.y = 0;
       }
-      v.x *= 0.82;
-      v.z *= 0.82;
+      v.x *= 0.78;
+      v.z *= 0.78;
+
+      // Physics sleep threshold: eliminates microscopic jitter in resting or stacked objects
+      if (Math.abs(v.y) < 0.05) v.y = 0;
+      if (Math.abs(v.x) < 0.02) v.x = 0;
+      if (Math.abs(v.z) < 0.02) v.z = 0;
     }
 
     // Boundary bounce
@@ -1586,6 +1724,7 @@ function releaseHeld(grab) {
 
   grab.heldObject = null;
   grab.pinchVelocity.set(0, 0, 0);
+  ghostSnapGuide.visible = false;
 }
 
 function releaseAllHeld() {
@@ -1740,7 +1879,7 @@ function drawHandSkel(landmarks, strokeCol, pointCol, label) {
 function drawDualOverlay(leftHand, rightHand) {
   octx.clearRect(0, 0, overlay.width, overlay.height);
   if (leftHand) {
-    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.9)', '#34d399', '✋ LEFT: 360° CAM');
+    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.9)', '#34d399', '✋ LEFT: BUILDER');
   }
   if (rightHand) {
     drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.9)', '#38bdf8', '👌 RIGHT: BUILDER');
@@ -1753,21 +1892,33 @@ function drawDualOverlay(leftHand, rightHand) {
 let leftHandPinchCooldown = false;
 
 function buildHandInfo(lm, handednessType, index) {
+  const isLeft = (handednessType === 'left');
+  const smoothedLMStore = isLeft ? smoothedLeftLM : smoothedRightLM;
+  const filteredLM = filterLandmarks(lm, smoothedLMStore);
+
   const vAspect = (video.videoWidth && video.videoHeight) ? (video.videoWidth / video.videoHeight) : 1.333;
-  const dx = (lm[0].x - lm[9].x) * vAspect;
-  const dy = (lm[0].y - lm[9].y);
+  const dx = (filteredLM[0].x - filteredLM[9].x) * vAspect;
+  const dy = (filteredLM[0].y - filteredLM[9].y);
   const span = Math.hypot(dx, dy) || 0.18;
 
   const targetNearZ = depthPushOnApproach ? DEPTH_PULLED_Z : DEPTH_PUSHED_Z;
   const targetFarZ  = depthPushOnApproach ? DEPTH_PUSHED_Z : DEPTH_PULLED_Z;
-  const baseZ = clamp(mapRange(span, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.2, -0.9);
+  const rawBaseZ = clamp(mapRange(span, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.2, -0.9);
 
-  const isLeft = (handednessType === 'left');
+  let baseZ;
+  if (isLeft) {
+    smoothedLeftBaseZ = smoothedLeftBaseZ === null ? rawBaseZ : smoothedLeftBaseZ * 0.72 + rawBaseZ * 0.28;
+    baseZ = smoothedLeftBaseZ;
+  } else {
+    smoothedRightBaseZ = smoothedRightBaseZ === null ? rawBaseZ : smoothedRightBaseZ * 0.72 + rawBaseZ * 0.28;
+    baseZ = smoothedRightBaseZ;
+  }
+
   const targetLocal = isLeft ? _tmpLocalLeft : _tmpLocalRight;
   const rig = isLeft ? leftRig : rightRig;
   const group = isLeft ? leftHandGroup : rightHandGroup;
 
-  const { palmCenter } = updateHandSkeletonLocal(lm, vAspect, baseZ, targetLocal);
+  const { palmCenter } = updateHandSkeletonLocal(filteredLM, vAspect, baseZ, targetLocal);
 
   for (let i = 0; i < 21; i++) {
     rig.joints[i].position.copy(targetLocal[i]);
@@ -1778,13 +1929,14 @@ function buildHandInfo(lm, handednessType, index) {
   }
   group.visible = true;
 
-  // Scale-invariant pinch ratio
-  const pdx = (lm[4].x - lm[8].x) * vAspect, pdy = lm[4].y - lm[8].y, pdz = ((lm[4].z || 0) - (lm[8].z || 0));
+  // Scale-invariant pinch ratio calculated from smoothed landmarks
+  const pdx = (filteredLM[4].x - filteredLM[8].x) * vAspect, pdy = filteredLM[4].y - filteredLM[8].y, pdz = ((filteredLM[4].z || 0) - (filteredLM[8].z || 0));
   const pinchDist3D = Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
   const pinchRatio = pinchDist3D / span;
 
   return {
     rawLandmarks: lm,
+    filteredLandmarks: filteredLM,
     palmCenter,
     span,
     thumbTipLocal: targetLocal[4],
@@ -1810,7 +1962,7 @@ function processHands() {
     leftHandGroup.visible = false;
     drawDualOverlay(null, null);
     statusDot.className = '';
-    statusText.textContent = 'Waiting for hands… (Left: 360° Cam • Right: Builder)';
+    statusText.textContent = 'Waiting for hands… (Both Hands: Dual Builders)';
     return { left: null, right: null };
   }
 
@@ -1923,7 +2075,10 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     reticle.position.copy(hand.indexTipLocal).lerp(hand.thumbTipLocal, 0.5);
   }
 
-  const isPinchingNow = (hand.pinchRatio < 0.40) || (dist < PINCH_ON);
+  // Dual-threshold pinch hysteresis: requires confident pinch to grab, but generous opening to release
+  const isPinchingNow = grab.pinching
+    ? ((hand.pinchRatio < PINCH_RATIO_RELEASE) || (dist < PINCH_OFF))
+    : ((hand.pinchRatio < PINCH_RATIO_GRAB) || (dist < PINCH_ON));
 
   // Identify Candidate Object for this hand
   let candidate = null;
@@ -1966,7 +2121,7 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     }
   }
 
-  // Follow hand with smooth physics
+  // Follow hand with smooth physics and instant responsiveness
   if (grab.heldObject) {
     const target = new THREE.Vector3().addVectors(midWorld, grab.heldOffsetWorld);
     grab.heldObject.position.lerp(target, FOLLOW_LERP);
@@ -1978,9 +2133,10 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     }
   }
 
-  // Calculate velocity for throwing
+  // Calculate velocity for throwing with low-pass smoothing
   if (grab.havePrevPinchMid && dt > 0) {
-    grab.pinchVelocity.subVectors(midWorld, grab.prevPinchMidWorld).multiplyScalar(1 / dt);
+    const instantVel = new THREE.Vector3().subVectors(midWorld, grab.prevPinchMidWorld).multiplyScalar(1 / dt);
+    grab.pinchVelocity.lerp(instantVel, 0.45);
   }
   grab.prevPinchMidWorld.copy(midWorld);
   grab.havePrevPinchMid = true;
@@ -1995,6 +2151,10 @@ function updatePickMode(hands, dt) {
   // Update Right Hand grabbing
   updateSingleHandGrab(rightHand, rightGrab, leftGrab, rightReticle, dt);
 
+  // Update ghost snap guide for whatever hand is holding an object
+  const activeHeld = rightGrab.heldObject || leftGrab.heldObject || (typeof mouseDragObj !== 'undefined' ? mouseDragObj : null);
+  updateGhostGuide(activeHeld);
+
   // Pinch strength UI: show the higher pinch ratio of both hands
   if (pinchMeterBar) {
     const rRatio = rightHand ? rightHand.pinchRatio : 1;
@@ -2003,16 +2163,16 @@ function updatePickMode(hands, dt) {
     const pinchStrength = clamp(mapRange(minRatio, 0.72, 0.35, 0, 1), 0, 1);
     pinchMeterBar.style.width = Math.round(pinchStrength * 100) + '%';
     const eitherPinching = Boolean(
-      (rightHand && rightHand.pinchRatio < 0.40) ||
-      (leftHand && leftHand.pinchRatio < 0.40)
+      (rightHand && rightHand.pinchRatio < PINCH_RATIO_GRAB) ||
+      (leftHand && leftHand.pinchRatio < PINCH_RATIO_GRAB)
     );
     pinchMeterBar.classList.toggle('pinching', eitherPinching);
   }
 
   // 5-Pinch detection for switching modes:
   const isAnyPinching = Boolean(
-    (rightHand && (rightHand.pinchRatio < 0.40 || (rightHand.thumbTipWorld && rightHand.thumbTipWorld.distanceTo(rightHand.indexTipWorld) < PINCH_ON))) ||
-    (leftHand && (leftHand.pinchRatio < 0.40 || (leftHand.thumbTipWorld && leftHand.thumbTipWorld.distanceTo(leftHand.indexTipWorld) < PINCH_ON)))
+    (rightHand && (rightHand.pinchRatio < PINCH_RATIO_GRAB || (rightHand.thumbTipWorld && rightHand.thumbTipWorld.distanceTo(rightHand.indexTipWorld) < PINCH_ON))) ||
+    (leftHand && (leftHand.pinchRatio < PINCH_RATIO_GRAB || (leftHand.thumbTipWorld && leftHand.thumbTipWorld.distanceTo(leftHand.indexTipWorld) < PINCH_ON)))
   );
   const isHoldingAnyObject = Boolean(leftGrab.heldObject || rightGrab.heldObject);
   handleFivePinch(isAnyPinching, isHoldingAnyObject);
@@ -2141,9 +2301,10 @@ const targetAction = document.getElementById('targetAction');
 let running = false;
 let lastTime = performance.now();
 
-function updateTargetIndicator(candidate) {
+function updateTargetIndicator(candidate, pinching = false) {
   if (!targetIndicator) return;
-  if (!candidate || heldObject) {
+  const isAnyHeld = (leftGrab && leftGrab.heldObject) || (rightGrab && rightGrab.heldObject);
+  if (!candidate || isAnyHeld) {
     targetIndicator.style.display = 'none';
     return;
   }
@@ -2249,6 +2410,7 @@ window.addEventListener('pointerdown', (e) => {
       target = target.parent;
     }
     if (target && target.userData && target.userData.velocity) {
+      if (leftGrab.heldObject === target || rightGrab.heldObject === target) return;
       mouseDragObj = target;
       mouseDragObj.userData.held = true;
       mouseDragObj.userData.velocity.set(0, 0, 0);
@@ -2282,6 +2444,7 @@ window.addEventListener('pointermove', (e) => {
       mouseDragObj.position.lerp(mousePlaneHit, 0.75);
       mouseVel.subVectors(mouseDragObj.position, prevMousePos).multiplyScalar(28);
       prevMousePos.copy(mouseDragObj.position);
+      updateGhostGuide(mouseDragObj);
     }
   } else if (isOrbitDragging && viewMode === 'ROOM') {
     const dx = e.clientX - prevPointerX;
@@ -2313,10 +2476,12 @@ window.addEventListener('pointerup', () => {
       const dz = Math.abs(mouseDragObj.position.z - other.position.z);
       const objHalfX = mouseDragObj.userData?.halfX || 0.11;
       const objHalfY = mouseDragObj.userData?.halfY || 0.11;
+      const objHalfZ = mouseDragObj.userData?.halfZ || 0.11;
       const otherHalfX = other.userData?.halfX || 0.11;
       const otherHalfY = other.userData?.halfY || 0.11;
+      const otherHalfZ = other.userData?.halfZ || 0.11;
       const overlapX = (objHalfX + otherHalfX) * 1.15;
-      const overlapZ = (objHalfX + otherHalfX) * 1.15;
+      const overlapZ = (objHalfZ + otherHalfZ) * 1.15;
       if (dx < overlapX && dz < overlapZ && other.position.y < mouseDragObj.position.y + 0.45) {
         if (other.position.y > highestSupportY) {
           highestSupportY = other.position.y;
@@ -2364,6 +2529,7 @@ window.addEventListener('pointerup', () => {
       mouseDragObj.userData.velocity.copy(mouseVel).multiplyScalar(0.45);
       playReleaseSound();
     }
+    ghostSnapGuide.visible = false;
     mouseDragObj = null;
   }
 });
@@ -2418,19 +2584,37 @@ function animate() {
     }
   }
 
-  // Camera positioning according to viewMode
+  // Camera positioning with smooth easing across modes
   if (viewMode === 'TABLE') {
-    // Fixed wide-angle view of the complete table
-    camera.fov = 68;
-    camera.updateProjectionMatrix();
-    camera.position.lerp(TABLE_CAM_POS, 0.12);
-    camera.lookAt(TABLE_CAM_LOOK);
+    // Fixed wide-angle view of the complete table with smooth transitions
+    if (camera.fov !== 68) {
+      camera.fov += (68 - camera.fov) * 0.12;
+      camera.updateProjectionMatrix();
+    }
+    camera.position.lerp(TABLE_CAM_POS, 0.10);
+    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.10);
+    camera.lookAt(smoothedCameraLookAt);
   } else if (currentMode === 'WALK') {
     // First-person walking in room roam
-    camera.fov = 54;
-    camera.updateProjectionMatrix();
+    if (camera.fov !== 54) {
+      camera.fov += (54 - camera.fov) * 0.12;
+      camera.updateProjectionMatrix();
+    }
     camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
     camera.rotation.set(0, player.yaw, 0, 'YXZ');
+  } else {
+    // Room view in Dual Builder mode: orbit camera around table
+    if (camera.fov !== 54) {
+      camera.fov += (54 - camera.fov) * 0.12;
+      camera.updateProjectionMatrix();
+    }
+    const camX = cameraRig.lookTarget.x + Math.sin(cameraRig.orbitAngle) * cameraRig.orbitDistance;
+    const camZ = cameraRig.lookTarget.z + Math.cos(cameraRig.orbitAngle) * cameraRig.orbitDistance;
+    const camY = cameraRig.lookTarget.y + cameraRig.cameraHeight;
+    const targetPos = new THREE.Vector3(camX, camY, camZ);
+    camera.position.lerp(targetPos, 0.15);
+    smoothedCameraLookAt.lerp(cameraRig.lookTarget, 0.15);
+    camera.lookAt(smoothedCameraLookAt);
   }
 
   updatePhysics(dt);
