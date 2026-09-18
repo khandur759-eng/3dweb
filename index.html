@@ -3,189 +3,197 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Virtual Picker</title>
-<meta name="description" content="Interactive 3D Lego-style building workshop with simultaneous dual-hand webcam tracking. Use both hands together to pick, grab, hold, and stack cubes, prisms, cuboids, and spheres. Features wide-angle Table View, Room Roam mode, 5-pinch mode shifting, and fullscreen Zen mode." />
-<meta property="og:title" content="Virtual Picker" />
-<meta property="og:description" content="Interactive 3D Lego-style building workshop with simultaneous dual-hand webcam tracking. Use both hands together to pick, grab, hold, and stack cubes, prisms, cuboids, and spheres. Features wide-angle Table View, Room Roam mode, 5-pinch mode shifting, and fullscreen Zen mode." />
+<title>Architectural Building Studio 3D</title>
+<meta name="description" content="Expansive pure white architectural studio for building houses and structures in 3D using dual-hand webcam tracking with 2x reach multiplier. Build with large modular walls, windows, doorways, columns, and roofs." />
+<meta property="og:title" content="Architectural Building Studio 3D" />
+<meta property="og:description" content="Expansive pure white architectural studio for building houses and structures in 3D using dual-hand webcam tracking with 2x reach multiplier. Build with large modular walls, windows, doorways, columns, and roofs." />
 <meta property="og:type" content="website" />
 <style>
   :root{
-    --cyan: #5be3ff;
-    --cyan-dim: #2a5a66;
-    --emerald: #10b981;
-    --emerald-dim: #064e3b;
-    --gold: #f59e0b;
+    --blue: #2563eb;
+    --cyan: #0284c7;
+    --cyan-dim: #bae6fd;
+    --emerald: #059669;
+    --emerald-dim: #a7f3d0;
+    --gold: #d97706;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{
     margin:0; padding:0; width:100%; height:100%;
-    background:#07090e; color:#eaeaea;
+    background:#ffffff; color:#1e293b;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
     overflow:hidden; user-select:none;
   }
   #sceneCanvas{ position:fixed; inset:0; display:block; width:100%; height:100%; }
 
   /* Zen / Fullscreen Mode overrides: Clean edge-to-edge view */
-  body.zen-mode #hud,
+  body.zen-mode #studioBox,
   body.zen-mode #walkSteerOverlay,
+  body.zen-mode #targetIndicator,
   body.zen-mode .zen-hide {
     display:none !important;
   }
-  body.zen-mode #topBar{
-    background:transparent;
-    box-shadow:none;
-    border-color:transparent;
-  }
-  #hud.minimized{ display:none !important; }
   .tool-btn.active{
-    background:rgba(91, 227, 255, 0.22) !important;
-    border-color:var(--cyan) !important;
-    color:#ffffff !important;
-    box-shadow:0 0 14px rgba(91, 227, 255, 0.35);
+    background:rgba(37, 99, 235, 0.12) !important;
+    border-color:var(--blue) !important;
+    color:var(--blue) !important;
+    box-shadow:0 0 14px rgba(37, 99, 235, 0.22);
   }
 
   /* ---------- Start / Permission Overlay ---------- */
   #startOverlay{
     position:fixed; inset:0; z-index:50;
     display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 40%, #0d131f 0%, #05070a 75%);
+    background:radial-gradient(circle at 50% 40%, rgba(248, 250, 252, 0.95) 0%, rgba(226, 232, 240, 0.98) 75%);
     padding:24px;
+    backdrop-filter:blur(10px);
   }
   #startCard{
-    max-width:480px; width:100%;
+    max-width:540px; width:100%;
     text-align:center;
-    background:rgba(15, 23, 42, 0.75);
-    border:1px solid rgba(255, 255, 255, 0.1);
-    border-radius:20px;
-    padding:32px 28px;
-    backdrop-filter:blur(12px);
-    box-shadow:0 20px 40px rgba(0,0,0,0.6);
+    background:rgba(255, 255, 255, 0.94);
+    border:1px solid rgba(0, 0, 0, 0.08);
+    border-radius:24px;
+    padding:36px 32px;
+    backdrop-filter:blur(16px);
+    box-shadow:0 24px 60px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(0,0,0,0.04);
   }
   #startCard h1{
-    font-size:24px; font-weight:700; letter-spacing:0.2px;
-    margin:0 0 12px; color:#fff;
+    font-size:26px; font-weight:800; letter-spacing:-0.4px;
+    margin:0 0 12px; color:#0f172a;
     display:flex; align-items:center; justify-content:center; gap:10px;
   }
   #startCard p{
-    font-size:14.5px; line-height:1.6; color:#a3b3c9; margin:0 0 10px;
+    font-size:15px; line-height:1.6; color:#475569; margin:0 0 10px;
   }
   .feature-pills{
-    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:18px 0;
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:20px 0;
   }
   .pill{
-    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
-    padding:6px 12px; border-radius:999px; font-size:12px; color:#d1e3f8;
+    background:rgba(241, 245, 249, 0.9); border:1px solid rgba(203, 213, 225, 0.8);
+    padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:600; color:#334155;
   }
   #startCard .privacy{
     font-size:12px; color:#64748b; margin-top:16px;
   }
   #startBtn{
     margin-top:16px;
-    background:linear-gradient(135deg, #5be3ff, #38bdf8);
-    color:#041a23; border:none;
+    background:linear-gradient(135deg, #2563eb, #1d4ed8);
+    color:#ffffff; border:none;
     font-size:15px; font-weight:700;
-    padding:13px 34px; border-radius:999px;
+    padding:14px 36px; border-radius:999px;
     cursor:pointer; letter-spacing:0.3px;
-    box-shadow:0 0 26px rgba(91,227,255,0.4);
+    box-shadow:0 8px 24px rgba(37, 99, 235, 0.35);
     transition:transform .15s ease, box-shadow .15s ease;
   }
   #startBtn:active{ transform:scale(0.97); }
   #startBtn:disabled{ opacity:0.5; cursor:default; box-shadow:none; }
 
   #errBox{
-    display:none; margin-top:18px; font-size:13px; color:#ff8a8a;
-    background:rgba(255,90,90,0.1); border:1px solid rgba(255,90,90,0.3);
+    display:none; margin-top:18px; font-size:13px; color:#dc2626;
+    background:rgba(254, 226, 226, 0.7); border:1px solid rgba(239, 68, 68, 0.3);
     border-radius:10px; padding:12px 14px; text-align:left;
   }
   #errRetryBtn{
     display:none; margin-top:10px;
-    background:transparent; color:#ff8a8a; border:1px solid rgba(255,138,138,0.45);
+    background:transparent; color:#dc2626; border:1px solid rgba(220, 38, 38, 0.45);
     font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:999px;
     cursor:pointer;
   }
   #loadingNote{
-    display:none; margin-top:16px; font-size:13px; color:#94a3b8;
+    display:none; margin-top:16px; font-size:13.5px; font-weight:600; color:#475569;
   }
   .spinner{
-    width:14px; height:14px; border-radius:50%;
-    border:2px solid #334155; border-top-color:var(--cyan);
-    display:inline-block; vertical-align:-2px; margin-right:7px;
+    width:15px; height:15px; border-radius:50%;
+    border:2px solid #cbd5e1; border-top-color:var(--blue);
+    display:inline-block; vertical-align:-2px; margin-right:8px;
     animation:spin .8s linear infinite;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
-  /* ---------- Top Bar & Mode Control ---------- */
-  #topBar{
-    position:fixed; top:16px; left:16px; right:230px; z-index:20;
-    display:flex; align-items:center; justify-content:space-between;
-    pointer-events:none; opacity:0; transition:opacity .4s ease;
+  /* ---------- Unified Studio Control Hub (Tap to Maximize / Minimize) ---------- */
+  #studioBox{
+    position:fixed; top:16px; left:16px; z-index:35;
+    max-width:440px; width:auto;
+    background:rgba(255, 255, 255, 0.94);
+    border:1px solid rgba(0, 0, 0, 0.12);
+    border-radius:20px;
+    box-shadow:0 12px 36px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
+    backdrop-filter:blur(18px);
+    overflow:hidden;
+    pointer-events:auto;
+    opacity:0; transform:translateY(-8px);
+    transition:all .28s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select:none;
   }
-  #topBar.show{ opacity:1; }
+  #studioBox.show{ opacity:1; transform:translateY(0); }
 
-  .bar-left{
-    display:flex; align-items:center; gap:12px; pointer-events:auto;
+  /* Minimized state: single compact tap-friendly pill */
+  #studioBox.minimized{
+    border-radius:999px;
+    max-width:fit-content;
+    box-shadow:0 6px 20px rgba(15, 23, 42, 0.10);
   }
-  #statusPill{
-    display:flex; align-items:center; gap:8px;
-    background:rgba(15, 23, 42, 0.75);
-    border:1px solid rgba(255, 255, 255, 0.12);
-    padding:6px 14px; border-radius:999px;
-    font-size:12px; letter-spacing:0.3px; color:#cbd5e1;
-    backdrop-filter:blur(8px);
+  #studioBox.minimized #studioBoxBody{
+    display:none;
+  }
+
+  /* Header / Tap bar */
+  #studioBoxHeader{
+    display:flex; align-items:center; gap:9px;
+    padding:7px 14px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  #studioBoxHeader:hover{
+    background:rgba(241, 245, 249, 0.85);
+  }
+
+  /* Status Indicator inside header */
+  .box-status-wrap{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; font-weight:600; color:#334155;
+    white-space:nowrap;
   }
   #statusDot{
-    width:8px; height:8px; border-radius:50%; background:#64748b;
+    width:8px; height:8px; border-radius:50%; background:#94a3b8;
     transition:background .2s ease, box-shadow .2s ease;
   }
-  #statusDot.live{ background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
-  #statusDot.pinch{ background:var(--gold); box-shadow:0 0 10px var(--gold); }
-  #statusDot.walk{ background:var(--emerald); box-shadow:0 0 10px var(--emerald); }
+  #statusDot.live{ background:var(--blue); box-shadow:0 0 10px rgba(37,99,235,0.7); }
+  #statusDot.pinch{ background:var(--gold); box-shadow:0 0 10px rgba(217,119,6,0.7); }
+  #statusDot.walk{ background:var(--emerald); box-shadow:0 0 10px rgba(5,150,105,0.7); }
 
-  /* Mode Switcher pill with Triple Pinch Counter */
-  #modeControl{
-    display:flex; align-items:center; gap:10px;
-    background:rgba(15, 23, 42, 0.85);
-    border:1px solid rgba(255, 255, 255, 0.15);
-    padding:4px 6px 4px 14px; border-radius:999px;
-    pointer-events:auto;
-    backdrop-filter:blur(8px);
-    box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  .box-mode-pill{
+    font-size:11.5px; font-weight:700; letter-spacing:0.3px;
+    padding:3px 9px; border-radius:999px;
+    display:flex; align-items:center; gap:5px;
+    white-space:nowrap;
   }
-  #modeLabel{
-    font-size:12.5px; font-weight:700; letter-spacing:0.5px;
-    text-transform:uppercase; display:flex; align-items:center; gap:6px;
+  .box-mode-pill.pick{
+    background:rgba(37, 99, 235, 0.12); color:var(--blue);
   }
-  .mode-badge-pick{ color:var(--cyan); }
-  .mode-badge-walk{ color:var(--emerald); }
+  .box-mode-pill.walk{
+    background:rgba(5, 150, 105, 0.12); color:var(--emerald);
+  }
 
-  /* 3-pinch dot counters */
-  #pinchCountDots{
-    display:flex; align-items:center; gap:5px; margin:0 4px;
+  .box-badge-reach{
+    font-size:11px; font-weight:700; color:#0369a1;
+    background:rgba(14, 165, 233, 0.12);
+    padding:2px 8px; border-radius:999px;
+    white-space:nowrap;
   }
-  .pinch-dot{
-    width:7px; height:7px; border-radius:50%;
-    background:rgba(255,255,255,0.2);
+
+  .box-toggle-btn{
+    margin-left:auto;
+    display:flex; align-items:center; gap:5px;
+    font-size:11px; font-weight:700; color:#475569;
+    background:#f1f5f9; padding:4px 10px; border-radius:999px;
+    border:1px solid #e2e8f0;
     transition:all .15s ease;
+    white-space:nowrap;
   }
-  .pinch-dot.active{
-    background:var(--gold);
-    box-shadow:0 0 8px var(--gold);
-    transform:scale(1.35);
-  }
-
-  /* Pinch Strength Bar */
-  #pinchMeterWrap{
-    width:52px; height:8px; background:rgba(255,255,255,0.14);
-    border-radius:999px; overflow:hidden; margin:0 4px; border:1px solid rgba(255,255,255,0.15);
-    display:flex; align-items:center;
-  }
-  #pinchMeterBar{
-    width:0%; height:100%; background:var(--cyan);
-    border-radius:999px; transition:width .06s ease-out, background .15s ease;
-  }
-  #pinchMeterBar.pinching{
-    background:var(--gold);
-    box-shadow:0 0 6px var(--gold);
+  #studioBoxHeader:hover .box-toggle-btn{
+    background:#e2e8f0; color:#0f172a;
   }
 
   /* 3D World Target Lock Indicator */
@@ -196,56 +204,46 @@
     transition:left .04s linear, top .04s linear;
   }
   .target-bracket{
-    width:42px; height:42px; border:2px dashed var(--cyan);
-    border-radius:50%; box-shadow:0 0 14px rgba(91, 227, 255, 0.6);
+    width:44px; height:44px; border:2px dashed var(--blue);
+    border-radius:50%; box-shadow:0 0 16px rgba(37, 99, 235, 0.4);
     animation:reticleSpin 6s linear infinite;
   }
   @keyframes reticleSpin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
   .target-badge{
-    background:rgba(8, 20, 32, 0.88);
-    border:1px solid rgba(91, 227, 255, 0.5);
-    padding:3px 12px; border-radius:999px;
-    font-size:11px; font-weight:700; color:var(--cyan);
-    white-space:nowrap; backdrop-filter:blur(6px);
+    background:rgba(255, 255, 255, 0.95);
+    border:1px solid rgba(37, 99, 235, 0.4);
+    padding:4px 14px; border-radius:999px;
+    font-size:11.5px; font-weight:700; color:#0f172a;
+    white-space:nowrap; backdrop-filter:blur(8px);
     display:flex; align-items:center; gap:6px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.6);
+    box-shadow:0 6px 18px rgba(0,0,0,0.1);
   }
   .target-badge .action{
     color:var(--gold); font-weight:700;
-  }
-
-  #modeToggleBtn{
-    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
-    color:#fff; font-size:11.5px; font-weight:600;
-    padding:6px 12px; border-radius:999px;
-    cursor:pointer; transition:all .2s ease;
-  }
-  #modeToggleBtn:hover{
-    background:rgba(255,255,255,0.2); border-color:rgba(255,255,255,0.3);
   }
 
   /* ---------- Mode Flash Banner ---------- */
   #modeBanner{
     position:fixed; top:75px; left:50%; transform:translateX(-50%) translateY(-20px);
     z-index:40; pointer-events:none;
-    padding:10px 24px; border-radius:999px;
-    font-size:14px; font-weight:700; letter-spacing:0.4px;
+    padding:10px 26px; border-radius:999px;
+    font-size:13.5px; font-weight:700; letter-spacing:0.3px;
     display:flex; align-items:center; gap:8px;
     opacity:0; transition:all .35s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow:0 10px 30px rgba(0,0,0,0.4);
-    backdrop-filter:blur(8px);
+    box-shadow:0 12px 32px rgba(15, 23, 42, 0.12);
+    backdrop-filter:blur(12px);
   }
   #modeBanner.show{
     opacity:1; transform:translateX(-50%) translateY(0);
   }
   #modeBanner.pick{
-    background:rgba(8, 30, 40, 0.9);
-    border:1px solid rgba(91, 227, 255, 0.4);
-    color:var(--cyan);
+    background:rgba(255, 255, 255, 0.95);
+    border:1px solid rgba(37, 99, 235, 0.3);
+    color:var(--blue);
   }
   #modeBanner.walk{
-    background:rgba(6, 40, 30, 0.9);
-    border:1px solid rgba(16, 185, 129, 0.4);
+    background:rgba(255, 255, 255, 0.95);
+    border:1px solid rgba(5, 150, 105, 0.3);
     color:var(--emerald);
   }
 
@@ -258,69 +256,125 @@
   }
   #walkSteerOverlay.active{ display:flex; }
   .steer-compass{
-    width:90px; height:90px; border-radius:50%;
-    border:2px dashed rgba(16, 185, 129, 0.4);
-    background:rgba(6, 40, 30, 0.25);
+    width:92px; height:92px; border-radius:50%;
+    border:2px dashed rgba(5, 150, 105, 0.5);
+    background:rgba(255, 255, 255, 0.85);
     position:relative; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 24px rgba(0,0,0,0.06);
   }
   .steer-puck{
     width:16px; height:16px; border-radius:50%;
     background:var(--emerald);
-    box-shadow:0 0 12px var(--emerald);
+    box-shadow:0 0 12px rgba(5, 150, 105, 0.8);
     transition:transform .08s ease-out;
   }
   .steer-label{
-    font-size:11px; font-weight:600; color:rgba(16, 185, 129, 0.9);
-    background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:6px;
+    font-size:11px; font-weight:700; color:#065f46;
+    background:rgba(255, 255, 255, 0.9); padding:3px 10px; border-radius:6px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.06);
   }
 
-  /* ---------- HUD / Bottom Guidance ---------- */
-  #hud{
-    position:fixed; left:16px; bottom:16px; z-index:20;
-    background:rgba(15, 23, 42, 0.75);
-    border:1px solid rgba(255, 255, 255, 0.12);
-    border-radius:14px; padding:12px 16px;
-    font-size:12.5px; color:#94a3b8; line-height:1.6;
-    max-width:340px; pointer-events:none;
-    opacity:0; transition:opacity .4s ease;
-    backdrop-filter:blur(10px);
+  /* ---------- Maximized Studio Control Body ---------- */
+  #studioBoxBody{
+    padding:12px 14px 14px 14px;
+    border-top:1px solid rgba(0, 0, 0, 0.08);
+    display:flex; flex-direction:column; gap:10px;
+    max-height:85vh; overflow-y:auto;
   }
-  #hud.show{ opacity:1; }
-  #hud b{ color:#f1f5f9; }
-  .hud-badge{
-    display:inline-block; font-size:10px; font-weight:700;
-    padding:1px 6px; border-radius:4px; margin-right:4px;
+  .box-section-title{
+    font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;
+    color:#64748b; margin-top:2px;
   }
-  .hud-badge.pick{ background:rgba(91, 227, 255, 0.2); color:var(--cyan); }
-  .hud-badge.walk{ background:rgba(16, 185, 129, 0.2); color:var(--emerald); }
-
-  /* Quick action buttons in bottom right */
-  #actionButtons{
-    position:fixed; right:16px; bottom:16px; z-index:20;
-    display:flex; gap:8px; pointer-events:auto;
-    opacity:0; transition:opacity .4s ease;
+  .box-mode-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
   }
-  #actionButtons.show{ opacity:1; }
-  .tool-btn{
-    background:rgba(15, 23, 42, 0.75);
-    border:1px solid rgba(255, 255, 255, 0.15);
-    color:#e2e8f0; font-size:12px; font-weight:600;
-    padding:8px 14px; border-radius:999px;
-    cursor:pointer; backdrop-filter:blur(8px);
+  .pinch-status-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;
+    padding:6px 10px; font-size:11.5px; color:#475569;
+  }
+  #pinchMeterWrap{
+    width:52px; height:8px; background:#e2e8f0;
+    border-radius:999px; overflow:hidden; border:1px solid #cbd5e1;
+    display:flex; align-items:center;
+  }
+  #pinchMeterBar{
+    width:0%; height:100%; background:var(--blue);
+    border-radius:999px; transition:width .06s ease-out, background .15s ease;
+  }
+  #pinchMeterBar.pinching{
+    background:var(--gold); box-shadow:0 0 6px rgba(217,119,6,0.6);
+  }
+  #pinchCountDots{
+    display:flex; align-items:center; gap:4px;
+  }
+  .pinch-dot{
+    width:7px; height:7px; border-radius:50%; background:#cbd5e1;
     transition:all .15s ease;
   }
+  .pinch-dot.active{
+    background:var(--gold); box-shadow:0 0 8px rgba(217,119,6,0.6); transform:scale(1.3);
+  }
+
+  .box-action-grid{
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:7px;
+  }
+  .tool-btn{
+    background:rgba(255, 255, 255, 0.95);
+    border:1px solid rgba(0, 0, 0, 0.12);
+    color:#1e293b; font-size:11.5px; font-weight:600;
+    padding:7px 10px; border-radius:9px;
+    cursor:pointer; backdrop-filter:blur(8px);
+    box-shadow:0 2px 5px rgba(0,0,0,0.03);
+    transition:all .15s ease;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    text-align:center; white-space:nowrap;
+  }
   .tool-btn:hover{
-    background:rgba(255, 255, 255, 0.15);
-    border-color:rgba(255, 255, 255, 0.25);
+    background:#f1f5f9; border-color:rgba(0, 0, 0, 0.22);
+    box-shadow:0 4px 10px rgba(0,0,0,0.06);
+  }
+  .tool-btn.active{
+    background:rgba(37, 99, 235, 0.10);
+    border-color:var(--blue);
+    color:var(--blue);
+  }
+
+  #hudContent{
+    background:#f8fafc; border:1px solid #e2e8f0;
+    border-radius:10px; padding:9px 12px;
+    font-size:11.5px; color:#475569; line-height:1.55;
+  }
+  #hudContent b{ color:#0f172a; }
+
+  .box-footer{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:10.5px; color:#94a3b8; padding-top:2px;
+  }
+  .box-collapse-btn{
+    background:#f1f5f9; border:1px solid #cbd5e1;
+    color:var(--blue); font-size:11px; font-weight:700;
+    cursor:pointer; padding:3px 10px; border-radius:6px;
+    transition:background .15s ease;
+  }
+  .box-collapse-btn:hover{
+    background:#e2e8f0;
+  }
+
+  /* Fullscreen Zen Mode overrides */
+  body.zen-mode #studioBox,
+  body.zen-mode #camWrap,
+  body.zen-mode #walkSteerOverlay{
+    opacity:0; pointer-events:none;
   }
 
   /* ---------- Camera Preview ---------- */
   #camWrap{
     position:fixed; top:16px; right:16px; z-index:30;
     width:190px; height:142px;
-    border-radius:14px; overflow:hidden;
-    border:1px solid rgba(255,255,255,0.18);
-    box-shadow:0 12px 30px rgba(0,0,0,0.6);
+    border-radius:16px; overflow:hidden;
+    border:2px solid #ffffff;
+    box-shadow:0 12px 32px rgba(15, 23, 42, 0.15);
     background:#080c14;
     opacity:0; transform:translateY(-8px);
     transition:opacity .5s ease, transform .5s ease;
@@ -333,20 +387,19 @@
   }
   #camLabel{
     position:absolute; left:8px; bottom:6px; z-index:2;
-    font-size:9.5px; letter-spacing:0.6px; color:rgba(255,255,255,0.85);
+    font-size:9.5px; letter-spacing:0.6px; color:#ffffff;
     text-transform:uppercase; font-weight:700;
     text-shadow:0 1px 3px rgba(0,0,0,0.9);
     display:flex; align-items:center; gap:5px;
   }
   #camLabel .dot{
-    width:6px; height:6px; border-radius:50%; background:var(--cyan);
+    width:6px; height:6px; border-radius:50%; background:var(--blue);
   }
 
   @media (max-width:680px){
-    #topBar{ right:16px; top:12px; flex-direction:column; align-items:flex-start; gap:8px; }
-    #camWrap{ width:120px; height:90px; top:auto; bottom:110px; right:12px; }
-    #hud{ max-width:calc(100vw - 24px); left:12px; bottom:12px; font-size:11px; }
-    #actionButtons{ bottom:70px; right:12px; }
+    #studioBox{ left:8px; top:8px; max-width:calc(100vw - 16px); }
+    #camWrap{ width:110px; height:82px; top:8px; right:8px; }
+    #walkSteerOverlay{ bottom:50px; }
   }
 </style>
 </head>
@@ -354,45 +407,80 @@
 
   <canvas id="sceneCanvas"></canvas>
 
-  <!-- Top bar controls & mode indicator -->
-  <div id="topBar">
-    <div class="bar-left">
-      <div id="statusPill">
+  <!-- Unified Studio Control Hub: Tapping the box maximizes it, tapping again minimizes it -->
+  <div id="studioBox" class="minimized">
+    <!-- Collapsed Header Bar (Always visible compact tap target) -->
+    <div id="studioBoxHeader" role="button" tabindex="0" title="Tap to expand or minimize controls (Hotkey: H)">
+      <div class="box-status-wrap">
         <span id="statusDot"></span>
         <span id="statusText">Waiting for hands…</span>
       </div>
-      <!-- Enter / Exit Table View Toggle Button -->
-      <button id="viewTableBtn" type="button" class="tool-btn active" title="Toggle Table View vs Room Roam (Hotkey: T)">
-        🪑 Table View (Wide)
-      </button>
-      <!-- Fullscreen / Zen View Toggle Button -->
-      <button id="zenBtn" type="button" class="tool-btn" title="Toggle Fullscreen Zen Mode - Hide All Instructions (Hotkey: F)">
-        ⛶ Fullscreen
-      </button>
-      <!-- Help Instructions Toggle Button -->
-      <button id="hudToggleBtn" type="button" class="tool-btn zen-hide" title="Show / Hide Help HUD (Hotkey: H)">
-        ℹ️ Help
-      </button>
-    </div>
-
-    <div id="modeControl">
-      <div id="modeLabel" class="mode-badge-pick">
+      <div id="modeLabel" class="box-mode-pill pick">
         <span id="modeIcon">🖐️</span>
         <span id="modeText">DUAL BUILDER</span>
       </div>
-      <!-- Real-time pinch meter -->
-      <div id="pinchMeterWrap" title="Pinch Strength">
-        <div id="pinchMeterBar"></div>
+      <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.0x</span>
+      <div class="box-toggle-btn" id="boxToggleIndicator">
+        <span id="boxToggleText">Controls</span>
+        <span id="boxToggleIcon">▾</span>
       </div>
-      <!-- Real-time 5-pinch tracker to prevent accidental mode switches -->
-      <div id="pinchCountDots" title="Pinch 5 times rapidly in empty air to switch mode">
-        <span class="pinch-dot" id="dot1"></span>
-        <span class="pinch-dot" id="dot2"></span>
-        <span class="pinch-dot" id="dot3"></span>
-        <span class="pinch-dot" id="dot4"></span>
-        <span class="pinch-dot" id="dot5"></span>
+    </div>
+
+    <!-- Maximized Panel (Revealed on tap) -->
+    <div id="studioBoxBody">
+      <div class="box-section-title">Mode Selection</div>
+      <div class="box-mode-row">
+        <button id="modeToggleBtn" type="button" class="tool-btn active" title="Dual Builder: Build with both hands right where you stand! (Hotkey: Space)">🖐️ Dual Builder</button>
+        <button id="viewWalkBtn" type="button" class="tool-btn" title="Room Walk: Walk freely using hand steering or WASD (Hotkey: Space)">🚶 Room Walk</button>
       </div>
-      <button id="modeToggleBtn" type="button">Mode (5x Pinch / Space)</button>
+
+      <!-- Real-time Pinch Meter & 5-Pinch Shift -->
+      <div class="pinch-status-row">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>Pinch:</span>
+          <div id="pinchMeterWrap" title="Pinch Strength">
+            <div id="pinchMeterBar"></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px;" title="5 rapid pinches in empty air switches mode">
+          <span style="font-size:10px; color:#64748b;">5x Shift:</span>
+          <div id="pinchCountDots">
+            <span class="pinch-dot" id="dot1"></span>
+            <span class="pinch-dot" id="dot2"></span>
+            <span class="pinch-dot" id="dot3"></span>
+            <span class="pinch-dot" id="dot4"></span>
+            <span class="pinch-dot" id="dot5"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions Grid -->
+      <div class="box-section-title">Studio Tools</div>
+      <div class="box-action-grid">
+        <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.0x</button>
+        <button id="overviewBtn" type="button" class="tool-btn" title="Toggle high-angle Studio Overview (Hotkey: O)">🏛️ Overview Cam</button>
+        <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Studio Snap: ON</button>
+        <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Villa structure">🏠 Starter Villa</button>
+        <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all blocks to staging bays (Hotkey: R)">↺ Reset Studio</button>
+        <button id="audioToggleBtn" type="button" class="tool-btn" title="Toggle sound effects">🔊 Sound: ON</button>
+        <button id="zenBtn" type="button" class="tool-btn" title="Fullscreen / Zen mode (Hotkey: F)">⛶ Fullscreen</button>
+        <button id="camToggleBtn" type="button" class="tool-btn" title="Toggle camera preview box">📹 Webcam: ON</button>
+        <button id="depthToggleBtn" type="button" class="tool-btn" title="Toggle push/pull depth direction">↕ Push Forward</button>
+      </div>
+
+      <!-- Guidance instructions card -->
+      <div id="hudContent">
+        <b id="hudTitle">3D Architectural Studio:</b><br/>
+        • <b>🖐️ Dual Hands:</b> Both hands pick, place, and stack walls, windows, columns &amp; roofs simultaneously.<br/>
+        • <b>⚡ 2x Double Reach:</b> Hand moves double distance for easy reach without stretching.<br/>
+        • <b>🚶 Walk Mode:</b> Move hand forward/backward to walk, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">WASD</kbd> keys.<br/>
+        • <b>📐 Grid Snap:</b> Blocks snap flush at 25cm metric increments when released near foundations.
+      </div>
+
+      <div class="box-footer">
+        <span>Tap header or press <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">H</kbd> to minimize</span>
+        <button id="boxCollapseBtn" type="button" class="box-collapse-btn">▲ Minimize Box</button>
+      </div>
     </div>
   </div>
 
@@ -400,7 +488,7 @@
   <div id="targetIndicator">
     <div class="target-bracket"></div>
     <div class="target-badge">
-      <span id="targetName">Lego Brick</span>
+      <span id="targetName">Wall Panel</span>
       <span class="action" id="targetAction">Pinch to Grab</span>
     </div>
   </div>
@@ -419,26 +507,6 @@
     <div class="steer-label" id="steerLabel">Room Roam Steering</div>
   </div>
 
-  <!-- Bottom HUD instructions (Clean, can be closed or zen-hidden) -->
-  <div id="hud">
-    <div id="hudContent">
-      <span class="hud-badge pick" id="hudModeTag">DUAL-HAND MODE</span>
-      <b id="hudTitle">Simultaneous Dual-Hand Lego Workshop:</b><br/>
-      • <b>🖐️ Both Hands Can Pick:</b> Use Left and Right hands together to grab, hold, and stack blocks simultaneously!<br/>
-      • <b>🪑 Table View vs Room:</b> Click "Table View" for a fixed wide-angle view of the whole table, or "Room Roam" to explore.<br/>
-      • <b>🧩 Lego Stacking:</b> Release blocks on top of each other to snap them flush on the Lego grid.<br/>
-      • <b>⛶ Fullscreen / Zen:</b> Press <kbd style="background:rgba(255,255,255,0.2); padding:1px 5px; border-radius:4px;">F</kbd> or click Fullscreen to hide all text instructions and controls.
-    </div>
-  </div>
-
-  <!-- Bottom quick buttons -->
-  <div id="actionButtons">
-    <button class="tool-btn" id="snapToggleBtn" title="Toggle automatic Lego grid and block stacking">🧩 Lego Snap: ON</button>
-    <button class="tool-btn" id="resetObjectsBtn" title="Reset all Lego blocks neatly in table supply trays">↺ Reset Table</button>
-    <button class="tool-btn zen-hide" id="depthToggleBtn" title="Toggle push/pull depth direction">↕ Push Forward</button>
-    <button class="tool-btn zen-hide" id="audioToggleBtn" title="Toggle sound effects">🔊 Sound: ON</button>
-  </div>
-
   <!-- Webcam top-right viewer -->
   <div id="camWrap">
     <video id="video" playsinline muted></video>
@@ -449,20 +517,20 @@
   <!-- Start Overlay -->
   <div id="startOverlay">
     <div id="startCard">
-      <h1>🛠️ 3D Dual-Hand Lego Workshop</h1>
-      <p>Build modular house structures on the workbench table using cubes, prisms, cuboids, and spheres. Use <b>both hands simultaneously</b> to pick, hold, and place blocks with precision.</p>
+      <h1>🏛️ 3D Architectural Building Studio</h1>
+      <p>Design and construct houses and multi-story buildings in a vast, pure white infinity studio. Build using <b>full-scale modular walls, glass windows, doorways, pillars, floor slabs, and roofs</b> with effortless dual-hand spatial reach.</p>
       
       <div class="feature-pills">
-        <span class="pill">🖐️ Left Hand: Grab &amp; Stack</span>
-        <span class="pill">👌 Right Hand: Grab &amp; Stack</span>
-        <span class="pill">🪑 Fixed Wide Table View</span>
-        <span class="pill">⛶ Zen Fullscreen Mode</span>
-        <span class="pill">🧩 5-Pinch Mode Switch</span>
+        <span class="pill">⚡ 2x Double Reach Distance</span>
+        <span class="pill">🏛️ Large House &amp; Wall Modules</span>
+        <span class="pill">🖐️ Simultaneous Dual-Hand Building</span>
+        <span class="pill">📐 Metric Grid &amp; Stacking Snap</span>
+        <span class="pill">🤍 Pure White Studio Environment</span>
       </div>
 
-      <button id="startBtn">Enable Camera &amp; Enter Workshop</button>
-      <button id="mouseModeBtn" type="button" class="tool-btn" style="width:100%; margin-top:8px; padding:11px; font-size:13px; font-weight:600;">🖱️ Enter with Mouse &amp; Keyboard</button>
-      <div id="loadingNote"><span class="spinner"></span>Loading dual-hand tracking &amp; 3D workshop…</div>
+      <button id="startBtn">Enable Camera &amp; Enter Studio</button>
+      <button id="mouseModeBtn" type="button" class="tool-btn" style="width:100%; margin-top:10px; padding:12px; font-size:13.5px; font-weight:600;">🖱️ Enter with Mouse &amp; Keyboard</button>
+      <div id="loadingNote"><span class="spinner"></span>Loading dual-hand tracking &amp; 3D studio…</div>
 
       <div id="errBox">
         <div id="errMsg"></div>
@@ -554,17 +622,21 @@ const HAND_MODEL_URL =
 
 // Hand Reach & Anatomical Scale Configuration:
 // Reaching volume: maps user's hand position across webcam to virtual first-person space
-const REACH_SPAN_X = 2.4;     // lateral reaching span across view
-const REACH_SPAN_Y = 1.8;     // vertical reaching span
-const REACH_OFFSET_Y = 0.40;  // ergonomically lowered to match table surface
+const BASE_REACH_SPAN_X = 2.4;     // base lateral reaching span across view
+const BASE_REACH_SPAN_Y = 1.8;     // base vertical reaching span
+const REACH_OFFSET_Y = 0.40;       // ergonomically lowered to match table surface
+
+// Reach Multiplier: default 2.0x (double distance) as requested so hand doesn't need to over-extend
+let reachMultiplier = 2.0;
 
 // True-to-life human hand anatomical dimensions:
 const REAL_HAND_METERS = 0.092;
 
 // Depth mapping configuration:
-const DEPTH_PUSHED_Z = -2.4; // forward reaching towards table
-const DEPTH_PULLED_Z = -0.8; // pulled back close to chest
-const SPAN_CLOSE_CAM = 0.30; // hand close to webcam
+const DEPTH_PUSHED_Z = -2.6; // forward reaching towards table
+const DEPTH_PULLED_Z = -0.7; // pulled back close to chest
+const NEUTRAL_SPAN   = 0.18; // natural resting hand size in webcam view
+const SPAN_CLOSE_CAM = 0.28; // hand close to webcam
 const SPAN_FAR_CAM   = 0.10; // hand further from webcam
 
 let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
@@ -576,103 +648,116 @@ const PINCH_RATIO_RELEASE = 0.48; // Pinch ratio threshold to release (hysteresi
 const PHYSICAL_GRAB_MARGIN = 0.26; // Generous physical touch margin for responsive pickup
 const FOLLOW_LERP = 0.65;  // Responsive, non-laggy follow interpolation
 
-const FLOOR_Y = -1.6;
-const WORLD_RADIUS = 16.0;
+const FLOOR_Y = -1.15;
+const WORLD_RADIUS = 38.0;
 const GRAVITY = 8.5;
-const BOUNCE_DAMP = 0.30;
+const BOUNCE_DAMP = 0.28;
 
-// Big Workbench Table Dimensions:
-const TABLE_X = 0.0;
-const TABLE_Z = 1.6;
-const TABLE_WIDTH = 3.3;
-const TABLE_DEPTH = 2.2;
-const TABLE_HEIGHT = 1.25;
-const TABLE_TOP_Y = FLOOR_Y + TABLE_HEIGHT; // -0.35m
+// Studio Center & Architectural Grid Configuration:
+const STUDIO_CENTER_X = 0.0;
+const STUDIO_CENTER_Z = 1.4;
+const ARCH_GRID = 0.25;      // 25cm architectural modular snap grid
+const LEGO_GRID = ARCH_GRID; // Alias for compatibility
+let snapToLegoGrid = true;   // Grid snap active
 
-// Lego Modular Grid Constants:
-const LEGO_GRID = 0.11; // 11cm half-grid / 22cm brick module
-let snapToLegoGrid = true;
+// Compatibility variables for legacy references
+const TABLE_X = STUDIO_CENTER_X;
+const TABLE_Z = STUDIO_CENTER_Z;
+const TABLE_WIDTH = 6.0;
+const TABLE_DEPTH = 6.0;
+const TABLE_HEIGHT = 0.0;
+const TABLE_TOP_Y = FLOOR_Y;
 
-// Player eye height constant (fixes CAMERA_EYE_Y is not defined error)
-const CAMERA_EYE_Y = 0.45;
+// Player eye height constant (natural standing eye level in 1:1 scale)
+const CAMERA_EYE_Y = 1.60;
 
-// Table View State: 'TABLE' (Fixed Wide-Angle Table View) vs 'ROOM' (Room Roam / Walk)
-let viewMode = 'TABLE';
+// Studio View State: 'IN_SITU' (In-place from player's walking position) vs 'OVERVIEW' (High-angle fixed studio view)
+let viewMode = 'IN_SITU';
 let zenMode = false;
 
-// Fixed wide-angle table view position and look target (shows complete 3.3m table and all trays)
-const TABLE_CAM_POS = new THREE.Vector3(TABLE_X, TABLE_TOP_Y + 1.25, TABLE_Z + 1.95);
-const TABLE_CAM_LOOK = new THREE.Vector3(TABLE_X, TABLE_TOP_Y + 0.12, TABLE_Z);
+// Fixed expansive wide-angle studio view (spans the full architectural site & staging bays)
+const STUDIO_CAM_POS = new THREE.Vector3(0, FLOOR_Y + 2.45, 4.30);
+const STUDIO_CAM_LOOK = new THREE.Vector3(0, FLOOR_Y + 0.55, 1.25);
+const TABLE_CAM_POS = STUDIO_CAM_POS;
+const TABLE_CAM_LOOK = STUDIO_CAM_LOOK;
 
-// Orbit camera properties for room roam / manual adjustments
+// Orbit camera properties for overview / manual adjustments
 const cameraRig = {
   orbitAngle: 0,
-  orbitDistance: 2.25,
-  cameraHeight: 0.56,
-  lookTarget: new THREE.Vector3(TABLE_X, TABLE_TOP_Y + 0.16, TABLE_Z)
+  orbitDistance: 3.2,
+  cameraHeight: 1.05,
+  lookTarget: new THREE.Vector3(0, FLOOR_Y + 0.65, 1.25)
 };
 
 /* ============================================================
-   THREE.JS SCENE, CAMERA & LIGHTING
+   THREE.JS SCENE, CAMERA & STUDIO LIGHTING (Pure White Infinity Studio)
    ============================================================ */
 const canvas = document.getElementById('sceneCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060912);
-scene.fog = new THREE.FogExp2(0x060912, 0.035);
+// Pure white studio backdrop with soft horizon fog
+scene.background = new THREE.Color(0xfcfcfd);
+scene.fog = new THREE.Fog(0xfcfcfd, 22, 60);
 
-// Camera Setup (starts in wide-angle 68° FOV table view)
-const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 80);
+// Camera Setup (starts in expansive wide-angle 82° FOV studio perspective)
+const camera = new THREE.PerspectiveCamera(82, window.innerWidth / window.innerHeight, 0.1, 95);
 const player = {
-  pos: new THREE.Vector3(0, 0, 3.8),
+  pos: new THREE.Vector3(0, FLOOR_Y, 3.8),
   yaw: 0,
+  pitch: -0.16,
   velocity: new THREE.Vector3(),
   targetYaw: 0
 };
-// Initial positioning overlooking the complete table with fixed wide angle
-camera.position.copy(TABLE_CAM_POS);
-camera.lookAt(TABLE_CAM_LOOK);
-const smoothedCameraLookAt = new THREE.Vector3().copy(TABLE_CAM_LOOK);
+camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
+camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+const smoothedCameraLookAt = new THREE.Vector3().copy(STUDIO_CAM_LOOK);
 
-// Ambient & Directional Lighting
-const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
+// Soft High-Key Studio Lighting (Bright, clean, shadow-defining)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
 scene.add(ambientLight);
 
-const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.2);
-sunLight.position.set(12, 18, 10);
+// Key Studio Softbox
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.35);
+sunLight.position.set(10, 22, 14);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 1024;
-sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.bias = -0.0004;
 sunLight.shadow.camera.near = 1;
-sunLight.shadow.camera.far = 40;
-sunLight.shadow.camera.left = -18;
-sunLight.shadow.camera.right = 18;
-sunLight.shadow.camera.top = 18;
-sunLight.shadow.camera.bottom = -18;
+sunLight.shadow.camera.far = 45;
+sunLight.shadow.camera.left = -16;
+sunLight.shadow.camera.right = 16;
+sunLight.shadow.camera.top = 16;
+sunLight.shadow.camera.bottom = -16;
 scene.add(sunLight);
 
-// Subtle Cyan Rim Light
-const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
-rimLight.position.set(-10, 8, -10);
-scene.add(rimLight);
+// Studio Fill Light
+const fillLight = new THREE.DirectionalLight(0xf1f5f9, 0.65);
+fillLight.position.set(-12, 18, -8);
+scene.add(fillLight);
+
+// Overhead Studio Skylight Dome
+const overheadLight = new THREE.DirectionalLight(0xffffff, 0.45);
+overheadLight.position.set(0, 22, 2);
+scene.add(overheadLight);
 
 /* ============================================================
-   3D VIRTUAL WORLD ENVIRONMENT
+   VAST STUDIO INFINITY FLOOR & ARCHITECTURAL FOUNDATION PLOT
    ============================================================ */
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
 
-// Central Plaza & Pathways
-const floorGeo = new THREE.CircleGeometry(WORLD_RADIUS, 48);
+// 1. Vast Matte White Studio Floor
+const floorGeo = new THREE.CircleGeometry(WORLD_RADIUS, 64);
 const floorMat = new THREE.MeshStandardMaterial({
-  color: 0x131d2e,
-  roughness: 0.75,
-  metalness: 0.15
+  color: 0xf8fafc,
+  roughness: 0.88,
+  metalness: 0.04
 });
 const floorMesh = new THREE.Mesh(floorGeo, floorMat);
 floorMesh.rotation.x = -Math.PI / 2;
@@ -680,252 +765,76 @@ floorMesh.position.y = FLOOR_Y;
 floorMesh.receiveShadow = true;
 worldGroup.add(floorMesh);
 
-// Inner decorative plaza ring
-const innerPlazaGeo = new THREE.RingGeometry(0.1, 7.5, 36);
-const innerPlazaMat = new THREE.MeshStandardMaterial({
-  color: 0x1e293b,
-  roughness: 0.6,
-  metalness: 0.2
-});
-const innerPlaza = new THREE.Mesh(innerPlazaGeo, innerPlazaMat);
-innerPlaza.rotation.x = -Math.PI / 2;
-innerPlaza.position.y = FLOOR_Y + 0.005;
-innerPlaza.receiveShadow = true;
-worldGroup.add(innerPlaza);
+// 2. Central House Construction Plot (6.0m x 6.0m modular zone)
+const plotCenter = new THREE.Vector3(STUDIO_CENTER_X, FLOOR_Y + 0.003, STUDIO_CENTER_Z);
+const plotSize = 6.0;
 
-// Subtle concentric spatial rings
-const ringLinesGeo = new THREE.RingGeometry(3.5, 3.55, 48);
-const ringLinesMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25 });
-const ringMesh = new THREE.Mesh(ringLinesGeo, ringLinesMat);
-ringMesh.rotation.x = -Math.PI / 2;
-ringMesh.position.y = FLOOR_Y + 0.01;
-worldGroup.add(ringMesh);
+// Crisp architectural blueprint grid
+const siteGrid = new THREE.GridHelper(plotSize, 24, 0x2563eb, 0xdbeafe);
+siteGrid.position.copy(plotCenter);
+worldGroup.add(siteGrid);
 
-const outerRingLines = new THREE.Mesh(
-  new THREE.RingGeometry(7.5, 7.58, 48),
-  new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.2 })
-);
-outerRingLines.rotation.x = -Math.PI / 2;
-outerRingLines.position.y = FLOOR_Y + 0.01;
-worldGroup.add(outerRingLines);
-
-// Elegant boundary columns / glow pylons around edge of world
-for (let i = 0; i < 16; i++) {
-  const angle = (i / 16) * Math.PI * 2;
-  const px = Math.cos(angle) * (WORLD_RADIUS - 0.5);
-  const pz = Math.sin(angle) * (WORLD_RADIUS - 0.5);
-
-  const colMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.2, 0.28, 1.8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
-  );
-  colMesh.position.set(px, FLOOR_Y + 0.9, pz);
-  colMesh.castShadow = true;
-  worldGroup.add(colMesh);
-
-  // Pillar top crystal
-  const capMesh = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.18),
-    new THREE.MeshStandardMaterial({
-      color: 0x5be3ff,
-      emissive: 0x174652,
-      emissiveIntensity: 0.8,
-      roughness: 0.2
-    })
-  );
-  capMesh.position.set(px, FLOOR_Y + 1.95, pz);
-  worldGroup.add(capMesh);
-}
-
-// Low-Poly Trees & Rock clusters
-function createLowPolyTree(x, z, scale = 1.0) {
-  const tree = new THREE.Group();
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18 * scale, 0.26 * scale, 1.6 * scale, 6),
-    new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
-  );
-  trunk.position.y = FLOOR_Y + (0.8 * scale);
-  trunk.castShadow = true;
-  tree.add(trunk);
-
-  // Tiered canopy
-  const canopyMat = new THREE.MeshStandardMaterial({
-    color: 0x15803d,
-    roughness: 0.7,
-    flatShading: true
-  });
-  for (let c = 0; c < 3; c++) {
-    const layer = new THREE.Mesh(
-      new THREE.ConeGeometry((1.1 - c * 0.22) * scale, (1.2 - c * 0.15) * scale, 7),
-      canopyMat
-    );
-    layer.position.y = FLOOR_Y + (1.6 + c * 0.75) * scale;
-    layer.castShadow = true;
-    tree.add(layer);
-  }
-  tree.position.set(x, 0, z);
-  worldGroup.add(tree);
-}
-
-// Plant trees around the garden perimeter
-const treePositions = [
-  [-9, -6], [-11, 2], [-8, 9], [7, -10], [10, -3], [9, 8], [-4, -12], [4, 11]
-];
-treePositions.forEach(([tx, tz], idx) => {
-  createLowPolyTree(tx, tz, 0.85 + (idx % 3) * 0.2);
+// Corner boundary L-brackets framing the house construction site
+const bracketMat = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+[
+  [-1, -1], [1, -1], [-1, 1], [1, 1]
+].forEach(([bx, bz]) => {
+  const cx = STUDIO_CENTER_X + bx * (plotSize / 2);
+  const cz = STUDIO_CENTER_Z + bz * (plotSize / 2);
+  // Horizontal arm
+  const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.012, 0.04), bracketMat);
+  arm1.position.set(cx - bx * 0.15, FLOOR_Y + 0.008, cz);
+  // Orthogonal arm
+  const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.35), bracketMat);
+  arm2.position.set(cx, FLOOR_Y + 0.008, cz - bz * 0.15);
+  worldGroup.add(arm1, arm2);
 });
 
-/* ============================================================
-   BIG WORKBENCH TABLE & LEGO BUILDING BASEPLATE
-   ============================================================ */
+// Subtle Concentric Studio Distance Rings
+[4.2, 8.5, 14.0].forEach(r => {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(r, r + 0.035, 64),
+    new THREE.MeshBasicMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(STUDIO_CENTER_X, FLOOR_Y + 0.002, STUDIO_CENTER_Z);
+  worldGroup.add(ring);
+});
+
+// Staging Bay Floor Markings (Left: Walls & Openings | Right: Columns & Slabs)
+function createStagingZone(x, z, w, d, tintColor, label) {
+  const bay = new THREE.Group();
+  bay.position.set(x, FLOOR_Y + 0.002, z);
+  const pad = new THREE.Mesh(
+    new THREE.BoxGeometry(w, 0.004, d),
+    new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 })
+  );
+  pad.receiveShadow = true;
+  bay.add(pad);
+
+  // Subtle border outline
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 0.008, d)),
+    new THREE.LineBasicMaterial({ color: tintColor, linewidth: 2 })
+  );
+  bay.add(outline);
+  worldGroup.add(bay);
+}
+createStagingZone(-2.45, 1.4, 1.7, 3.4, 0x38bdf8); // Left Bay: Walls, Windows & Doorways
+createStagingZone( 2.45, 1.4, 1.7, 3.4, 0x10b981); // Right Bay: Columns, Floors & Slabs
+createStagingZone( 0.0, 2.75, 3.2, 0.95, 0xf59e0b); // Front Bay: Roofs & Finials
+
+// Compatibility tableGroup (empty placeholder so no null reference errors occur)
 const tableGroup = new THREE.Group();
-tableGroup.position.set(TABLE_X, FLOOR_Y, TABLE_Z);
-
-// 1. Solid Hardwood Workshop Tabletop
-const tabletopThickness = 0.08;
-const tabletopMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(TABLE_WIDTH, tabletopThickness, TABLE_DEPTH),
-  new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    roughness: 0.55,
-    metalness: 0.15
-  })
-);
-tabletopMesh.position.y = TABLE_HEIGHT - tabletopThickness / 2;
-tabletopMesh.castShadow = true;
-tabletopMesh.receiveShadow = true;
-tableGroup.add(tabletopMesh);
-
-// Beveled Outer Edge Frame with brushed brass / cyan accent trim
-const tableTrim = new THREE.Mesh(
-  new THREE.BoxGeometry(TABLE_WIDTH + 0.04, 0.03, TABLE_DEPTH + 0.04),
-  new THREE.MeshStandardMaterial({
-    color: 0x334155,
-    emissive: 0x0f172a,
-    emissiveIntensity: 0.4,
-    roughness: 0.35,
-    metalness: 0.6
-  })
-);
-tableTrim.position.y = TABLE_HEIGHT - tabletopThickness - 0.015;
-tableTrim.receiveShadow = true;
-tableGroup.add(tableTrim);
-
-// 2. Heavy Timber Table Legs with brass floor levelers
-const legRadius = 0.065;
-const legOffsets = [
-  [-TABLE_WIDTH / 2 + 0.15, -TABLE_DEPTH / 2 + 0.15],
-  [ TABLE_WIDTH / 2 - 0.15, -TABLE_DEPTH / 2 + 0.15],
-  [-TABLE_WIDTH / 2 + 0.15,  TABLE_DEPTH / 2 - 0.15],
-  [ TABLE_WIDTH / 2 - 0.15,  TABLE_DEPTH / 2 - 0.15]
-];
-const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7, metalness: 0.2 });
-const footMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
-
-legOffsets.forEach(([lx, lz]) => {
-  const legMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(legRadius * 2, TABLE_HEIGHT - tabletopThickness, legRadius * 2),
-    legMat
-  );
-  legMesh.position.set(lx, (TABLE_HEIGHT - tabletopThickness) / 2, lz);
-  legMesh.castShadow = true;
-  legMesh.receiveShadow = true;
-  tableGroup.add(legMesh);
-
-  // Brass foot
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16), footMat);
-  foot.position.set(lx, 0.025, lz);
-  tableGroup.add(foot);
-});
-
-// Under-table structural cross braces
-const braceX = new THREE.Mesh(
-  new THREE.BoxGeometry(TABLE_WIDTH - 0.35, 0.05, 0.05),
-  legMat
-);
-braceX.position.set(0, 0.28, 0);
-tableGroup.add(braceX);
-
-// 3. Central Lego Building Baseplate / Construction Mat (1.32m x 1.32m)
-const padSize = 1.32;
-const baseplateGroup = new THREE.Group();
-baseplateGroup.position.set(0, TABLE_HEIGHT + 0.006, 0);
-
-const baseplateMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(padSize, 0.012, padSize),
-  new THREE.MeshStandardMaterial({
-    color: 0x064e3b, // classic dark green Lego building plate
-    roughness: 0.65,
-    metalness: 0.1
-  })
-);
-baseplateMesh.receiveShadow = true;
-baseplateGroup.add(baseplateMesh);
-
-// Glowing subtle blueprint / Lego stud grid lines
-const baseplateGrid = new THREE.GridHelper(padSize, 12, 0x10b981, 0x047857);
-baseplateGrid.position.y = 0.008;
-baseplateGroup.add(baseplateGrid);
-
-// Corner boundary brackets
-const bracketMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
-[[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([bx, bz]) => {
-  const bMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 0.06), bracketMat);
-  bMesh.position.set(bx * (padSize / 2 - 0.03), 0.01, bz * (padSize / 2 - 0.03));
-  baseplateGroup.add(bMesh);
-});
-tableGroup.add(baseplateGroup);
-
-// 4. Supply Organizer Trays on Left and Right of table
-function createSupplyTray(x, z, w, d, labelColor) {
-  const tray = new THREE.Group();
-  tray.position.set(x, TABLE_HEIGHT + 0.005, z);
-  const trayMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6, metalness: 0.2 });
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.008, d), trayMat);
-  floor.receiveShadow = true;
-  tray.add(floor);
-
-  const rimMat = new THREE.MeshStandardMaterial({ color: labelColor, roughness: 0.4, metalness: 0.3 });
-  // Rims
-  const rimN = new THREE.Mesh(new THREE.BoxGeometry(w, 0.025, 0.02), rimMat);
-  rimN.position.set(0, 0.012, -d / 2);
-  const rimS = new THREE.Mesh(new THREE.BoxGeometry(w, 0.025, 0.02), rimMat);
-  rimS.position.set(0, 0.012, d / 2);
-  const rimW = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, d), rimMat);
-  rimW.position.set(-w / 2, 0.012, 0);
-  const rimE = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, d), rimMat);
-  rimE.position.set(w / 2, 0.012, 0);
-  tray.add(rimN, rimS, rimW, rimE);
-  tableGroup.add(tray);
-}
-createSupplyTray(-1.18, 0, 0.68, 1.7, 0x38bdf8); // Left: Cubes & Cuboids
-createSupplyTray( 1.18, 0, 0.68, 1.7, 0xf59e0b); // Right: Prisms & Spheres
-
-// 5. Overhead Workbench Task Light
-const taskLight = new THREE.SpotLight(0xfffbeb, 1.8, 8, Math.PI / 3, 0.35, 1.2);
-taskLight.position.set(TABLE_X, TABLE_TOP_Y + 2.2, TABLE_Z);
-taskLight.target.position.set(TABLE_X, TABLE_TOP_Y, TABLE_Z);
-taskLight.castShadow = true;
-taskLight.shadow.mapSize.width = 1024;
-taskLight.shadow.mapSize.height = 1024;
-taskLight.shadow.bias = -0.001;
-scene.add(taskLight);
-scene.add(taskLight.target);
-
 worldGroup.add(tableGroup);
 
-// Soft table glow ambient
-const tableGlow = new THREE.PointLight(0x5be3ff, 0.6, 3.5);
-tableGlow.position.set(TABLE_X, TABLE_TOP_Y + 0.3, TABLE_Z);
-worldGroup.add(tableGlow);
-
 /* ============================================================
-   INTERACTIVE 3D LEGO ASSETS (Cube, Prism, Cuboid, Sphere)
+   ARCHITECTURAL ASSET FACTORY (Walls, Windows, Doors, Pillars, Slabs, Roofs)
    ============================================================ */
 const pickables = [];
 
-// Helper: Extruded Triangular Roof Prism geometry (Gable Roof)
-function createPrismGeometry(width, height, depth) {
+// Helper: Extruded Triangular Gable Roof Prism
+function createRoofGableGeometry(width, height, depth) {
   const shape = new THREE.Shape();
   shape.moveTo(-width / 2, -height / 2);
   shape.lineTo(width / 2, -height / 2);
@@ -935,64 +844,220 @@ function createPrismGeometry(width, height, depth) {
   const extrudeSettings = {
     depth: depth,
     bevelEnabled: true,
-    bevelThickness: 0.006,
-    bevelSize: 0.006,
+    bevelThickness: 0.012,
+    bevelSize: 0.012,
     bevelSegments: 2
   };
   const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  geo.center(); // Center origin at geometric midpoint
+  geo.center();
   return geo;
 }
 
-// Master Lego Asset Factory
-function createLegoObject(type, width, height, depth, colorHex, initPos, name, emissiveHex = 0x000000) {
+// Master Architectural Block Factory
+function createArchitecturalBlock(type, width, height, depth, colorHex, initPos, name, emissiveHex = 0x000000, opts = {}) {
   const group = new THREE.Group();
-  let baseGeo;
 
-  if (type === 'prism') {
-    baseGeo = createPrismGeometry(width, height, depth);
-  } else if (type === 'sphere') {
-    baseGeo = new THREE.SphereGeometry(width / 2, 24, 18);
-  } else {
-    // 'cube' or 'cuboid'
-    baseGeo = new THREE.BoxGeometry(width, height, depth);
-  }
-
-  const mat = new THREE.MeshStandardMaterial({
+  const baseMat = new THREE.MeshStandardMaterial({
     color: colorHex,
-    roughness: 0.35,
-    metalness: 0.15,
+    roughness: opts.roughness || 0.42,
+    metalness: opts.metalness || 0.12,
     emissive: emissiveHex,
     emissiveIntensity: 0.45
   });
 
-  const mainMesh = new THREE.Mesh(baseGeo, mat);
-  mainMesh.castShadow = true;
-  mainMesh.receiveShadow = true;
-  group.add(mainMesh);
+  if (type === 'wall' || type === 'half_wall') {
+    // Solid Architectural Wall Panel with beveled border trim
+    const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), baseMat);
+    wallMesh.castShadow = true;
+    wallMesh.receiveShadow = true;
+    group.add(wallMesh);
 
-  // Add realistic Lego studs on top of Cubes and Cuboids
-  if (type === 'cube' || type === 'cuboid') {
-    const studGeo = new THREE.CylinderGeometry(0.024, 0.024, 0.015, 12);
-    const studMat = mat;
-    const nx = Math.max(1, Math.round(width / 0.11));
-    const nz = Math.max(1, Math.round(depth / 0.11));
-    const startX = -((nx - 1) * 0.11) / 2;
-    const startZ = -((nz - 1) * 0.11) / 2;
+    // Subtle architectural base plinth & top coping
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: 0x334155,
+      roughness: 0.5,
+      metalness: 0.2
+    });
+    const basePlinth = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.05, depth + 0.02), trimMat);
+    basePlinth.position.y = -height / 2 + 0.025;
+    basePlinth.castShadow = true;
+    group.add(basePlinth);
 
-    for (let ix = 0; ix < nx; ix++) {
-      for (let iz = 0; iz < nz; iz++) {
-        const stud = new THREE.Mesh(studGeo, studMat);
-        stud.position.set(startX + ix * 0.11, height / 2 + 0.0075, startZ + iz * 0.11);
-        stud.castShadow = true;
-        group.add(stud);
-      }
+    const topCoping = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.04, depth + 0.02), trimMat);
+    topCoping.position.y = height / 2 - 0.02;
+    topCoping.castShadow = true;
+    group.add(topCoping);
+
+  } else if (type === 'window_wall') {
+    // Architectural Wall with Framed Glass Window Cutout!
+    const winW = 0.56;
+    const winH = 0.50;
+    const sideW = (width - winW) / 2;
+    const bottomH = (height - winH) / 2;
+
+    // Left pillar
+    const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
+    leftPillar.position.x = -width / 2 + sideW / 2;
+    leftPillar.castShadow = true;
+    leftPillar.receiveShadow = true;
+    group.add(leftPillar);
+
+    // Right pillar
+    const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
+    rightPillar.position.x = width / 2 - sideW / 2;
+    rightPillar.castShadow = true;
+    rightPillar.receiveShadow = true;
+    group.add(rightPillar);
+
+    // Bottom sill wall
+    const bottomSill = new THREE.Mesh(new THREE.BoxGeometry(winW, bottomH, depth), baseMat);
+    bottomSill.position.set(0, -height / 2 + bottomH / 2, 0);
+    bottomSill.castShadow = true;
+    bottomSill.receiveShadow = true;
+    group.add(bottomSill);
+
+    // Top lintel wall
+    const topLintel = new THREE.Mesh(new THREE.BoxGeometry(winW, bottomH, depth), baseMat);
+    topLintel.position.set(0, height / 2 - bottomH / 2, 0);
+    topLintel.castShadow = true;
+    topLintel.receiveShadow = true;
+    group.add(topLintel);
+
+    // Window Outer Frame
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.6 });
+    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.02, winH + 0.02, depth + 0.02), frameMat);
+    winFrame.position.set(0, 0, 0);
+    group.add(winFrame);
+
+    // Embedded Translucent Sky Tinted Glass Pane
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.42,
+      roughness: 0.08,
+      metalness: 0.85
+    });
+    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.02, winH - 0.02, 0.015), glassMat);
+    glassPane.position.set(0, 0, 0);
+    group.add(glassPane);
+
+    // Window Mullion Cross
+    const mullionH = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.02, 0.016, 0.022), frameMat);
+    const mullionV = new THREE.Mesh(new THREE.BoxGeometry(0.016, winH - 0.02, 0.022), frameMat);
+    group.add(mullionH, mullionV);
+
+  } else if (type === 'door_wall') {
+    // Architectural Wall with Doorway Arch Opening (walk-through portal)
+    const doorW = 0.52;
+    const doorH = 0.74;
+    const sideW = (width - doorW) / 2;
+    const topH = height - doorH;
+
+    // Left doorpost
+    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
+    leftPost.position.x = -width / 2 + sideW / 2;
+    leftPost.castShadow = true;
+    leftPost.receiveShadow = true;
+    group.add(leftPost);
+
+    // Right doorpost
+    const rightPost = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
+    rightPost.position.x = width / 2 - sideW / 2;
+    rightPost.castShadow = true;
+    rightPost.receiveShadow = true;
+    group.add(rightPost);
+
+    // Top lintel above doorway
+    const topLintel = new THREE.Mesh(new THREE.BoxGeometry(doorW, topH, depth), baseMat);
+    topLintel.position.set(0, height / 2 - topH / 2, 0);
+    topLintel.castShadow = true;
+    topLintel.receiveShadow = true;
+    group.add(topLintel);
+
+    // Doorway trim header
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 });
+    const header = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.06, 0.035, depth + 0.03), trimMat);
+    header.position.set(0, -height / 2 + doorH, 0);
+    header.castShadow = true;
+    group.add(header);
+
+  } else if (type === 'column') {
+    // Classical / Modern Architectural Pillar with Capital and Base Plinth
+    const shaftW = width * 0.78;
+    const shaftH = height - 0.12;
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(shaftW, shaftH, shaftW), baseMat);
+    shaft.castShadow = true;
+    shaft.receiveShadow = true;
+    group.add(shaft);
+
+    const capMat = new THREE.MeshStandardMaterial({
+      color: 0x334155,
+      roughness: 0.35,
+      metalness: 0.3
+    });
+    // Base plinth
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(width, 0.06, width), capMat);
+    plinth.position.y = -height / 2 + 0.03;
+    plinth.castShadow = true;
+    group.add(plinth);
+
+    // Top capital
+    const capital = new THREE.Mesh(new THREE.BoxGeometry(width, 0.06, width), capMat);
+    capital.position.y = height / 2 - 0.03;
+    capital.castShadow = true;
+    group.add(capital);
+
+  } else if (type === 'floor_slab' || type === 'roof_flat') {
+    // Large Modular Foundation Floor Slab or Rooftop Terrace
+    const slabMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), baseMat);
+    slabMesh.castShadow = true;
+    slabMesh.receiveShadow = true;
+    group.add(slabMesh);
+
+    // Surface tile grid pattern lines
+    const gridMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.25 });
+    const gridT = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.002, depth * 0.96), gridMat);
+    gridT.position.y = height / 2 + 0.001;
+    group.add(gridT);
+
+    if (type === 'roof_flat') {
+      // Modern terrace perimeter safety parapet lip
+      const lipMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.3 });
+      const lipH = 0.07;
+      const lipThick = 0.04;
+      const lipN = new THREE.Mesh(new THREE.BoxGeometry(width, lipH, lipThick), lipMat);
+      lipN.position.set(0, height / 2 + lipH / 2, -depth / 2 + lipThick / 2);
+      const lipS = new THREE.Mesh(new THREE.BoxGeometry(width, lipH, lipThick), lipMat);
+      lipS.position.set(0, height / 2 + lipH / 2, depth / 2 - lipThick / 2);
+      const lipW = new THREE.Mesh(new THREE.BoxGeometry(lipThick, lipH, depth), lipMat);
+      lipW.position.set(-width / 2 + lipThick / 2, height / 2 + lipH / 2, 0);
+      const lipE = new THREE.Mesh(new THREE.BoxGeometry(lipThick, lipH, depth), lipMat);
+      lipE.position.set(width / 2 - lipThick / 2, height / 2 + lipH / 2, 0);
+      group.add(lipN, lipS, lipW, lipE);
     }
-  } else if (type === 'sphere') {
-    // Add a neat circular base ring so sphere sits stably on flat surfaces
-    const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 16), mat);
-    baseRing.position.y = -height / 2 + 0.006;
-    group.add(baseRing);
+
+  } else if (type === 'roof_gable' || type === 'prism') {
+    // Pitched Gable Roof Truss
+    const roofGeo = createRoofGableGeometry(width, height, depth);
+    const roofMesh = new THREE.Mesh(roofGeo, baseMat);
+    roofMesh.castShadow = true;
+    roofMesh.receiveShadow = true;
+    group.add(roofMesh);
+
+  } else if (type === 'finial' || type === 'sphere') {
+    // Spherical Rooftop Dome or Column Finial
+    const sphereGeo = new THREE.SphereGeometry(width / 2, 24, 18);
+    const sphereMesh = new THREE.Mesh(sphereGeo, baseMat);
+    sphereMesh.castShadow = true;
+    sphereMesh.receiveShadow = true;
+    group.add(sphereMesh);
+
+    // Decorative mounting ring base
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.35, width * 0.45, 0.04, 18), ringMat);
+    ring.position.y = -height / 2 + 0.02;
+    ring.castShadow = true;
+    group.add(ring);
   }
 
   group.position.copy(initPos);
@@ -1015,7 +1080,7 @@ function createLegoObject(type, width, height, depth, colorHex, initPos, name, e
     velocity: new THREE.Vector3(),
     held: false,
     initPos: initPos.clone(),
-    mat: mat,
+    mat: baseMat,
     origColor: colorHex,
     origEmissive: emissiveHex
   };
@@ -1025,83 +1090,91 @@ function createLegoObject(type, width, height, depth, colorHex, initPos, name, e
   return group;
 }
 
+// Retain legacy factory alias for compatibility
+const createLegoObject = createArchitecturalBlock;
+
 // -------------------------------------------------------------
-// SPAWN SUPPLY ON TABLE: CUBES, PRISMS, CUBOIDS, SPHERES
+// SPAWN FULL-SCALE ARCHITECTURAL STUDIO PIECES
 // -------------------------------------------------------------
-const TY = TABLE_TOP_Y;
+const FY = FLOOR_Y;
 
-// A. STARTER BUILDING ON CENTRAL MAT (Begins the little Lego house!)
-// 1. Foundation Cuboid (Red Terracotta)
-createLegoObject('cuboid', 0.44, 0.22, 0.22, 0xd97706, new THREE.Vector3(-0.22, TY + 0.11, 1.6), "Terracotta Foundation Beam", 0x78350f);
-// 2. Foundation Cuboid (Cobalt Blue)
-createLegoObject('cuboid', 0.44, 0.22, 0.22, 0x2563eb, new THREE.Vector3( 0.22, TY + 0.11, 1.6), "Cobalt Foundation Beam", 0x1e3a8a);
-// 3. Second Floor Wall Cube (Sun Yellow)
-createLegoObject('cube',   0.22, 0.22, 0.22, 0xfacc15, new THREE.Vector3(-0.22, TY + 0.33, 1.6), "Solar Wall Cube", 0x854d0e);
+// A. STARTER VILLA RESIDENCE ON CENTRAL PLOT (Pre-assembled starter structure)
+// 1. Foundation Slabs (1.0m x 0.12m x 1.0m each)
+createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0, 0x854d0e, new THREE.Vector3(-0.5, FY + 0.06, 1.4), "Nordic Oak Foundation Deck", 0x451a03);
+createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0, 0xe2e8f0, new THREE.Vector3( 0.5, FY + 0.06, 1.4), "Limestone Foundation Slab", 0x475569);
 
-// B. LEFT TRAY: CUBES & CUBOIDS (Wall bricks & foundation beams)
-// Cubes (1x1 unit: 0.22m x 0.22m x 0.22m)
-createLegoObject('cube', 0.22, 0.22, 0.22, 0xef4444, new THREE.Vector3(-1.30, TY + 0.11, 1.15), "Crimson Lego Cube", 0x991b1b);
-createLegoObject('cube', 0.22, 0.22, 0.22, 0x06b6d4, new THREE.Vector3(-1.05, TY + 0.11, 1.15), "Cyan Lego Cube", 0x155e75);
-createLegoObject('cube', 0.22, 0.22, 0.22, 0x10b981, new THREE.Vector3(-1.30, TY + 0.11, 1.45), "Emerald Lego Cube", 0x065f46);
-createLegoObject('cube', 0.22, 0.22, 0.22, 0xf8fafc, new THREE.Vector3(-1.05, TY + 0.11, 1.45), "Pure White Cube", 0x475569);
-createLegoObject('cube', 0.22, 0.22, 0.22, 0xa855f7, new THREE.Vector3(-1.30, TY + 0.11, 1.75), "Purple Lego Cube", 0x6b21a8);
+// 2. Back Solid Wall (1.0m x 0.9m x 0.16m)
+createArchitecturalBlock('wall', 1.0, 0.9, 0.16, 0x334155, new THREE.Vector3(-0.5, FY + 0.12 + 0.45, 0.9), "Slate Modern Back Wall", 0x0f172a);
 
-// Cuboids (2x1 unit: 0.44m x 0.22m x 0.22m)
-createLegoObject('cuboid', 0.44, 0.22, 0.22, 0x334155, new THREE.Vector3(-1.18, TY + 0.11, 2.05), "Slate Wall Beam", 0x0f172a);
-createLegoObject('cuboid', 0.44, 0.22, 0.22, 0xe2e8f0, new THREE.Vector3(-1.18, TY + 0.11, 2.35), "Limestone Beam", 0x475569);
-createLegoObject('cuboid', 0.44, 0.22, 0.22, 0x854d0e, new THREE.Vector3(-1.18, TY + 0.11, 0.85), "Timber Oak Beam", 0x451a03);
+// 3. Back Window Wall with Azure Glass (1.0m x 0.9m x 0.16m)
+createArchitecturalBlock('window_wall', 1.0, 0.9, 0.16, 0xf8fafc, new THREE.Vector3( 0.5, FY + 0.12 + 0.45, 0.9), "Panoramic Glass Window Wall", 0x64748b);
 
-// C. RIGHT TRAY: PRISMS & SPHERES (Roofs, gables, domes & ornaments)
-// Prisms (Triangular Gable Roofs)
-createLegoObject('prism', 0.44, 0.18, 0.22, 0xdc2626, new THREE.Vector3(1.18, TY + 0.09, 1.05), "Crimson Roof Gable", 0x7f1d1d);
-createLegoObject('prism', 0.44, 0.18, 0.22, 0x16a34a, new THREE.Vector3(1.18, TY + 0.09, 1.38), "Forest Roof Gable", 0x14532d);
-createLegoObject('prism', 0.22, 0.18, 0.22, 0xf97316, new THREE.Vector3(1.05, TY + 0.09, 1.70), "Amber Roof Peak", 0x9a3412);
-createLegoObject('prism', 0.22, 0.18, 0.22, 0x0284c7, new THREE.Vector3(1.30, TY + 0.09, 1.70), "Sky Blue Roof Peak", 0x075985);
+// 4. Structural Porch Columns (0.24m x 0.9m x 0.24m)
+createArchitecturalBlock('column', 0.24, 0.9, 0.24, 0xf8fafc, new THREE.Vector3(-0.9, FY + 0.12 + 0.45, 1.8), "White Marble Porch Column", 0x64748b);
+createArchitecturalBlock('column', 0.24, 0.9, 0.24, 0x1e293b, new THREE.Vector3( 0.9, FY + 0.12 + 0.45, 1.8), "Dark Granite Porch Column", 0x0284c7);
 
-// Spheres (Domes, lantern finials, spherical chimney tops: 0.18m diameter)
-createLegoObject('sphere', 0.18, 0.18, 0.18, 0xf59e0b, new THREE.Vector3(1.05, TY + 0.09, 2.05), "Gilded Gold Dome", 0xb45309);
-createLegoObject('sphere', 0.18, 0.18, 0.18, 0xf43f5e, new THREE.Vector3(1.30, TY + 0.09, 2.05), "Ruby Orb Finial", 0x9f1239);
-createLegoObject('sphere', 0.18, 0.18, 0.18, 0xc084fc, new THREE.Vector3(1.05, TY + 0.09, 2.35), "Amethyst Bauble", 0x7e22ce);
-createLegoObject('sphere', 0.18, 0.18, 0.18, 0x34d399, new THREE.Vector3(1.30, TY + 0.09, 2.35), "Jade Glass Sphere", 0x065f46);
+// 5. Upper Terrace Slab (1.0m x 0.12m x 1.0m) ready for second story!
+createArchitecturalBlock('roof_flat', 1.0, 0.12, 1.0, 0x475569, new THREE.Vector3(-0.5, FY + 0.12 + 0.90 + 0.06, 1.4), "Rooftop Terrace Slab", 0x1e293b);
 
-// Compatibility pedestals array (empty or pointing to table zones)
+// B. LEFT STAGING BAY: WALLS, WINDOWS & ARCHWAYS (x = -2.1 to -2.7)
+createArchitecturalBlock('wall',        1.0, 0.9, 0.16, 0xf8fafc, new THREE.Vector3(-2.35, FY + 0.45, 0.65), "Pure White Wall Module", 0x475569);
+createArchitecturalBlock('wall',        1.0, 0.9, 0.16, 0xc2410c, new THREE.Vector3(-2.35, FY + 0.45, 1.15), "Tuscan Terracotta Wall", 0x7c2d12);
+createArchitecturalBlock('window_wall', 1.0, 0.9, 0.16, 0x1e293b, new THREE.Vector3(-2.35, FY + 0.45, 1.65), "Charcoal Window Wall", 0x0f172a);
+createArchitecturalBlock('door_wall',   1.0, 0.9, 0.16, 0xd97706, new THREE.Vector3(-2.35, FY + 0.45, 2.15), "Sandstone Arch Doorway", 0x78350f);
+createArchitecturalBlock('half_wall',   0.5, 0.9, 0.16, 0x047857, new THREE.Vector3(-2.35, FY + 0.45, 2.65), "Emerald Half-Wall Spacer", 0x064e3b);
+
+// C. RIGHT STAGING BAY: STRUCTURAL COLUMNS & FLOOR SLABS (x = 2.1 to 2.7)
+createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0xf8fafc, new THREE.Vector3( 2.15, FY + 0.45, 0.70), "Carrara Marble Column", 0x475569);
+createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0x1d4ed8, new THREE.Vector3( 2.55, FY + 0.45, 0.70), "Blueprint Cobalt Column", 0x1e3a8a);
+createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0xb45309, new THREE.Vector3( 2.35, FY + 0.45, 1.20), "Timber Post Pillar", 0x451a03);
+createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0,  0x334155, new THREE.Vector3( 2.35, FY + 0.06, 1.80), "Anthracite Deck Slab", 0x0f172a);
+createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0,  0x94a3b8, new THREE.Vector3( 2.35, FY + 0.06, 2.40), "Polished Concrete Slab", 0x334155);
+
+// D. FRONT STAGING BAY: ROOFS, GABLES & ORNAMENTS (z = 2.75)
+createArchitecturalBlock('roof_gable', 1.0, 0.55, 1.0,  0xb91c1c, new THREE.Vector3(-1.05, FY + 0.28, 2.75), "Crimson Pitch Gable Roof", 0x7f1d1d);
+createArchitecturalBlock('roof_gable', 1.0, 0.55, 1.0,  0x0284c7, new THREE.Vector3( 0.00, FY + 0.28, 2.75), "Sapphire Villa Gable Roof", 0x075985);
+createArchitecturalBlock('roof_flat',  1.0, 0.12, 1.0,  0x047857, new THREE.Vector3( 1.05, FY + 0.06, 2.75), "Garden Green Rooftop Slab", 0x064e3b);
+createArchitecturalBlock('finial',     0.24, 0.24, 0.24, 0xf59e0b, new THREE.Vector3(-1.60, FY + 0.12, 2.75), "Gilded Dome Finial", 0xb45309);
+createArchitecturalBlock('finial',     0.24, 0.24, 0.24, 0x7e22ce, new THREE.Vector3( 1.60, FY + 0.12, 2.75), "Amethyst Orb Finial", 0x581c87);
+
+// Pedestals array for compatibility
 const pedestals = [];
 
 /* ============================================================
-   GHOST SNAP GUIDE (Real-time translucent snap preview)
+   REAL-TIME ARCHITECTURAL SNAP GUIDE (Translucent Metric Ghost Box)
    ============================================================ */
 const ghostGuideMat = new THREE.MeshBasicMaterial({
-  color: 0x38bdf8,
+  color: 0x2563eb,
   wireframe: true,
   transparent: true,
-  opacity: 0.65
+  opacity: 0.75
 });
 const ghostBoxGeo = new THREE.BoxGeometry(1, 1, 1);
 const ghostSnapGuide = new THREE.Mesh(ghostBoxGeo, ghostGuideMat);
 ghostSnapGuide.visible = false;
 scene.add(ghostSnapGuide);
 
-// Predicts the exact snap docking position for any held object
+// Predicts the exact architectural snap position for any held object
 function calculateSnapTarget(obj) {
   if (!obj || !obj.userData) return null;
-  const objHalfX = obj.userData?.halfX || 0.11;
-  const objHalfY = obj.userData?.halfY || 0.11;
-  const objHalfZ = obj.userData?.halfZ || 0.11;
+  const objHalfX = obj.userData?.halfX || 0.5;
+  const objHalfY = obj.userData?.halfY || 0.45;
+  const objHalfZ = obj.userData?.halfZ || 0.08;
 
-  // 1. Check stacking atop another object
+  // 1. Check stacking atop another architectural block
   let bestSupport = null;
   let highestSupportY = -Infinity;
   for (const other of pickables) {
     if (!other || other === obj || (other.userData && other.userData.held)) continue;
     const dx = Math.abs(obj.position.x - other.position.x);
     const dz = Math.abs(obj.position.z - other.position.z);
-    const otherHalfX = other.userData?.halfX || 0.11;
-    const otherHalfY = other.userData?.halfY || 0.11;
-    const otherHalfZ = other.userData?.halfZ || 0.11;
+    const otherHalfX = other.userData?.halfX || 0.5;
+    const otherHalfY = other.userData?.halfY || 0.45;
+    const otherHalfZ = other.userData?.halfZ || 0.08;
 
-    const overlapX = (objHalfX + otherHalfX) * 1.15;
-    const overlapZ = (objHalfZ + otherHalfZ) * 1.15;
-    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.45) {
+    const overlapX = (objHalfX + otherHalfX) * 1.08;
+    const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
+    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.75) {
       if (other.position.y > highestSupportY) {
         highestSupportY = other.position.y;
         bestSupport = other;
@@ -1110,14 +1183,13 @@ function calculateSnapTarget(obj) {
   }
 
   if (bestSupport) {
-    const bestHalfY = bestSupport.userData?.halfY || 0.11;
+    const bestHalfY = bestSupport.userData?.halfY || 0.45;
     let targetX = obj.position.x;
     let targetZ = obj.position.z;
     let targetRotY = obj.rotation.y;
     if (snapToLegoGrid) {
-      const halfStep = LEGO_GRID;
-      targetX = Math.round(targetX / halfStep) * halfStep;
-      targetZ = Math.round(targetZ / halfStep) * halfStep;
+      targetX = Math.round(targetX / ARCH_GRID) * ARCH_GRID;
+      targetZ = Math.round(targetZ / ARCH_GRID) * ARCH_GRID;
       targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
     }
     return {
@@ -1128,20 +1200,18 @@ function calculateSnapTarget(obj) {
     };
   }
 
-  // 2. Check workbench table surface
-  const onTableX = Math.abs(obj.position.x - TABLE_X) <= (TABLE_WIDTH / 2 + 0.1);
-  const onTableZ = Math.abs(obj.position.z - TABLE_Z) <= (TABLE_DEPTH / 2 + 0.1);
-  if (onTableX && onTableZ && Math.abs(obj.position.y - TABLE_TOP_Y) < 0.9) {
+  // 2. Check Studio Floor Foundation Placement
+  if (obj.position.y < FLOOR_Y + 1.2) {
     let targetX = obj.position.x;
     let targetZ = obj.position.z;
     let targetRotY = obj.rotation.y;
     if (snapToLegoGrid) {
-      targetX = Math.round((targetX - TABLE_X) / LEGO_GRID) * LEGO_GRID + TABLE_X;
-      targetZ = Math.round((targetZ - TABLE_Z) / LEGO_GRID) * LEGO_GRID + TABLE_Z;
+      targetX = Math.round(targetX / ARCH_GRID) * ARCH_GRID;
+      targetZ = Math.round(targetZ / ARCH_GRID) * ARCH_GRID;
       targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
     }
     return {
-      pos: new THREE.Vector3(targetX, TABLE_TOP_Y + objHalfY, targetZ),
+      pos: new THREE.Vector3(targetX, FLOOR_Y + objHalfY, targetZ),
       rotY: targetRotY,
       scale: new THREE.Vector3(objHalfX * 2, objHalfY * 2, objHalfZ * 2),
       isStack: false
@@ -1162,7 +1232,7 @@ function updateGhostGuide(heldObj) {
     ghostSnapGuide.rotation.y = snap.rotY;
     ghostSnapGuide.scale.copy(snap.scale).multiplyScalar(1.02);
     ghostSnapGuide.visible = true;
-    ghostGuideMat.color.setHex(snap.isStack ? 0x34d399 : 0x38bdf8); // Emerald for stacking, Cyan for table snap
+    ghostGuideMat.color.setHex(snap.isStack ? 0x10b981 : 0x2563eb); // Emerald for stacking, Cobalt for ground
   } else {
     ghostSnapGuide.visible = false;
   }
@@ -1315,9 +1385,9 @@ function updateHandSkeletonLocal(lm, vAspect, baseZ, outArray, screenOffsetX = 0
   const dy = (lm[0].y - lm[9].y);
   const span = Math.hypot(dx, dy) || 0.18;
 
-  // Hand root position in camera local space
-  const rootX = (0.5 - palmX) * REACH_SPAN_X + screenOffsetX;
-  const rootY = (0.5 - palmY) * REACH_SPAN_Y - REACH_OFFSET_Y;
+  // Hand root position in camera local space (scaled by reachMultiplier, default 2x distance)
+  const rootX = (0.5 - palmX) * (BASE_REACH_SPAN_X * reachMultiplier) + screenOffsetX;
+  const rootY = (0.5 - palmY) * (BASE_REACH_SPAN_Y * reachMultiplier) - REACH_OFFSET_Y;
   const rootZ = baseZ;
 
   // Real-life metric scaling
@@ -1352,10 +1422,15 @@ const FIVE_PINCH_WINDOW = 1800; // ms to chain 5 pinches (prevents accidental sw
 let lastPinchState = false;
 
 // DOM Elements
-const topBar = document.getElementById('topBar');
+const studioBox = document.getElementById('studioBox');
+const studioBoxHeader = document.getElementById('studioBoxHeader');
+const boxToggleIndicator = document.getElementById('boxToggleIndicator');
+const boxToggleText = document.getElementById('boxToggleText');
+const boxToggleIcon = document.getElementById('boxToggleIcon');
+const boxCollapseBtn = document.getElementById('boxCollapseBtn');
+const reachBadgeMini = document.getElementById('reachBadgeMini');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const modeControl = document.getElementById('modeControl');
 const modeLabel = document.getElementById('modeLabel');
 const modeIcon = document.getElementById('modeIcon');
 const modeText = document.getElementById('modeText');
@@ -1371,15 +1446,71 @@ const bannerText = document.getElementById('bannerText');
 const walkSteerOverlay = document.getElementById('walkSteerOverlay');
 const steerPuck = document.getElementById('steerPuck');
 const steerLabel = document.getElementById('steerLabel');
-const hud = document.getElementById('hud');
 const hudContent = document.getElementById('hudContent');
-const actionButtons = document.getElementById('actionButtons');
 const resetObjectsBtn = document.getElementById('resetObjectsBtn');
 const audioToggleBtn = document.getElementById('audioToggleBtn');
 const depthToggleBtn = document.getElementById('depthToggleBtn');
-const viewTableBtn = document.getElementById('viewTableBtn');
+const viewWalkBtn = document.getElementById('viewWalkBtn') || document.getElementById('viewTableBtn');
+const viewTableBtn = viewWalkBtn;
+const overviewBtn = document.getElementById('overviewBtn');
 const zenBtn = document.getElementById('zenBtn');
-const hudToggleBtn = document.getElementById('hudToggleBtn');
+const reachToggleBtn = document.getElementById('reachToggleBtn');
+const snapToggleBtn = document.getElementById('snapToggleBtn');
+const blueprintBtn = document.getElementById('blueprintBtn');
+const camToggleBtn = document.getElementById('camToggleBtn');
+
+// Studio Control Hub Minimize / Maximize state
+function toggleStudioBox(forceState) {
+  if (!studioBox) return;
+  initAudio();
+  const shouldMinimize = (typeof forceState === 'boolean') ? forceState : !studioBox.classList.contains('minimized');
+  studioBox.classList.toggle('minimized', shouldMinimize);
+  if (boxToggleIcon) boxToggleIcon.textContent = shouldMinimize ? '▾' : '▴';
+  if (boxToggleText) boxToggleText.textContent = shouldMinimize ? 'Controls' : 'Close';
+  playTone(shouldMinimize ? 420 : 640, 0.08, 'sine', 0.12);
+}
+
+if (studioBoxHeader) {
+  studioBoxHeader.addEventListener('click', () => toggleStudioBox());
+}
+if (boxCollapseBtn) {
+  boxCollapseBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleStudioBox(true);
+  });
+}
+
+// Reach Multiplier Presets (default is 2.0x double distance as requested)
+const REACH_PRESETS = [
+  { mult: 2.0, label: '2.0x (Double Distance)' },
+  { mult: 2.5, label: '2.5x (High Reach)' },
+  { mult: 3.0, label: '3.0x (Triple Distance)' },
+  { mult: 1.0, label: '1.0x (1:1 Movement)' },
+  { mult: 1.5, label: '1.5x (1.5x Reach)' },
+];
+let currentReachPresetIdx = 0; // starts at 2.0x
+
+function updateReachMultiplierUI() {
+  const preset = REACH_PRESETS[currentReachPresetIdx];
+  reachMultiplier = preset.mult;
+  const btnText = `⚡ Reach: ${reachMultiplier.toFixed(1)}x${reachMultiplier === 2.0 ? ' (Double)' : ''}`;
+  if (reachToggleBtn) {
+    reachToggleBtn.textContent = btnText;
+    reachToggleBtn.classList.toggle('active', reachMultiplier !== 1.0);
+  }
+  if (reachBadgeMini) {
+    reachBadgeMini.textContent = `⚡ ${reachMultiplier.toFixed(1)}x`;
+  }
+}
+
+function cycleReachMultiplier() {
+  initAudio();
+  currentReachPresetIdx = (currentReachPresetIdx + 1) % REACH_PRESETS.length;
+  updateReachMultiplierUI();
+  const preset = REACH_PRESETS[currentReachPresetIdx];
+  showBanner(`HAND REACH: ${preset.label.toUpperCase()}`, '⚡', 'pick');
+  playTone(520 + reachMultiplier * 90, 0.12, 'triangle', 0.16);
+}
 
 function updatePinchDotsUI() {
   if (dot1) dot1.classList.toggle('active', pinchCount >= 1);
@@ -1401,70 +1532,89 @@ function showBanner(title, icon, modeClass) {
 
 function updateHUDForMode() {
   if (currentMode === 'PICK') {
-    modeLabel.className = 'mode-badge-pick';
+    modeLabel.className = 'box-mode-pill pick';
     modeIcon.textContent = '🖐️';
     modeText.textContent = 'DUAL BUILDER';
+    if (modeToggleBtn) modeToggleBtn.classList.add('active');
+    if (viewWalkBtn) viewWalkBtn.classList.remove('active');
     walkSteerOverlay.classList.remove('active');
 
-    hudContent.innerHTML = `
-      <span class="hud-badge pick">DUAL-HAND MODE</span>
-      <b>Simultaneous Dual-Hand Lego Workshop:</b><br/>
-      • <b>🖐️ Both Hands:</b> Left and Right hands can both pick, grab, hold, and stack blocks simultaneously!<br/>
-      • <b>🪑 Table View vs Room:</b> Click "Table View" for a fixed wide-angle view of the whole table, or "Room Roam" to explore.<br/>
-      • <b>🧩 Lego Stacking:</b> Release blocks over each other to snap them flush on the Lego grid.<br/>
-      • <b>⛶ Fullscreen / Zen:</b> Press <kbd style="background:rgba(255,255,255,0.2); padding:1px 5px; border-radius:4px;">F</kbd> or click Fullscreen to hide all instructions.<br/>
-      • <b>5-Pinch Mode Switch:</b> Pinch 5 times rapidly in empty air (or press Space) to switch mode.
-    `;
+    if (hudContent) {
+      hudContent.innerHTML = `
+        <b id="hudTitle">🏛️ 3D Architectural Studio (In-Situ):</b><br/>
+        • <b>🖐️ Dual Hands:</b> Both hands pick, place, and stack walls, windows, columns &amp; roofs right where you stand.<br/>
+        • <b>🚶 Walk &amp; Explore:</b> Tap "Room Walk" (or press Space) to walk anywhere around your building.<br/>
+        • <b>🕹️ Walk / Look:</b> Use <kbd style="background:#e2e8f0; padding:1px 5px; border-radius:3px;">WASD</kbd> keys to step and drag empty space to look around anytime.<br/>
+        • <b>⚡ 2x Double Reach:</b> Hand moves double distance for effortless reach across rooms.<br/>
+        • <b>📐 Architectural Snap:</b> Release walls and columns near each other to snap flush on the 25cm grid.
+      `;
+    }
   } else {
-    modeLabel.className = 'mode-badge-walk';
+    modeLabel.className = 'box-mode-pill walk';
     modeIcon.textContent = '🚶';
-    modeText.textContent = 'ROOM ROAM';
+    modeText.textContent = 'ROOM WALK';
+    if (modeToggleBtn) modeToggleBtn.classList.remove('active');
+    if (viewWalkBtn) viewWalkBtn.classList.add('active');
     walkSteerOverlay.classList.add('active');
 
-    hudContent.innerHTML = `
-      <span class="hud-badge walk">ROOM ROAM</span>
-      <b>Workshop Roaming &amp; Free Movement:</b><br/>
-      • Move hand <b>Up/Forward</b> to walk forward, <b>Down</b> for reverse.<br/>
-      • Move hand <b>Left / Right</b> to turn 360°.<br/>
-      • <b>Pinch 5 times</b> rapidly in air (or press Space) to return to <b>Dual Builder</b>.<br/>
-      • <i>Tip: Click "Table View" (or press T) to return to the fixed wide-angle table view.</i>
-    `;
+    if (hudContent) {
+      hudContent.innerHTML = `
+        <b id="hudTitle">🚶 Room Roam &amp; Walking Mode:</b><br/>
+        • Move hand <b>Up/Forward</b> to walk forward, <b>Down</b> for reverse.<br/>
+        • Move hand <b>Left / Right</b> to turn 360° smoothly.<br/>
+        • <b>Keyboard / Mouse:</b> Use <kbd style="background:#e2e8f0; padding:1px 5px; border-radius:3px;">WASD</kbd> or drag the mouse to steer and look around.<br/>
+        • <b>Build Anywhere:</b> Tap "Dual Builder" or press Space to build right from where you are standing!
+      `;
+    }
   }
 }
 
-function toggleMode() {
+function toggleMode(targetMode) {
   releaseAllHeld();
   initAudio();
-  currentMode = (currentMode === 'PICK') ? 'WALK' : 'PICK';
+  if (targetMode) {
+    currentMode = targetMode;
+  } else {
+    currentMode = (currentMode === 'PICK') ? 'WALK' : 'PICK';
+  }
+  // Camera stays in-situ at the user's standing position!
+  viewMode = 'IN_SITU';
+  if (overviewBtn) {
+    overviewBtn.textContent = '🏛️ Overview Cam';
+    overviewBtn.classList.remove('active');
+  }
   playModeFanfare(currentMode === 'WALK');
   showBanner(
-    currentMode === 'WALK' ? 'ROOM ROAM ACTIVE' : 'DUAL BUILDER: BOTH HANDS ACTIVE',
+    currentMode === 'WALK' ? 'ROOM WALK ACTIVE (WASD OR HAND)' : 'DUAL BUILDER: ACTIVE AT YOUR POSITION',
     currentMode === 'WALK' ? '🚶' : '🖐️',
     currentMode === 'WALK' ? 'walk' : 'pick'
   );
   updateHUDForMode();
 }
 
-function toggleTableView() {
+function toggleOverviewView() {
   initAudio();
-  viewMode = (viewMode === 'TABLE' ? 'ROOM' : 'TABLE');
-  if (viewTableBtn) {
-    viewTableBtn.textContent = (viewMode === 'TABLE' ? '🪑 Table View (Wide)' : '🚶 Room Roam');
-    viewTableBtn.classList.toggle('active', viewMode === 'TABLE');
-  }
-  if (viewMode === 'TABLE') {
-    currentMode = 'PICK';
-    camera.fov = 68;
-    camera.updateProjectionMatrix();
-    showBanner('WIDE TABLE VIEW (FIXED)', '🪑', 'pick');
-    playTone(680, 0.12, 'triangle', 0.15);
+  if (viewMode === 'OVERVIEW') {
+    viewMode = 'IN_SITU';
+    if (overviewBtn) {
+      overviewBtn.textContent = '🏛️ Overview Cam';
+      overviewBtn.classList.remove('active');
+    }
+    showBanner('RETURNED TO FIRST-PERSON POSITION', '👁️', 'pick');
+    playTone(580, 0.1, 'sine', 0.14);
   } else {
-    camera.fov = 54;
-    camera.updateProjectionMatrix();
-    showBanner('ROOM ROAM VIEW', '🚶', 'walk');
-    playTone(520, 0.12, 'triangle', 0.15);
+    viewMode = 'OVERVIEW';
+    if (overviewBtn) {
+      overviewBtn.textContent = '🏛️ In-Person Cam';
+      overviewBtn.classList.add('active');
+    }
+    showBanner('STUDIO OVERVIEW (HIGH-ANGLE)', '🏛️', 'pick');
+    playTone(720, 0.12, 'sine', 0.14);
   }
-  updateHUDForMode();
+}
+
+function toggleTableView() {
+  toggleOverviewView();
 }
 
 function toggleZenMode() {
@@ -1487,50 +1637,80 @@ function toggleZenMode() {
   }
 }
 
-function toggleHUD() {
-  hud.classList.toggle('minimized');
-  if (hudToggleBtn) {
-    hudToggleBtn.classList.toggle('active', !hud.classList.contains('minimized'));
-  }
-}
-
-if (modeToggleBtn) modeToggleBtn.addEventListener('click', toggleMode);
-if (viewTableBtn) viewTableBtn.addEventListener('click', toggleTableView);
+if (modeToggleBtn) modeToggleBtn.addEventListener('click', () => toggleMode('PICK'));
+if (viewWalkBtn) viewWalkBtn.addEventListener('click', () => toggleMode('WALK'));
+if (overviewBtn) overviewBtn.addEventListener('click', toggleOverviewView);
 if (zenBtn) zenBtn.addEventListener('click', toggleZenMode);
-if (hudToggleBtn) hudToggleBtn.addEventListener('click', toggleHUD);
+if (reachToggleBtn) reachToggleBtn.addEventListener('click', cycleReachMultiplier);
 
-// Lego Grid Snap toggle button
-const snapToggleBtn = document.getElementById('snapToggleBtn');
+// Studio Snap toggle button
 if (snapToggleBtn) {
   snapToggleBtn.addEventListener('click', () => {
     initAudio();
     snapToLegoGrid = !snapToLegoGrid;
-    snapToggleBtn.textContent = snapToLegoGrid ? '🧩 Lego Snap: ON' : '🧩 Lego Snap: OFF';
+    snapToggleBtn.textContent = snapToLegoGrid ? '📐 Studio Snap: ON' : '📐 Studio Snap: OFF';
+    snapToggleBtn.classList.toggle('active', snapToLegoGrid);
     showBanner(
-      snapToLegoGrid ? 'LEGO SNAP &amp; ALIGN: ON' : 'LEGO SNAP: OFF (FREEFORM)',
-      '🧩',
+      snapToLegoGrid ? 'ARCHITECTURAL SNAP: 25CM GRID' : 'SNAP: OFF (FREEFORM)',
+      '📐',
       'pick'
     );
     playTone(snapToLegoGrid ? 780 : 420, 0.1, 'sine', 0.15);
   });
 }
 
-// Keyboard controls (Space toggles mode, T toggles table view, F toggles zen, R resets)
+// Starter Villa Assembly button
+if (blueprintBtn) {
+  blueprintBtn.addEventListener('click', () => {
+    initAudio();
+    releaseAllHeld();
+    pickables.forEach((obj) => {
+      if (obj && obj.userData && obj.userData.initPos) {
+        obj.position.copy(obj.userData.initPos);
+        if (obj.userData.velocity) obj.userData.velocity.set(0, 0, 0);
+        obj.rotation.set(0, 0, 0);
+        obj.userData.held = false;
+      }
+    });
+    playModeFanfare(false);
+    showBanner("STARTER VILLA ASSEMBLED ON PLOT", "🏠", "pick");
+  });
+}
+
+// Webcam viewer toggle button
+let camViewerVisible = true;
+if (camToggleBtn) {
+  camToggleBtn.addEventListener('click', () => {
+    initAudio();
+    camViewerVisible = !camViewerVisible;
+    if (camWrap) camWrap.style.display = camViewerVisible ? 'block' : 'none';
+    camToggleBtn.textContent = camViewerVisible ? '📹 Webcam: ON' : '📹 Webcam: OFF';
+    camToggleBtn.classList.toggle('active', camViewerVisible);
+    showBanner(camViewerVisible ? 'WEBCAM VIEWER SHOWN' : 'WEBCAM VIEWER HIDDEN', '📹', 'pick');
+  });
+}
+
+// Keyboard controls (Space toggles mode, T toggles table view, M cycles reach multiplier, F toggles zen, H toggles box, R resets)
 const keys = {};
 window.addEventListener('keydown', (e) => {
   keys[e.code] = true;
   if (e.code === 'Space') {
     e.preventDefault();
     toggleMode();
-  } else if (e.code === 'KeyT') {
+  } else if (e.code === 'KeyM') {
     e.preventDefault();
-    toggleTableView();
+    cycleReachMultiplier();
+  } else if (e.code === 'KeyT' || e.code === 'KeyO') {
+    e.preventDefault();
+    toggleOverviewView();
   } else if (e.code === 'KeyF') {
     e.preventDefault();
     toggleZenMode();
   } else if (e.code === 'KeyH') {
     e.preventDefault();
-    toggleHUD();
+    toggleStudioBox();
+  } else if (e.code === 'Escape') {
+    toggleStudioBox(true);
   } else if (e.code === 'KeyR') {
     resetWorldObjects();
   }
@@ -1591,27 +1771,20 @@ function updatePhysics(dt) {
     v.y -= GRAVITY * dt;
     obj.position.addScaledVector(v, dt);
 
-    // 1. Room Floor collision
-    const halfY = obj.userData.halfY || 0.11;
+    // 1. Studio Floor collision
+    const halfY = obj.userData.halfY || 0.45;
     let effectiveFloor = FLOOR_Y + halfY;
 
-    // 2. Workbench Table Surface collision
-    const onTableX = Math.abs(obj.position.x - TABLE_X) <= (TABLE_WIDTH / 2 + 0.05);
-    const onTableZ = Math.abs(obj.position.z - TABLE_Z) <= (TABLE_DEPTH / 2 + 0.05);
-    if (onTableX && onTableZ) {
-      effectiveFloor = Math.max(effectiveFloor, TABLE_TOP_Y + halfY);
-    }
-
-    // 3. Lego Block Stacking collisions (support from blocks resting underneath)
+    // 2. Architectural Block Stacking collisions (support from structures resting underneath)
     for (const other of pickables) {
       if (!other || other === obj || (other.userData && other.userData.held)) continue;
       const dx = Math.abs(obj.position.x - other.position.x);
       const dz = Math.abs(obj.position.z - other.position.z);
-      const otherHalfX = other.userData?.halfX || 0.11;
-      const otherHalfY = other.userData?.halfY || 0.11;
-      const otherHalfZ = other.userData?.halfZ || 0.11;
-      const overlapX = ((obj.userData.halfX || 0.11) + otherHalfX) * 0.95;
-      const overlapZ = ((obj.userData.halfZ || 0.11) + otherHalfZ) * 0.95;
+      const otherHalfX = other.userData?.halfX || 0.5;
+      const otherHalfY = other.userData?.halfY || 0.45;
+      const otherHalfZ = other.userData?.halfZ || 0.08;
+      const overlapX = ((obj.userData.halfX || 0.5) + otherHalfX) * 0.95;
+      const overlapZ = ((obj.userData.halfZ || 0.08) + otherHalfZ) * 0.95;
       if (dx < overlapX && dz < overlapZ && obj.position.y >= other.position.y) {
         effectiveFloor = Math.max(effectiveFloor, other.position.y + otherHalfY + halfY);
       }
@@ -1625,10 +1798,10 @@ function updatePhysics(dt) {
       } else {
         v.y = 0;
       }
-      v.x *= 0.78;
-      v.z *= 0.78;
+      v.x *= 0.75;
+      v.z *= 0.75;
 
-      // Physics sleep threshold: eliminates microscopic jitter in resting or stacked objects
+      // Physics sleep threshold: eliminates microscopic jitter in resting or stacked architectural elements
       if (Math.abs(v.y) < 0.05) v.y = 0;
       if (Math.abs(v.x) < 0.02) v.x = 0;
       if (Math.abs(v.z) < 0.02) v.z = 0;
@@ -1656,23 +1829,23 @@ function releaseHeld(grab) {
 
   let snapped = false;
 
-  // 1. Check for Lego block stacking (releasing directly over another block)
+  // 1. Check for Architectural Block Stacking (releasing directly atop foundation, wall, column, or slab)
   let bestSupport = null;
   let highestSupportY = -Infinity;
   for (const other of pickables) {
     if (!other || other === obj || (other.userData && other.userData.held)) continue;
     const dx = Math.abs(obj.position.x - other.position.x);
     const dz = Math.abs(obj.position.z - other.position.z);
-    const objHalfX = obj.userData?.halfX || 0.11;
-    const objHalfY = obj.userData?.halfY || 0.11;
-    const objHalfZ = obj.userData?.halfZ || 0.11;
-    const otherHalfX = other.userData?.halfX || 0.11;
-    const otherHalfY = other.userData?.halfY || 0.11;
-    const otherHalfZ = other.userData?.halfZ || 0.11;
+    const objHalfX = obj.userData?.halfX || 0.5;
+    const objHalfY = obj.userData?.halfY || 0.45;
+    const objHalfZ = obj.userData?.halfZ || 0.08;
+    const otherHalfX = other.userData?.halfX || 0.5;
+    const otherHalfY = other.userData?.halfY || 0.45;
+    const otherHalfZ = other.userData?.halfZ || 0.08;
 
-    const overlapX = (objHalfX + otherHalfX) * 1.15;
-    const overlapZ = (objHalfZ + otherHalfZ) * 1.15;
-    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.45) {
+    const overlapX = (objHalfX + otherHalfX) * 1.08;
+    const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
+    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.75) {
       if (other.position.y > highestSupportY) {
         highestSupportY = other.position.y;
         bestSupport = other;
@@ -1681,14 +1854,13 @@ function releaseHeld(grab) {
   }
 
   if (bestSupport) {
-    // Snap flush on top of the supporting block
-    const bestHalfY = bestSupport.userData?.halfY || 0.11;
-    const objHalfY = obj.userData?.halfY || 0.11;
+    // Snap flush atop supporting architectural element
+    const bestHalfY = bestSupport.userData?.halfY || 0.45;
+    const objHalfY = obj.userData?.halfY || 0.45;
     obj.position.y = bestSupport.position.y + bestHalfY + objHalfY;
     if (snapToLegoGrid) {
-      const halfStep = LEGO_GRID;
-      obj.position.x = Math.round(obj.position.x / halfStep) * halfStep;
-      obj.position.z = Math.round(obj.position.z / halfStep) * halfStep;
+      obj.position.x = Math.round(obj.position.x / ARCH_GRID) * ARCH_GRID;
+      obj.position.z = Math.round(obj.position.z / ARCH_GRID) * ARCH_GRID;
       obj.rotation.y = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
     }
     if (obj.userData && obj.userData.velocity) {
@@ -1696,24 +1868,20 @@ function releaseHeld(grab) {
     }
     playLegoSnapSound();
     snapped = true;
-  } else {
-    // 2. Check if releasing over the Workbench Table
-    const onTableX = Math.abs(obj.position.x - TABLE_X) <= (TABLE_WIDTH / 2 + 0.1);
-    const onTableZ = Math.abs(obj.position.z - TABLE_Z) <= (TABLE_DEPTH / 2 + 0.1);
-    if (onTableX && onTableZ && Math.abs(obj.position.y - TABLE_TOP_Y) < 0.9) {
-      const objHalfY = obj.userData?.halfY || 0.11;
-      obj.position.y = TABLE_TOP_Y + objHalfY;
-      if (snapToLegoGrid) {
-        obj.position.x = Math.round((obj.position.x - TABLE_X) / LEGO_GRID) * LEGO_GRID + TABLE_X;
-        obj.position.z = Math.round((obj.position.z - TABLE_Z) / LEGO_GRID) * LEGO_GRID + TABLE_Z;
-        obj.rotation.y = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-      }
-      if (obj.userData && obj.userData.velocity) {
-        obj.userData.velocity.set(0, 0, 0);
-      }
-      playLegoSnapSound();
-      snapped = true;
+  } else if (obj.position.y < FLOOR_Y + 1.2) {
+    // 2. Snap to Studio Foundation Ground Grid
+    const objHalfY = obj.userData?.halfY || 0.45;
+    obj.position.y = FLOOR_Y + objHalfY;
+    if (snapToLegoGrid) {
+      obj.position.x = Math.round(obj.position.x / ARCH_GRID) * ARCH_GRID;
+      obj.position.z = Math.round(obj.position.z / ARCH_GRID) * ARCH_GRID;
+      obj.rotation.y = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
     }
+    if (obj.userData && obj.userData.velocity) {
+      obj.userData.velocity.set(0, 0, 0);
+    }
+    playLegoSnapSound();
+    snapped = true;
   }
 
   if (!snapped && obj.userData && obj.userData.velocity) {
@@ -1752,7 +1920,7 @@ function resetWorldObjects() {
     }
   });
   playModeFanfare(false);
-  showBanner("WORKBENCH & LEGO ASSETS RESET", "↺", "pick");
+  showBanner("STUDIO & ARCHITECTURAL PIECES RESET", "↺", "pick");
 }
 
 resetObjectsBtn.addEventListener('click', resetWorldObjects);
@@ -1903,7 +2071,9 @@ function buildHandInfo(lm, handednessType, index) {
 
   const targetNearZ = depthPushOnApproach ? DEPTH_PULLED_Z : DEPTH_PUSHED_Z;
   const targetFarZ  = depthPushOnApproach ? DEPTH_PUSHED_Z : DEPTH_PULLED_Z;
-  const rawBaseZ = clamp(mapRange(span, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.2, -0.9);
+  // Amplify depth motion relative to neutral resting hand position by reachMultiplier (2x distance)
+  const amplifiedSpan = NEUTRAL_SPAN + (span - NEUTRAL_SPAN) * reachMultiplier;
+  const rawBaseZ = clamp(mapRange(amplifiedSpan, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.4, -0.6);
 
   let baseZ;
   if (isLeft) {
@@ -2126,8 +2296,8 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     const target = new THREE.Vector3().addVectors(midWorld, grab.heldOffsetWorld);
     grab.heldObject.position.lerp(target, FOLLOW_LERP);
 
-    const halfY = grab.heldObject.userData?.halfY || 0.11;
-    const minFloor = TABLE_TOP_Y + halfY;
+    const halfY = grab.heldObject.userData?.halfY || 0.45;
+    const minFloor = FLOOR_Y + halfY;
     if (grab.heldObject.position.y < minFloor) {
       grab.heldObject.position.y = minFloor;
     }
@@ -2142,9 +2312,41 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
   grab.havePrevPinchMid = true;
 }
 
+function updatePickModeKeyboard(dt) {
+  let moveForward = 0;
+  let turnAmount = 0;
+  if (keys['KeyW'] || keys['ArrowUp']) moveForward = Math.max(moveForward, 3.4);
+  if (keys['KeyS'] || keys['ArrowDown']) moveForward = Math.min(moveForward, -2.4);
+  if (keys['KeyA'] || keys['ArrowLeft']) turnAmount = Math.max(turnAmount, 1.8);
+  if (keys['KeyD'] || keys['ArrowRight']) turnAmount = Math.min(turnAmount, -1.8);
+
+  if (moveForward !== 0 || turnAmount !== 0) {
+    if (viewMode === 'OVERVIEW') {
+      viewMode = 'IN_SITU';
+      if (overviewBtn) {
+        overviewBtn.textContent = '🏛️ Overview Cam';
+        overviewBtn.classList.remove('active');
+      }
+    }
+    player.yaw += turnAmount * dt;
+    const forwardDir = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    player.pos.addScaledVector(forwardDir, moveForward * dt);
+
+    const distFromCenter = Math.hypot(player.pos.x, player.pos.z);
+    if (distFromCenter > WORLD_RADIUS - 1.5) {
+      const angle = Math.atan2(player.pos.z, player.pos.x);
+      player.pos.x = Math.cos(angle) * (WORLD_RADIUS - 1.5);
+      player.pos.z = Math.sin(angle) * (WORLD_RADIUS - 1.5);
+    }
+  }
+}
+
 function updatePickMode(hands, dt) {
   const leftHand = hands?.left;
   const rightHand = hands?.right;
+
+  // Allow stepping and turning with WASD/Arrows in Dual Builder mode
+  updatePickModeKeyboard(dt);
 
   // Update Left Hand grabbing
   updateSingleHandGrab(leftHand, leftGrab, rightGrab, leftReticle, dt);
@@ -2243,10 +2445,10 @@ function updateWalkMode(hand, dt) {
     steerPuck.style.transform = `translate(${puckX}px, ${puckY}px)`;
 
     if (py < 0.5 - deadY) {
-      moveForward = mapRange(0.5 - deadY - py, 0, 0.35, 0.4, 3.8);
+      moveForward = mapRange(0.5 - deadY - py, 0, 0.35, 0.5, 3.8);
       steerLabel.textContent = "Walking Forward";
     } else if (py > 0.5 + deadY) {
-      moveForward = -mapRange(py - (0.5 + deadY), 0, 0.35, 0.3, 2.5);
+      moveForward = -mapRange(py - (0.5 + deadY), 0, 0.35, 0.4, 2.5);
       steerLabel.textContent = "Walking Backward";
     } else {
       steerLabel.textContent = "Neutral / Stopped";
@@ -2261,7 +2463,12 @@ function updateWalkMode(hand, dt) {
     }
 
     statusDot.className = 'walk';
-    statusText.textContent = 'Steering Room Roam';
+    statusText.textContent = 'Steering Room Walk';
+  } else {
+    steerPuck.style.transform = 'translate(0px, 0px)';
+    steerLabel.textContent = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) ? "Walking (WASD Keys)" : "Neutral / Use Hand or WASD";
+    statusDot.className = 'walk';
+    statusText.textContent = 'Room Walk: Use Hand or WASD Keys';
   }
 
   // Complementary Keyboard
@@ -2269,6 +2476,16 @@ function updateWalkMode(hand, dt) {
   if (keys['KeyS'] || keys['ArrowDown']) moveForward = Math.min(moveForward, -2.5);
   if (keys['KeyA'] || keys['ArrowLeft']) turnAmount = Math.max(turnAmount, 1.8);
   if (keys['KeyD'] || keys['ArrowRight']) turnAmount = Math.min(turnAmount, -1.8);
+
+  if (moveForward !== 0 || turnAmount !== 0) {
+    if (viewMode === 'OVERVIEW') {
+      viewMode = 'IN_SITU';
+      if (overviewBtn) {
+        overviewBtn.textContent = '🏛️ Overview Cam';
+        overviewBtn.classList.remove('active');
+      }
+    }
+  }
 
   player.yaw += turnAmount * dt;
   const forwardDir = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
@@ -2359,10 +2576,8 @@ async function attemptStart() {
   }
 
   startOverlay.style.display = 'none';
-  topBar.classList.add('show');
-  hud.classList.add('show');
-  camWrap.classList.add('show');
-  actionButtons.classList.add('show');
+  if (studioBox) studioBox.classList.add('show');
+  if (camWrap) camWrap.classList.add('show');
   running = true;
   updateHUDForMode();
 }
@@ -2373,9 +2588,8 @@ if (mouseModeBtn) {
   mouseModeBtn.addEventListener('click', () => {
     initAudio();
     startOverlay.style.display = 'none';
-    topBar.classList.add('show');
-    hud.classList.add('show');
-    actionButtons.classList.add('show');
+    if (studioBox) studioBox.classList.add('show');
+    if (camWrap) camWrap.classList.add('show');
     running = true;
     updateHUDForMode();
     showBanner('KEYBOARD & MOUSE MODE ACTIVE', '🖱️', 'pick');
@@ -2398,7 +2612,7 @@ const mouseVel = new THREE.Vector3();
 
 window.addEventListener('pointerdown', (e) => {
   if (!running) return;
-  if (e.target.closest('#topBar, #hud, #actionButtons, #camWrap, #startOverlay, button')) return;
+  if (e.target.closest('#studioBox, #camWrap, #startOverlay, button')) return;
 
   mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -2425,12 +2639,10 @@ window.addEventListener('pointerdown', (e) => {
     }
   }
 
-  // Empty space click -> only orbit if in ROOM mode
-  if (viewMode === 'ROOM') {
-    isOrbitDragging = true;
-    prevPointerX = e.clientX;
-    prevPointerY = e.clientY;
-  }
+  // Empty space click -> allow looking around in first-person (both WALK & PICK) or orbiting in OVERVIEW
+  isOrbitDragging = true;
+  prevPointerX = e.clientX;
+  prevPointerY = e.clientY;
 });
 
 window.addEventListener('pointermove', (e) => {
@@ -2439,21 +2651,26 @@ window.addEventListener('pointermove', (e) => {
     mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouseVec, camera);
     if (raycaster.ray.intersectPlane(mouseDragPlane, mousePlaneHit)) {
-      const halfY = mouseDragObj.userData.halfY || 0.11;
-      mousePlaneHit.y = Math.max(TABLE_TOP_Y + halfY, mousePlaneHit.y);
+      const halfY = mouseDragObj.userData.halfY || 0.45;
+      mousePlaneHit.y = Math.max(FLOOR_Y + halfY, mousePlaneHit.y);
       mouseDragObj.position.lerp(mousePlaneHit, 0.75);
       mouseVel.subVectors(mouseDragObj.position, prevMousePos).multiplyScalar(28);
       prevMousePos.copy(mouseDragObj.position);
       updateGhostGuide(mouseDragObj);
     }
-  } else if (isOrbitDragging && viewMode === 'ROOM') {
+  } else if (isOrbitDragging) {
     const dx = e.clientX - prevPointerX;
     const dy = e.clientY - prevPointerY;
     prevPointerX = e.clientX;
     prevPointerY = e.clientY;
 
-    cameraRig.orbitAngle -= dx * 0.006;
-    cameraRig.cameraHeight = clamp(cameraRig.cameraHeight + dy * 0.003, 0.25, 1.4);
+    if (viewMode === 'OVERVIEW') {
+      cameraRig.orbitAngle -= dx * 0.006;
+      cameraRig.cameraHeight = clamp(cameraRig.cameraHeight + dy * 0.003, 0.25, 2.5);
+    } else {
+      player.yaw -= dx * 0.005;
+      player.pitch = clamp((player.pitch || -0.16) - dy * 0.004, -1.1, 0.85);
+    }
   }
 });
 
@@ -2467,22 +2684,22 @@ window.addEventListener('pointerup', () => {
 
     let snapped = false;
 
-    // 1. Check Lego Block Stacking
+    // 1. Check Architectural Block Stacking
     let bestSupport = null;
     let highestSupportY = -Infinity;
     for (const other of pickables) {
       if (!other || other === mouseDragObj || (other.userData && other.userData.held)) continue;
       const dx = Math.abs(mouseDragObj.position.x - other.position.x);
       const dz = Math.abs(mouseDragObj.position.z - other.position.z);
-      const objHalfX = mouseDragObj.userData?.halfX || 0.11;
-      const objHalfY = mouseDragObj.userData?.halfY || 0.11;
-      const objHalfZ = mouseDragObj.userData?.halfZ || 0.11;
-      const otherHalfX = other.userData?.halfX || 0.11;
-      const otherHalfY = other.userData?.halfY || 0.11;
-      const otherHalfZ = other.userData?.halfZ || 0.11;
-      const overlapX = (objHalfX + otherHalfX) * 1.15;
-      const overlapZ = (objHalfZ + otherHalfZ) * 1.15;
-      if (dx < overlapX && dz < overlapZ && other.position.y < mouseDragObj.position.y + 0.45) {
+      const objHalfX = mouseDragObj.userData?.halfX || 0.5;
+      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
+      const objHalfZ = mouseDragObj.userData?.halfZ || 0.08;
+      const otherHalfX = other.userData?.halfX || 0.5;
+      const otherHalfY = other.userData?.halfY || 0.45;
+      const otherHalfZ = other.userData?.halfZ || 0.08;
+      const overlapX = (objHalfX + otherHalfX) * 1.08;
+      const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
+      if (dx < overlapX && dz < overlapZ && other.position.y < mouseDragObj.position.y + 0.75) {
         if (other.position.y > highestSupportY) {
           highestSupportY = other.position.y;
           bestSupport = other;
@@ -2491,13 +2708,12 @@ window.addEventListener('pointerup', () => {
     }
 
     if (bestSupport) {
-      const bestHalfY = bestSupport.userData?.halfY || 0.11;
-      const objHalfY = mouseDragObj.userData?.halfY || 0.11;
+      const bestHalfY = bestSupport.userData?.halfY || 0.45;
+      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
       mouseDragObj.position.y = bestSupport.position.y + bestHalfY + objHalfY;
       if (snapToLegoGrid) {
-        const halfStep = LEGO_GRID;
-        mouseDragObj.position.x = Math.round(mouseDragObj.position.x / halfStep) * halfStep;
-        mouseDragObj.position.z = Math.round(mouseDragObj.position.z / halfStep) * halfStep;
+        mouseDragObj.position.x = Math.round(mouseDragObj.position.x / ARCH_GRID) * ARCH_GRID;
+        mouseDragObj.position.z = Math.round(mouseDragObj.position.z / ARCH_GRID) * ARCH_GRID;
         mouseDragObj.rotation.y = Math.round(mouseDragObj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
       }
       if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
@@ -2505,24 +2721,20 @@ window.addEventListener('pointerup', () => {
       }
       playLegoSnapSound();
       snapped = true;
-    } else {
-      // 2. Check Workbench Table Surface
-      const onTableX = Math.abs(mouseDragObj.position.x - TABLE_X) <= (TABLE_WIDTH / 2 + 0.1);
-      const onTableZ = Math.abs(mouseDragObj.position.z - TABLE_Z) <= (TABLE_DEPTH / 2 + 0.1);
-      if (onTableX && onTableZ && Math.abs(mouseDragObj.position.y - TABLE_TOP_Y) < 0.9) {
-        const objHalfY = mouseDragObj.userData?.halfY || 0.11;
-        mouseDragObj.position.y = TABLE_TOP_Y + objHalfY;
-        if (snapToLegoGrid) {
-          mouseDragObj.position.x = Math.round((mouseDragObj.position.x - TABLE_X) / LEGO_GRID) * LEGO_GRID + TABLE_X;
-          mouseDragObj.position.z = Math.round((mouseDragObj.position.z - TABLE_Z) / LEGO_GRID) * LEGO_GRID + TABLE_Z;
-          mouseDragObj.rotation.y = Math.round(mouseDragObj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-        }
-        if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
-          mouseDragObj.userData.velocity.set(0, 0, 0);
-        }
-        playLegoSnapSound();
-        snapped = true;
+    } else if (mouseDragObj.position.y < FLOOR_Y + 1.2) {
+      // 2. Snap to Studio Foundation Ground Grid
+      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
+      mouseDragObj.position.y = FLOOR_Y + objHalfY;
+      if (snapToLegoGrid) {
+        mouseDragObj.position.x = Math.round(mouseDragObj.position.x / ARCH_GRID) * ARCH_GRID;
+        mouseDragObj.position.z = Math.round(mouseDragObj.position.z / ARCH_GRID) * ARCH_GRID;
+        mouseDragObj.rotation.y = Math.round(mouseDragObj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
       }
+      if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
+        mouseDragObj.userData.velocity.set(0, 0, 0);
+      }
+      playLegoSnapSound();
+      snapped = true;
     }
 
     if (!snapped && mouseDragObj.userData && mouseDragObj.userData.velocity) {
@@ -2584,37 +2796,26 @@ function animate() {
     }
   }
 
-  // Camera positioning with smooth easing across modes
-  if (viewMode === 'TABLE') {
-    // Fixed wide-angle view of the complete table with smooth transitions
-    if (camera.fov !== 68) {
-      camera.fov += (68 - camera.fov) * 0.12;
+  // Camera positioning with smooth easing across modes (Wide-angle perspectives)
+  if (viewMode === 'OVERVIEW') {
+    // 1. Expansive wide-angle studio overview (82° FOV)
+    if (Math.abs(camera.fov - 82) > 0.05) {
+      camera.fov += (82 - camera.fov) * 0.14;
       camera.updateProjectionMatrix();
     }
     camera.position.lerp(TABLE_CAM_POS, 0.10);
     smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.10);
     camera.lookAt(smoothedCameraLookAt);
-  } else if (currentMode === 'WALK') {
-    // First-person walking in room roam
-    if (camera.fov !== 54) {
-      camera.fov += (54 - camera.fov) * 0.12;
-      camera.updateProjectionMatrix();
-    }
-    camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
-    camera.rotation.set(0, player.yaw, 0, 'YXZ');
   } else {
-    // Room view in Dual Builder mode: orbit camera around table
-    if (camera.fov !== 54) {
-      camera.fov += (54 - camera.fov) * 0.12;
+    // 2. In-Situ First-Person Perspective: Always remains directly at the player's walking position!
+    const targetFov = (currentMode === 'WALK') ? 80 : 82;
+    if (Math.abs(camera.fov - targetFov) > 0.05) {
+      camera.fov += (targetFov - camera.fov) * 0.14;
       camera.updateProjectionMatrix();
     }
-    const camX = cameraRig.lookTarget.x + Math.sin(cameraRig.orbitAngle) * cameraRig.orbitDistance;
-    const camZ = cameraRig.lookTarget.z + Math.cos(cameraRig.orbitAngle) * cameraRig.orbitDistance;
-    const camY = cameraRig.lookTarget.y + cameraRig.cameraHeight;
-    const targetPos = new THREE.Vector3(camX, camY, camZ);
-    camera.position.lerp(targetPos, 0.15);
-    smoothedCameraLookAt.lerp(cameraRig.lookTarget, 0.15);
-    camera.lookAt(smoothedCameraLookAt);
+    const targetEyePos = new THREE.Vector3(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
+    camera.position.lerp(targetEyePos, 0.25);
+    camera.rotation.set(player.pitch || -0.16, player.yaw, 0, 'YXZ');
   }
 
   updatePhysics(dt);

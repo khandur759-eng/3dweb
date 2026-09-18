@@ -1,6 +1,6 @@
 {
   "name": "Virtual Picker",
-  "description": "Interactive 3D Lego-style building workshop with simultaneous dual-hand webcam tracking. Use both hands together to pick, grab, hold, and stack cubes, prisms, cuboids, and spheres. Features wide-angle Table View, Room Roam mode, 5-pinch mode shifting, and fullscreen Zen mode.",
+  "description": "Interactive 3D architectural house and building construction studio with infinity white studio environment, large structural blocks (walls, panoramic windows, arch doorways, marble columns, foundation decks, and pitched roofs), simultaneous dual-hand webcam tracking, and double-distance reach multiplier.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
