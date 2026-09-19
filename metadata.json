@@ -1,6 +1,6 @@
 {
   "name": "Virtual Picker",
-  "description": "Interactive 3D architectural house and building construction studio with infinity white studio environment, large structural blocks (walls, panoramic windows, arch doorways, marble columns, foundation decks, and pitched roofs), simultaneous dual-hand webcam tracking, and double-distance reach multiplier.",
+  "description": "Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

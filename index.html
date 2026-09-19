@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Architectural Building Studio 3D</title>
-<meta name="description" content="Expansive pure white architectural studio for building houses and structures in 3D using dual-hand webcam tracking with 2x reach multiplier. Build with large modular walls, windows, doorways, columns, and roofs." />
-<meta property="og:title" content="Architectural Building Studio 3D" />
-<meta property="og:description" content="Expansive pure white architectural studio for building houses and structures in 3D using dual-hand webcam tracking with 2x reach multiplier. Build with large modular walls, windows, doorways, columns, and roofs." />
+<title>Virtual Picker - 3D Architectural Concrete Studio</title>
+<meta name="description" content="Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking." />
+<meta property="og:title" content="Virtual Picker - 3D Architectural Concrete Studio" />
+<meta property="og:description" content="Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking." />
 <meta property="og:type" content="website" />
 <style>
   :root{
@@ -196,6 +196,20 @@
     background:#e2e8f0; color:#0f172a;
   }
 
+  .quick-add-btn{
+    display:flex; align-items:center; gap:4px;
+    font-size:11px; font-weight:700; color:#ffffff;
+    background:#059669; padding:4px 10px; border-radius:999px;
+    border:none; cursor:pointer;
+    box-shadow:0 2px 6px rgba(5, 150, 105, 0.35);
+    transition:all .15s ease;
+    white-space:nowrap;
+  }
+  .quick-add-btn:hover{
+    background:#047857; transform:scale(1.04);
+  }
+  .quick-add-btn:active{ transform:scale(0.98); }
+
   /* 3D World Target Lock Indicator */
   #targetIndicator{
     position:fixed; z-index:25; pointer-events:none;
@@ -316,6 +330,45 @@
     background:var(--gold); box-shadow:0 0 8px rgba(217,119,6,0.6); transform:scale(1.3);
   }
 
+  /* ---------- Minecraft Block Palette Grid & Spawner ---------- */
+  .block-palette-grid{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:5px;
+  }
+  .palette-btn{
+    display:flex; align-items:center; justify-content:center; gap:3px;
+    padding:5px 3px; border-radius:7px; border:1px solid #e2e8f0;
+    background:#ffffff; color:#334155; font-size:10px; font-weight:600;
+    cursor:pointer; transition:all .15s ease; white-space:nowrap;
+  }
+  .palette-btn:hover{
+    background:#f1f5f9; border-color:#cbd5e1; transform:translateY(-1px);
+  }
+  .palette-btn.active{
+    background:#0284c7; color:#ffffff; border-color:#0284c7;
+    box-shadow:0 2px 8px rgba(2, 132, 199, 0.35);
+  }
+  .spawn-action-row{
+    display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:6px; margin-top:2px;
+  }
+  .spawn-main-btn{
+    padding:7px 8px; border-radius:8px; border:none;
+    background:#059669; color:#ffffff; font-size:11px; font-weight:700;
+    cursor:pointer; transition:all .15s ease; display:flex; align-items:center; justify-content:center; gap:4px;
+    box-shadow:0 2px 8px rgba(5, 150, 105, 0.35);
+  }
+  .spawn-main-btn:hover{
+    background:#047857; transform:translateY(-1px);
+  }
+  .spawn-main-btn:active{ transform:translateY(0); }
+  .spawn-sub-btn{
+    padding:7px 6px; border-radius:8px; border:1px solid #cbd5e1;
+    background:#f8fafc; color:#334155; font-size:10.5px; font-weight:600;
+    cursor:pointer; transition:all .15s ease; display:flex; align-items:center; justify-content:center;
+  }
+  .spawn-sub-btn:hover{
+    background:#e2e8f0; border-color:#94a3b8;
+  }
+
   .box-action-grid{
     display:grid; grid-template-columns:repeat(2, 1fr); gap:7px;
   }
@@ -361,11 +414,29 @@
     background:#e2e8f0;
   }
 
-  /* Fullscreen Zen Mode overrides */
-  body.zen-mode #studioBox,
-  body.zen-mode #camWrap,
-  body.zen-mode #walkSteerOverlay{
-    opacity:0; pointer-events:none;
+  /* Fullscreen: Controls, icons and camera remain 100% visible and accessible */
+  #studioBox{
+    z-index:50;
+  }
+  #camWrap{
+    z-index:45;
+  }
+  :fullscreen #studioBox,
+  :-webkit-full-screen #studioBox{
+    display:block !important;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    z-index:9999 !important;
+  }
+  :fullscreen #camWrap,
+  :-webkit-full-screen #camWrap{
+    display:block !important;
+    opacity:1 !important;
+    z-index:9998 !important;
+  }
+  :fullscreen #modeBanner,
+  :-webkit-full-screen #modeBanner{
+    z-index:10000 !important;
   }
 
   /* ---------- Camera Preview ---------- */
@@ -420,6 +491,8 @@
         <span id="modeText">DUAL BUILDER</span>
       </div>
       <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.0x</span>
+      <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
+      <button id="quickAddBtn" type="button" class="quick-add-btn" title="Quickly spawn a concrete block (Hotkey: N)">+ Add Block</button>
       <div class="box-toggle-btn" id="boxToggleIndicator">
         <span id="boxToggleText">Controls</span>
         <span id="boxToggleIcon">▾</span>
@@ -432,6 +505,35 @@
       <div class="box-mode-row">
         <button id="modeToggleBtn" type="button" class="tool-btn active" title="Dual Builder: Build with both hands right where you stand! (Hotkey: Space)">🖐️ Dual Builder</button>
         <button id="viewWalkBtn" type="button" class="tool-btn" title="Room Walk: Walk freely using hand steering or WASD (Hotkey: Space)">🚶 Room Walk</button>
+      </div>
+
+      <!-- Concrete Block Spawner (+ Add Blocks) -->
+      <div class="box-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>🧱 Concrete Block Spawner (+ Add Blocks)</span>
+        <span id="blockCountBadge" style="font-size:10px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:1px 6px; border-radius:4px;">32 Blocks</span>
+      </div>
+
+      <!-- Palette of Architectural Concrete Block Types -->
+      <div id="blockPaletteGrid" class="block-palette-grid">
+        <button type="button" class="palette-btn active" data-type="cast_grey" title="Spawn Standard Cast Grey Concrete with Tie-Holes">🧱 Cast Grey</button>
+        <button type="button" class="palette-btn" data-type="cinder_block" title="Spawn Split-Face CMU Masonry Concrete Block">🪨 CMU Block</button>
+        <button type="button" class="palette-btn" data-type="smooth_white" title="Spawn Fair-Faced White Architectural Concrete">🏢 White Precast</button>
+        <button type="button" class="palette-btn" data-type="charcoal_basalt" title="Spawn Basalt Charcoal Concrete">⬛ Charcoal</button>
+        <button type="button" class="palette-btn" data-type="board_formed" title="Spawn Board-Formed Timber Grain Concrete">🪵 Board-Formed</button>
+        <button type="button" class="palette-btn" data-type="terrazzo" title="Spawn Polished Terrazzo Aggregate Concrete">💎 Terrazzo</button>
+        <button type="button" class="palette-btn" data-type="sandstone_concrete" title="Spawn Warm Sandstone Architectural Concrete">🏛️ Sandstone</button>
+        <button type="button" class="palette-btn" data-type="fluted_ribbed" title="Spawn Fluted Ribbed Architectural Concrete">🏛️ Fluted Rib</button>
+        <button type="button" class="palette-btn" data-type="reinforced" title="Spawn Industrial Reinforced Concrete with Steel Plates">🏗️ Reinforced</button>
+        <button type="button" class="palette-btn" data-type="terracotta_concrete" title="Spawn Terracotta Pigmented Red Concrete">🧱 Terracotta</button>
+        <button type="button" class="palette-btn" data-type="aerated_aac" title="Spawn Lightweight Aerated AAC Concrete">🌫️ Aerated AAC</button>
+        <button type="button" class="palette-btn" data-type="weathered_patina" title="Spawn Weathered Brutalist Concrete with Patina">🌧️ Weathered</button>
+      </div>
+
+      <!-- Quick Spawner Action Row -->
+      <div class="spawn-action-row">
+        <button id="spawnSelectedBtn" type="button" class="spawn-main-btn" title="Spawn selected concrete block in front of you (Hotkey: N)">➕ Spawn Block</button>
+        <button id="cloneHeldBtn" type="button" class="spawn-sub-btn" title="Clone held or targeted block (Hotkey: C)">📋 Clone Held</button>
+        <button id="spawnBatchBtn" type="button" class="spawn-sub-btn" title="Spawn a 4x supply stack in staging bay">+4 Supply</button>
       </div>
 
       <!-- Real-time Pinch Meter & 5-Pinch Shift -->
@@ -457,24 +559,27 @@
       <!-- Quick Actions Grid -->
       <div class="box-section-title">Studio Tools</div>
       <div class="box-action-grid">
-        <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.0x</button>
+        <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
         <button id="overviewBtn" type="button" class="tool-btn" title="Toggle high-angle Studio Overview (Hotkey: O)">🏛️ Overview Cam</button>
-        <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Studio Snap: ON</button>
-        <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Villa structure">🏠 Starter Villa</button>
-        <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all blocks to staging bays (Hotkey: R)">↺ Reset Studio</button>
+        <button id="zoomInBtn" type="button" class="tool-btn" title="Zoom camera in closer (Hotkey: + or Z)">🔍 Zoom In [+]</button>
+        <button id="zoomOutBtn" type="button" class="tool-btn" title="Zoom camera out wider (Hotkey: - or X)">🔍 Zoom Out [-]</button>
+        <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.0x</button>
+        <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Concrete Snap: ON</button>
+        <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Pavilion structure">🏛️ Starter Pavilion</button>
+        <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all concrete blocks to staging bays (Hotkey: R)">↺ Reset Blocks</button>
         <button id="audioToggleBtn" type="button" class="tool-btn" title="Toggle sound effects">🔊 Sound: ON</button>
-        <button id="zenBtn" type="button" class="tool-btn" title="Fullscreen / Zen mode (Hotkey: F)">⛶ Fullscreen</button>
+        <button id="fullscreenBtn" type="button" class="tool-btn" title="Toggle Fullscreen mode (Hotkey: F)">⛶ Fullscreen</button>
         <button id="camToggleBtn" type="button" class="tool-btn" title="Toggle camera preview box">📹 Webcam: ON</button>
         <button id="depthToggleBtn" type="button" class="tool-btn" title="Toggle push/pull depth direction">↕ Push Forward</button>
       </div>
 
       <!-- Guidance instructions card -->
       <div id="hudContent">
-        <b id="hudTitle">3D Architectural Studio:</b><br/>
-        • <b>🖐️ Dual Hands:</b> Both hands pick, place, and stack walls, windows, columns &amp; roofs simultaneously.<br/>
-        • <b>⚡ 2x Double Reach:</b> Hand moves double distance for easy reach without stretching.<br/>
-        • <b>🚶 Walk Mode:</b> Move hand forward/backward to walk, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">WASD</kbd> keys.<br/>
-        • <b>📐 Grid Snap:</b> Blocks snap flush at 25cm metric increments when released near foundations.
+        <b id="hudTitle">3D Architectural Concrete Studio:</b><br/>
+        • <b>🧱 Open Construction Center:</b> Blocks are neatly organized in Left, Right, &amp; Back staging depots so you have full open space to build in the center!<br/>
+        • <b>🔦 Long-Range Laser Pointer:</b> Tap Laser or press <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">L</kbd> to pick and move blocks from any distance across the site!<br/>
+        • <b>🔍 Dynamic Camera Zoom:</b> Use mouse wheel or <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">+</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">-</kbd> to zoom in close or pull back.<br/>
+        • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
       </div>
 
       <div class="box-footer">
@@ -543,7 +648,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script type="module">
-import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
+
+// Gracefully handle benign Emscripten WebAssembly streaming compile fallback warnings
+const _origConsoleWarn = console.warn;
+const _origConsoleError = console.error;
+console.warn = (...args) => {
+  if (args[0] && typeof args[0] === 'string' && (args[0].includes('wasm streaming compile') || args[0].includes('falling back to ArrayBuffer'))) {
+    return;
+  }
+  _origConsoleWarn.apply(console, args);
+};
+console.error = (...args) => {
+  if (args[0] && typeof args[0] === 'string' && (args[0].includes('wasm streaming compile') || args[0].includes('falling back to ArrayBuffer'))) {
+    return;
+  }
+  _origConsoleError.apply(console, args);
+};
+
+window.addEventListener('unhandledrejection', (e) => {
+  if (e?.reason && (String(e.reason).includes('wasm streaming compile') || String(e.reason).includes('Response body loading was aborted'))) {
+    e.preventDefault();
+  }
+});
 
 /* ============================================================
    AUDIO SYNTHESIZER (Web Audio API)
@@ -598,6 +725,10 @@ function playReleaseSound() {
   playTone(480, 0.15, 'triangle', 0.12);
 }
 
+function playHoverPip() {
+  playTone(1140, 0.032, 'sine', 0.06);
+}
+
 function playLegoSnapSound() {
   if (!soundEnabled || !audioCtx) return;
   try {
@@ -616,8 +747,10 @@ function playPedestalChime() {
 /* ============================================================
    CONFIG & CONSTANTS
    ============================================================ */
-const MP_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
-const HAND_MODEL_URL =
+const LOCAL_WASM_PATH = "/wasm";
+const CDN_WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
+const LOCAL_MODEL_URL = "/models/hand_landmarker.task";
+const REMOTE_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
 // Hand Reach & Anatomical Scale Configuration:
@@ -649,22 +782,23 @@ const PHYSICAL_GRAB_MARGIN = 0.26; // Generous physical touch margin for respons
 const FOLLOW_LERP = 0.65;  // Responsive, non-laggy follow interpolation
 
 const FLOOR_Y = -1.15;
-const WORLD_RADIUS = 38.0;
+const WORLD_RADIUS = 80.0;
 const GRAVITY = 8.5;
 const BOUNCE_DAMP = 0.28;
 
-// Studio Center & Architectural Grid Configuration:
+// Minecraft Voxel & Studio Grid Configuration:
 const STUDIO_CENTER_X = 0.0;
 const STUDIO_CENTER_Z = 1.4;
-const ARCH_GRID = 0.25;      // 25cm architectural modular snap grid
+const BLOCK_SIZE = 0.5;      // 0.5m x 0.5m x 0.5m uniform Minecraft voxel cube
+const ARCH_GRID = BLOCK_SIZE; // Grid snapping strictly aligned to block size
 const LEGO_GRID = ARCH_GRID; // Alias for compatibility
 let snapToLegoGrid = true;   // Grid snap active
 
 // Compatibility variables for legacy references
 const TABLE_X = STUDIO_CENTER_X;
 const TABLE_Z = STUDIO_CENTER_Z;
-const TABLE_WIDTH = 6.0;
-const TABLE_DEPTH = 6.0;
+const TABLE_WIDTH = 36.0;
+const TABLE_DEPTH = 36.0;
 const TABLE_HEIGHT = 0.0;
 const TABLE_TOP_Y = FLOOR_Y;
 
@@ -675,22 +809,22 @@ const CAMERA_EYE_Y = 1.60;
 let viewMode = 'IN_SITU';
 let zenMode = false;
 
-// Fixed expansive wide-angle studio view (spans the full architectural site & staging bays)
-const STUDIO_CAM_POS = new THREE.Vector3(0, FLOOR_Y + 2.45, 4.30);
-const STUDIO_CAM_LOOK = new THREE.Vector3(0, FLOOR_Y + 0.55, 1.25);
+// Fixed expansive wide-angle studio view (optimal 3/4 architectural overview of construction site)
+const STUDIO_CAM_POS = new THREE.Vector3(0, FLOOR_Y + 4.2, 5.8);
+const STUDIO_CAM_LOOK = new THREE.Vector3(0, FLOOR_Y + 0.5, 1.4);
 const TABLE_CAM_POS = STUDIO_CAM_POS;
 const TABLE_CAM_LOOK = STUDIO_CAM_LOOK;
 
-// Orbit camera properties for overview / manual adjustments
+// Orbit camera properties for overview / zoom adjustments
 const cameraRig = {
   orbitAngle: 0,
-  orbitDistance: 3.2,
-  cameraHeight: 1.05,
-  lookTarget: new THREE.Vector3(0, FLOOR_Y + 0.65, 1.25)
+  orbitDistance: 5.6,
+  cameraHeight: 3.6,
+  lookTarget: new THREE.Vector3(0, FLOOR_Y + 0.5, 1.4)
 };
 
 /* ============================================================
-   THREE.JS SCENE, CAMERA & STUDIO LIGHTING (Pure White Infinity Studio)
+   THREE.JS SCENE, CAMERA & STUDIO LIGHTING (Eye-Friendly Architectural Studio)
    ============================================================ */
 const canvas = document.getElementById('sceneCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -700,12 +834,13 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-// Pure white studio backdrop with soft horizon fog
-scene.background = new THREE.Color(0xfcfcfd);
-scene.fog = new THREE.Fog(0xfcfcfd, 22, 60);
+// Eye-friendly deep slate architectural studio atmosphere (zero glare, rich block contrast)
+scene.background = new THREE.Color(0x181e26);
+scene.fog = new THREE.Fog(0x181e26, 25, 95);
 
 // Camera Setup (starts in expansive wide-angle 82° FOV studio perspective)
-const camera = new THREE.PerspectiveCamera(82, window.innerWidth / window.innerHeight, 0.1, 95);
+let currentFov = 82;
+const camera = new THREE.PerspectiveCamera(currentFov, window.innerWidth / window.innerHeight, 0.1, 150);
 const player = {
   pos: new THREE.Vector3(0, FLOOR_Y, 3.8),
   yaw: 0,
@@ -717,33 +852,33 @@ camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
 camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
 const smoothedCameraLookAt = new THREE.Vector3().copy(STUDIO_CAM_LOOK);
 
-// Soft High-Key Studio Lighting (Bright, clean, shadow-defining)
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
+// Soft Balanced Architectural Studio Lighting
+const ambientLight = new THREE.AmbientLight(0x94a3b8, 0.90);
 scene.add(ambientLight);
 
-// Key Studio Softbox
-const sunLight = new THREE.DirectionalLight(0xffffff, 1.35);
-sunLight.position.set(10, 22, 14);
+// Key Studio Softbox (Warm architectural sunbeam highlighting concrete textures)
+const sunLight = new THREE.DirectionalLight(0xffeedd, 1.30);
+sunLight.position.set(16, 32, 22);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
 sunLight.shadow.bias = -0.0004;
 sunLight.shadow.camera.near = 1;
-sunLight.shadow.camera.far = 45;
-sunLight.shadow.camera.left = -16;
-sunLight.shadow.camera.right = 16;
-sunLight.shadow.camera.top = 16;
-sunLight.shadow.camera.bottom = -16;
+sunLight.shadow.camera.far = 85;
+sunLight.shadow.camera.left = -26;
+sunLight.shadow.camera.right = 26;
+sunLight.shadow.camera.top = 26;
+sunLight.shadow.camera.bottom = -26;
 scene.add(sunLight);
 
 // Studio Fill Light
-const fillLight = new THREE.DirectionalLight(0xf1f5f9, 0.65);
-fillLight.position.set(-12, 18, -8);
+const fillLight = new THREE.DirectionalLight(0x475569, 0.65);
+fillLight.position.set(-18, 24, -12);
 scene.add(fillLight);
 
 // Overhead Studio Skylight Dome
-const overheadLight = new THREE.DirectionalLight(0xffffff, 0.45);
-overheadLight.position.set(0, 22, 2);
+const overheadLight = new THREE.DirectionalLight(0x64748b, 0.45);
+overheadLight.position.set(0, 30, 2);
 scene.add(overheadLight);
 
 /* ============================================================
@@ -752,10 +887,10 @@ scene.add(overheadLight);
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
 
-// 1. Vast Matte White Studio Floor
-const floorGeo = new THREE.CircleGeometry(WORLD_RADIUS, 64);
+// 1. Vast Matte Deep Slate Studio Floor
+const floorGeo = new THREE.CircleGeometry(WORLD_RADIUS, 96);
 const floorMat = new THREE.MeshStandardMaterial({
-  color: 0xf8fafc,
+  color: 0x1e242d,
   roughness: 0.88,
   metalness: 0.04
 });
@@ -765,455 +900,794 @@ floorMesh.position.y = FLOOR_Y;
 floorMesh.receiveShadow = true;
 worldGroup.add(floorMesh);
 
-// 2. Central House Construction Plot (6.0m x 6.0m modular zone)
+// 2. Central Minecraft Construction Plot (36.0m x 36.0m modular zone)
 const plotCenter = new THREE.Vector3(STUDIO_CENTER_X, FLOOR_Y + 0.003, STUDIO_CENTER_Z);
-const plotSize = 6.0;
+const plotSize = 36.0;
 
-// Crisp architectural blueprint grid
-const siteGrid = new THREE.GridHelper(plotSize, 24, 0x2563eb, 0xdbeafe);
+// Crisp Minecraft-scale voxel blueprint grid (72x72 cells, each matching 0.5m Minecraft cube)
+const siteGrid = new THREE.GridHelper(plotSize, Math.round(plotSize / BLOCK_SIZE), 0x38bdf8, 0x334155);
 siteGrid.position.copy(plotCenter);
 worldGroup.add(siteGrid);
 
-// Corner boundary L-brackets framing the house construction site
-const bracketMat = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+// Corner boundary L-brackets framing the 36m construction site
+const bracketMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
 [
   [-1, -1], [1, -1], [-1, 1], [1, 1]
 ].forEach(([bx, bz]) => {
   const cx = STUDIO_CENTER_X + bx * (plotSize / 2);
   const cz = STUDIO_CENTER_Z + bz * (plotSize / 2);
   // Horizontal arm
-  const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.012, 0.04), bracketMat);
-  arm1.position.set(cx - bx * 0.15, FLOOR_Y + 0.008, cz);
+  const arm1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.012, 0.08), bracketMat);
+  arm1.position.set(cx - bx * 0.5, FLOOR_Y + 0.008, cz);
   // Orthogonal arm
-  const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.35), bracketMat);
-  arm2.position.set(cx, FLOOR_Y + 0.008, cz - bz * 0.15);
+  const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 1.2), bracketMat);
+  arm2.position.set(cx, FLOOR_Y + 0.008, cz - bz * 0.5);
   worldGroup.add(arm1, arm2);
 });
 
 // Subtle Concentric Studio Distance Rings
-[4.2, 8.5, 14.0].forEach(r => {
+[9.0, 18.0, 27.0, 36.0, 54.0].forEach(r => {
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(r, r + 0.035, 64),
-    new THREE.MeshBasicMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide })
+    new THREE.RingGeometry(r, r + 0.05, 96),
+    new THREE.MeshBasicMaterial({ color: 0x27303d, side: THREE.DoubleSide })
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.set(STUDIO_CENTER_X, FLOOR_Y + 0.002, STUDIO_CENTER_Z);
   worldGroup.add(ring);
 });
 
-// Staging Bay Floor Markings (Left: Walls & Openings | Right: Columns & Slabs)
-function createStagingZone(x, z, w, d, tintColor, label) {
+// Ground Signage helper: renders high-contrast text directly on floor pad
+function createFloorLabel(text, colorHex) {
+  const cvs = document.createElement('canvas');
+  cvs.width = 512;
+  cvs.height = 128;
+  const ctx = cvs.getContext('2d');
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(0, 0, 512, 128);
+  ctx.strokeStyle = colorHex;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(4, 4, 504, 120);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 36px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9 });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.45), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  return mesh;
+}
+
+// Staging Bay Floor Markings (Left: Structural | Right: Finishes | Back: Specialty Reserves)
+function createStagingZone(x, z, w, d, tintColor, labelText) {
   const bay = new THREE.Group();
   bay.position.set(x, FLOOR_Y + 0.002, z);
   const pad = new THREE.Mesh(
     new THREE.BoxGeometry(w, 0.004, d),
-    new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x1a212b, roughness: 0.9 })
   );
   pad.receiveShadow = true;
   bay.add(pad);
 
-  // Subtle border outline
+  // Luminous border outline
   const outline = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 0.008, d)),
     new THREE.LineBasicMaterial({ color: tintColor, linewidth: 2 })
   );
   bay.add(outline);
+
+  // Label sign
+  if (labelText) {
+    const lbl = createFloorLabel(labelText, '#' + tintColor.toString(16).padStart(6, '0'));
+    lbl.position.set(0, 0.006, d / 2 - 0.35);
+    bay.add(lbl);
+  }
+
   worldGroup.add(bay);
 }
-createStagingZone(-2.45, 1.4, 1.7, 3.4, 0x38bdf8); // Left Bay: Walls, Windows & Doorways
-createStagingZone( 2.45, 1.4, 1.7, 3.4, 0x10b981); // Right Bay: Columns, Floors & Slabs
-createStagingZone( 0.0, 2.75, 3.2, 0.95, 0xf59e0b); // Front Bay: Roofs & Finials
+
+// 1. Left Material Depot: Structural & Masonry Concrete
+createStagingZone(-3.8, 1.4, 2.6, 4.8, 0x38bdf8, "LEFT: STRUCTURAL DEPOT");
+// 2. Right Material Depot: Architectural Finishes & Facades
+createStagingZone( 3.8, 1.4, 2.6, 4.8, 0x10b981, "RIGHT: FINISHES DEPOT");
+// 3. Back Material Pallet: Specialty Blocks & Lightweight Reserves
+createStagingZone( 0.0, -2.8, 4.2, 1.8, 0xf59e0b, "BACK: SPECIALTY PALLET");
+
+// 4. Central Building Zone Marker Brackets (Framing the pristine open center!)
+const centerFrameMat = new THREE.LineBasicMaterial({ color: 0x38bdf8 });
+const centerFrameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(4.8, 0.006, 4.8));
+const centerFrameMesh = new THREE.LineSegments(centerFrameGeo, centerFrameMat);
+centerFrameMesh.position.set(0, FLOOR_Y + 0.004, 1.4);
+worldGroup.add(centerFrameMesh);
+
+const centerLbl = createFloorLabel("📐 OPEN CONSTRUCTION PLOT", "#38bdf8");
+centerLbl.position.set(0, FLOOR_Y + 0.007, 3.5);
+worldGroup.add(centerLbl);
 
 // Compatibility tableGroup (empty placeholder so no null reference errors occur)
 const tableGroup = new THREE.Group();
 worldGroup.add(tableGroup);
 
 /* ============================================================
-   ARCHITECTURAL ASSET FACTORY (Walls, Windows, Doors, Pillars, Slabs, Roofs)
+   ARCHITECTURAL CONCRETE BLOCK ENGINE & MATERIAL FACTORY
    ============================================================ */
 const pickables = [];
 
-// Helper: Extruded Triangular Gable Roof Prism
-function createRoofGableGeometry(width, height, depth) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-width / 2, -height / 2);
-  shape.lineTo(width / 2, -height / 2);
-  shape.lineTo(0, height / 2);
-  shape.closePath();
+const BLOCK_DEFINITIONS = {
+  cast_grey:           { name: 'Cast Grey Concrete',        icon: '🧱', roughness: 0.88, metalness: 0.04 },
+  cinder_block:        { name: 'CMU Masonry Block',         icon: '🪨', roughness: 0.94, metalness: 0.02 },
+  smooth_white:        { name: 'Fair-Faced White Concrete',  icon: '🏢', roughness: 0.82, metalness: 0.03 },
+  charcoal_basalt:     { name: 'Basalt Charcoal Concrete',  icon: '⬛', roughness: 0.90, metalness: 0.05 },
+  board_formed:        { name: 'Board-Formed Timber Grain', icon: '🪵', roughness: 0.92, metalness: 0.03 },
+  terrazzo:            { name: 'Terrazzo Aggregate',        icon: '💎', roughness: 0.72, metalness: 0.06 },
+  sandstone_concrete:  { name: 'Warm Sandstone Concrete',   icon: '🏛️', roughness: 0.89, metalness: 0.03 },
+  fluted_ribbed:       { name: 'Fluted Ribbed Facade',      icon: '🏛️', roughness: 0.86, metalness: 0.04 },
+  reinforced:          { name: 'Reinforced Industrial',     icon: '🏗️', roughness: 0.85, metalness: 0.12 },
+  terracotta_concrete: { name: 'Terracotta Pigmented',      icon: '🧱', roughness: 0.88, metalness: 0.03 },
+  aerated_aac:         { name: 'Aerated AAC Lightweight',   icon: '🌫️', roughness: 0.95, metalness: 0.01 },
+  weathered_patina:    { name: 'Weathered Brutalist',       icon: '🌧️', roughness: 0.91, metalness: 0.03 }
+};
 
-  const extrudeSettings = {
-    depth: depth,
-    bevelEnabled: true,
-    bevelThickness: 0.012,
-    bevelSize: 0.012,
-    bevelSegments: 2
+let selectedBlockType = 'cast_grey';
+const blockTextureCache = new Map();
+
+function resolveBlockType(rawType) {
+  if (BLOCK_DEFINITIONS[rawType]) return rawType;
+  const legacyMap = {
+    wood_planks: 'cast_grey',
+    cobblestone: 'cinder_block',
+    brick: 'terracotta_concrete',
+    grass: 'smooth_white',
+    glass: 'smooth_white',
+    log: 'board_formed',
+    diamond_block: 'terrazzo',
+    gold_block: 'sandstone_concrete',
+    quartz: 'smooth_white',
+    leaves: 'weathered_patina',
+    obsidian: 'charcoal_basalt',
+    tnt: 'reinforced'
   };
-  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  geo.center();
-  return geo;
+  return legacyMap[rawType] || 'cast_grey';
 }
 
-// Master Architectural Block Factory
-function createArchitecturalBlock(type, width, height, depth, colorHex, initPos, name, emissiveHex = 0x000000, opts = {}) {
-  const group = new THREE.Group();
+function drawBlockFace(ctx, rawType, face) {
+  const type = resolveBlockType(rawType);
+  const w = 64;
+  const h = 64;
 
-  const baseMat = new THREE.MeshStandardMaterial({
-    color: colorHex,
-    roughness: opts.roughness || 0.42,
-    metalness: opts.metalness || 0.12,
-    emissive: emissiveHex,
-    emissiveIntensity: 0.45
-  });
-
-  if (type === 'wall' || type === 'half_wall') {
-    // Solid Architectural Wall Panel with beveled border trim
-    const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), baseMat);
-    wallMesh.castShadow = true;
-    wallMesh.receiveShadow = true;
-    group.add(wallMesh);
-
-    // Subtle architectural base plinth & top coping
-    const trimMat = new THREE.MeshStandardMaterial({
-      color: 0x334155,
-      roughness: 0.5,
-      metalness: 0.2
-    });
-    const basePlinth = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.05, depth + 0.02), trimMat);
-    basePlinth.position.y = -height / 2 + 0.025;
-    basePlinth.castShadow = true;
-    group.add(basePlinth);
-
-    const topCoping = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.04, depth + 0.02), trimMat);
-    topCoping.position.y = height / 2 - 0.02;
-    topCoping.castShadow = true;
-    group.add(topCoping);
-
-  } else if (type === 'window_wall') {
-    // Architectural Wall with Framed Glass Window Cutout!
-    const winW = 0.56;
-    const winH = 0.50;
-    const sideW = (width - winW) / 2;
-    const bottomH = (height - winH) / 2;
-
-    // Left pillar
-    const leftPillar = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
-    leftPillar.position.x = -width / 2 + sideW / 2;
-    leftPillar.castShadow = true;
-    leftPillar.receiveShadow = true;
-    group.add(leftPillar);
-
-    // Right pillar
-    const rightPillar = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
-    rightPillar.position.x = width / 2 - sideW / 2;
-    rightPillar.castShadow = true;
-    rightPillar.receiveShadow = true;
-    group.add(rightPillar);
-
-    // Bottom sill wall
-    const bottomSill = new THREE.Mesh(new THREE.BoxGeometry(winW, bottomH, depth), baseMat);
-    bottomSill.position.set(0, -height / 2 + bottomH / 2, 0);
-    bottomSill.castShadow = true;
-    bottomSill.receiveShadow = true;
-    group.add(bottomSill);
-
-    // Top lintel wall
-    const topLintel = new THREE.Mesh(new THREE.BoxGeometry(winW, bottomH, depth), baseMat);
-    topLintel.position.set(0, height / 2 - bottomH / 2, 0);
-    topLintel.castShadow = true;
-    topLintel.receiveShadow = true;
-    group.add(topLintel);
-
-    // Window Outer Frame
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.6 });
-    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.02, winH + 0.02, depth + 0.02), frameMat);
-    winFrame.position.set(0, 0, 0);
-    group.add(winFrame);
-
-    // Embedded Translucent Sky Tinted Glass Pane
-    const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.42,
-      roughness: 0.08,
-      metalness: 0.85
-    });
-    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.02, winH - 0.02, 0.015), glassMat);
-    glassPane.position.set(0, 0, 0);
-    group.add(glassPane);
-
-    // Window Mullion Cross
-    const mullionH = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.02, 0.016, 0.022), frameMat);
-    const mullionV = new THREE.Mesh(new THREE.BoxGeometry(0.016, winH - 0.02, 0.022), frameMat);
-    group.add(mullionH, mullionV);
-
-  } else if (type === 'door_wall') {
-    // Architectural Wall with Doorway Arch Opening (walk-through portal)
-    const doorW = 0.52;
-    const doorH = 0.74;
-    const sideW = (width - doorW) / 2;
-    const topH = height - doorH;
-
-    // Left doorpost
-    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
-    leftPost.position.x = -width / 2 + sideW / 2;
-    leftPost.castShadow = true;
-    leftPost.receiveShadow = true;
-    group.add(leftPost);
-
-    // Right doorpost
-    const rightPost = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, depth), baseMat);
-    rightPost.position.x = width / 2 - sideW / 2;
-    rightPost.castShadow = true;
-    rightPost.receiveShadow = true;
-    group.add(rightPost);
-
-    // Top lintel above doorway
-    const topLintel = new THREE.Mesh(new THREE.BoxGeometry(doorW, topH, depth), baseMat);
-    topLintel.position.set(0, height / 2 - topH / 2, 0);
-    topLintel.castShadow = true;
-    topLintel.receiveShadow = true;
-    group.add(topLintel);
-
-    // Doorway trim header
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 });
-    const header = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.06, 0.035, depth + 0.03), trimMat);
-    header.position.set(0, -height / 2 + doorH, 0);
-    header.castShadow = true;
-    group.add(header);
-
-  } else if (type === 'column') {
-    // Classical / Modern Architectural Pillar with Capital and Base Plinth
-    const shaftW = width * 0.78;
-    const shaftH = height - 0.12;
-    const shaft = new THREE.Mesh(new THREE.BoxGeometry(shaftW, shaftH, shaftW), baseMat);
-    shaft.castShadow = true;
-    shaft.receiveShadow = true;
-    group.add(shaft);
-
-    const capMat = new THREE.MeshStandardMaterial({
-      color: 0x334155,
-      roughness: 0.35,
-      metalness: 0.3
-    });
-    // Base plinth
-    const plinth = new THREE.Mesh(new THREE.BoxGeometry(width, 0.06, width), capMat);
-    plinth.position.y = -height / 2 + 0.03;
-    plinth.castShadow = true;
-    group.add(plinth);
-
-    // Top capital
-    const capital = new THREE.Mesh(new THREE.BoxGeometry(width, 0.06, width), capMat);
-    capital.position.y = height / 2 - 0.03;
-    capital.castShadow = true;
-    group.add(capital);
-
-  } else if (type === 'floor_slab' || type === 'roof_flat') {
-    // Large Modular Foundation Floor Slab or Rooftop Terrace
-    const slabMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), baseMat);
-    slabMesh.castShadow = true;
-    slabMesh.receiveShadow = true;
-    group.add(slabMesh);
-
-    // Surface tile grid pattern lines
-    const gridMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.25 });
-    const gridT = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.002, depth * 0.96), gridMat);
-    gridT.position.y = height / 2 + 0.001;
-    group.add(gridT);
-
-    if (type === 'roof_flat') {
-      // Modern terrace perimeter safety parapet lip
-      const lipMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.3 });
-      const lipH = 0.07;
-      const lipThick = 0.04;
-      const lipN = new THREE.Mesh(new THREE.BoxGeometry(width, lipH, lipThick), lipMat);
-      lipN.position.set(0, height / 2 + lipH / 2, -depth / 2 + lipThick / 2);
-      const lipS = new THREE.Mesh(new THREE.BoxGeometry(width, lipH, lipThick), lipMat);
-      lipS.position.set(0, height / 2 + lipH / 2, depth / 2 - lipThick / 2);
-      const lipW = new THREE.Mesh(new THREE.BoxGeometry(lipThick, lipH, depth), lipMat);
-      lipW.position.set(-width / 2 + lipThick / 2, height / 2 + lipH / 2, 0);
-      const lipE = new THREE.Mesh(new THREE.BoxGeometry(lipThick, lipH, depth), lipMat);
-      lipE.position.set(width / 2 - lipThick / 2, height / 2 + lipH / 2, 0);
-      group.add(lipN, lipS, lipW, lipE);
+  // Fill base color
+  function fillBase(c1, c2) {
+    if (c2) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, c1);
+      grad.addColorStop(1, c2);
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = c1;
     }
-
-  } else if (type === 'roof_gable' || type === 'prism') {
-    // Pitched Gable Roof Truss
-    const roofGeo = createRoofGableGeometry(width, height, depth);
-    const roofMesh = new THREE.Mesh(roofGeo, baseMat);
-    roofMesh.castShadow = true;
-    roofMesh.receiveShadow = true;
-    group.add(roofMesh);
-
-  } else if (type === 'finial' || type === 'sphere') {
-    // Spherical Rooftop Dome or Column Finial
-    const sphereGeo = new THREE.SphereGeometry(width / 2, 24, 18);
-    const sphereMesh = new THREE.Mesh(sphereGeo, baseMat);
-    sphereMesh.castShadow = true;
-    sphereMesh.receiveShadow = true;
-    group.add(sphereMesh);
-
-    // Decorative mounting ring base
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
-    const ring = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.35, width * 0.45, 0.04, 18), ringMat);
-    ring.position.y = -height / 2 + 0.02;
-    ring.castShadow = true;
-    group.add(ring);
+    ctx.fillRect(0, 0, w, h);
   }
 
-  group.position.copy(initPos);
+  // Draw chamfered/beveled edges characteristic of precast concrete masonry units
+  function drawChamfer(highlightColor, shadowColor, seamColor) {
+    // 1px outer joint gap
+    ctx.strokeStyle = seamColor || 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
-  const halfX = width / 2;
-  const halfY = height / 2;
-  const halfZ = depth / 2;
-  const boundingRadius = Math.hypot(halfX, halfY, halfZ);
+    // Bevel highlights (top and left edges catch ambient studio/sun light)
+    ctx.strokeStyle = highlightColor || 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(1.5, h - 2);
+    ctx.lineTo(1.5, 1.5);
+    ctx.lineTo(w - 2, 1.5);
+    ctx.stroke();
 
-  group.userData = {
+    // Bevel shadows (bottom and right undercuts)
+    ctx.strokeStyle = shadowColor || 'rgba(0, 0, 0, 0.28)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w - 1.5, 2);
+    ctx.lineTo(w - 1.5, h - 1.5);
+    ctx.lineTo(2, h - 1.5);
+    ctx.stroke();
+  }
+
+  // Aggregate specks (sand, mineral flecks, cement dust variation)
+  function drawAggregates(colors, count, minR = 0.6, maxR = 1.6) {
+    for (let i = 0; i < count; i++) {
+      const rx = 2 + Math.random() * (w - 4);
+      const ry = 2 + Math.random() * (h - 4);
+      const rad = minR + Math.random() * (maxR - minR);
+      ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+      ctx.beginPath();
+      ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Micro-bugholes (air voids trapped against formwork)
+  function drawBugholes(count) {
+    for (let i = 0; i < count; i++) {
+      const bx = 4 + Math.random() * (w - 8);
+      const by = 4 + Math.random() * (h - 8);
+      const r = 0.7 + Math.random() * 1.2;
+      // Dark pore cavity
+      ctx.fillStyle = 'rgba(15, 20, 25, 0.45)';
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Bottom rim micro-highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.beginPath();
+      ctx.arc(bx, by + r * 0.4, r * 0.5, 0, Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // Architectural Formwork Tie-Rod Holes (iconic circular recessed holes on cast concrete)
+  function drawTieHoles(coords, radius = 2.4, innerColor = '#24272c') {
+    coords.forEach(([cx, cy]) => {
+      // Outer subtle chamfer ring
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius + 1.2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Recessed shadow cup
+      const grad = ctx.createRadialGradient(cx - 0.5, cy - 0.5, 0.5, cx, cy, radius);
+      grad.addColorStop(0, '#15171a');
+      grad.addColorStop(0.7, innerColor);
+      grad.addColorStop(1, '#0e0f11');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Center plug dot
+      ctx.fillStyle = '#0a0b0d';
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // Render individual architectural concrete textures
+  if (type === 'cast_grey') {
+    // 1. Classic Raw Cast Grey Architectural Portland Concrete
+    fillBase('#9ca1a8', '#8b9097');
+    drawAggregates(['#777b82', '#b0b5bd', '#6b6f75', '#c1c6ce', '#5c6065'], 360);
+    drawBugholes(18);
+
+    // Subtle horizontal formwork plywood joint seam
+    ctx.strokeStyle = 'rgba(50, 55, 60, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(3, 32);
+    ctx.lineTo(w - 3, 32);
+    ctx.stroke();
+
+    // 4 architectural tie-rod imprint holes
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.4, '#303338');
+    drawChamfer('rgba(255, 255, 255, 0.22)', 'rgba(0, 0, 0, 0.32)');
+
+  } else if (type === 'cinder_block') {
+    // 2. Split-Face CMU Concrete Masonry Unit
+    fillBase('#7e8389', '#70747a');
+    drawAggregates(['#52565c', '#9ca0a7', '#42454a', '#b5b9c0', '#323438'], 520, 0.7, 2.0);
+    drawBugholes(30);
+
+    // Horizontal CMU center mortar line / split-groove
+    ctx.strokeStyle = 'rgba(20, 22, 25, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(2, 32);
+    ctx.lineTo(w - 2, 32);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(2, 33.5);
+    ctx.lineTo(w - 2, 33.5);
+    ctx.stroke();
+
+    drawChamfer('rgba(255, 255, 255, 0.18)', 'rgba(0, 0, 0, 0.42)');
+
+  } else if (type === 'smooth_white') {
+    // 3. Fair-Faced White Architectural Concrete (Tadao Ando style)
+    fillBase('#f0ede7', '#e2dfd8');
+    drawAggregates(['#cbc7bf', '#ffffff', '#dbd8d1', '#bab6ae'], 240, 0.5, 1.2);
+    drawBugholes(8);
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.2, '#62605b');
+    drawChamfer('rgba(255, 255, 255, 0.35)', 'rgba(0, 0, 0, 0.22)', 'rgba(0, 0, 0, 0.2)');
+
+  } else if (type === 'charcoal_basalt') {
+    // 4. Basalt Charcoal Concrete
+    fillBase('#34373d', '#282a2f');
+    drawAggregates(['#1b1c20', '#4a4e57', '#222428', '#5b606a'], 380, 0.6, 1.8);
+    drawBugholes(16);
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.4, '#17181c');
+    drawChamfer('rgba(255, 255, 255, 0.14)', 'rgba(0, 0, 0, 0.52)');
+
+  } else if (type === 'board_formed') {
+    // 5. Board-Formed Timber Grain Concrete
+    fillBase('#938e85', '#847f76');
+    // 4 distinct horizontal timber plank formwork bands (each 16px high)
+    for (let y = 0; y < h; y += 16) {
+      // Wood-grain relief striations
+      ctx.strokeStyle = (y % 32 === 0) ? 'rgba(70, 65, 58, 0.18)' : 'rgba(60, 55, 48, 0.14)';
+      ctx.lineWidth = 1;
+      for (let gy = y + 2; gy < y + 15; gy += 3) {
+        ctx.beginPath();
+        ctx.moveTo(2, gy);
+        ctx.bezierCurveTo(20, gy + (y % 7) - 3, 44, gy - (y % 5) + 2, w - 2, gy);
+        ctx.stroke();
+      }
+      // Plank seam joint groove
+      if (y > 0) {
+        ctx.strokeStyle = 'rgba(25, 22, 18, 0.45)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(2, y);
+        ctx.lineTo(w - 2, y);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(2, y + 1);
+        ctx.lineTo(w - 2, y + 1);
+        ctx.stroke();
+      }
+    }
+    // Nail / anchor head imprints in formwork
+    [[12, 8], [52, 24], [12, 40], [52, 56]].forEach(([nx, ny]) => {
+      ctx.fillStyle = '#26231e';
+      ctx.beginPath();
+      ctx.arc(nx, ny, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    drawAggregates(['#6b665e', '#aba59b', '#57524b'], 220, 0.6, 1.4);
+    drawChamfer('rgba(255, 255, 255, 0.2)', 'rgba(0, 0, 0, 0.35)');
+
+  } else if (type === 'terrazzo') {
+    // 6. Polished Architectural Terrazzo Concrete
+    fillBase('#e5e0d8', '#dad5cd');
+    drawAggregates(['#bfbab2', '#faf6ef', '#cdc8c0'], 180, 0.5, 1.2);
+    // Exposed colorful mineral aggregate chips (terracotta, serpentine green, basalt, quartz)
+    const chipColors = ['#b84d38', '#346546', '#25272a', '#ffffff', '#c59a48', '#844133', '#1e422c'];
+    for (let i = 0; i < 75; i++) {
+      const cx = 3 + Math.random() * (w - 6);
+      const cy = 3 + Math.random() * (h - 6);
+      const rad = 1.0 + Math.random() * 2.2;
+      ctx.fillStyle = chipColors[i % chipColors.length];
+      ctx.beginPath();
+      // Irregular polygon chip
+      const sides = 4 + Math.floor(Math.random() * 3);
+      for (let s = 0; s < sides; s++) {
+        const ang = (s / sides) * Math.PI * 2;
+        const rVar = rad * (0.7 + Math.random() * 0.6);
+        const px = cx + Math.cos(ang) * rVar;
+        const py = cy + Math.sin(ang) * rVar;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    drawChamfer('rgba(255, 255, 255, 0.35)', 'rgba(0, 0, 0, 0.25)');
+
+  } else if (type === 'sandstone_concrete') {
+    // 7. Warm Sandstone Precast Concrete
+    fillBase('#cebeaa', '#bdae99');
+    drawAggregates(['#dfcfbb', '#9e8f7c', '#7d705f', '#eae0d1'], 420, 0.6, 1.7);
+    drawBugholes(20);
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.4, '#4a4135');
+    drawChamfer('rgba(255, 255, 255, 0.25)', 'rgba(0, 0, 0, 0.32)');
+
+  } else if (type === 'fluted_ribbed') {
+    // 8. Fluted Ribbed Architectural Facade Concrete
+    fillBase('#8d9299', '#7f848b');
+    if (face !== 'top' && face !== 'bottom') {
+      // 8 vertical fluted cast ribs
+      for (let x = 0; x < w; x += 8) {
+        // Ridge highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.fillRect(x + 1, 2, 3, h - 4);
+        // Shadow groove
+        ctx.fillStyle = 'rgba(15, 18, 22, 0.38)';
+        ctx.fillRect(x + 5, 2, 3, h - 4);
+      }
+    }
+    drawAggregates(['#6f737a', '#a6abb3', '#5c6066'], 240, 0.5, 1.4);
+    drawChamfer('rgba(255, 255, 255, 0.22)', 'rgba(0, 0, 0, 0.38)');
+
+  } else if (type === 'reinforced') {
+    // 9. Industrial Reinforced Concrete with Steel Corner Plates
+    fillBase('#7c8087', '#6e7278');
+    drawAggregates(['#595c61', '#9ca1a8', '#44464a'], 340, 0.6, 1.6);
+    drawBugholes(16);
+    // Steel reinforcement corner bracket plates
+    const bracketSize = 10;
+    [[0, 0], [w - bracketSize, 0], [0, h - bracketSize], [w - bracketSize, h - bracketSize]].forEach(([bx, by]) => {
+      ctx.fillStyle = '#44484f';
+      ctx.fillRect(bx + 1, by + 1, bracketSize - 2, bracketSize - 2);
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 1.5, by + 1.5, bracketSize - 3, bracketSize - 3);
+      // Rivet bolt
+      ctx.fillStyle = '#d1d5db';
+      ctx.beginPath();
+      ctx.arc(bx + bracketSize / 2, by + bracketSize / 2, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    drawTieHoles([[32, 32]], 2.8, '#1e2126');
+    drawChamfer('rgba(255, 255, 255, 0.22)', 'rgba(0, 0, 0, 0.4)');
+
+  } else if (type === 'terracotta_concrete') {
+    // 10. Terracotta Pigmented Red Concrete Block
+    fillBase('#a55644', '#934938');
+    drawAggregates(['#bd6c59', '#78382b', '#5c2a20', '#d48370'], 400, 0.6, 1.7);
+    drawBugholes(18);
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.4, '#421d15');
+    drawChamfer('rgba(255, 255, 255, 0.22)', 'rgba(0, 0, 0, 0.38)');
+
+  } else if (type === 'aerated_aac') {
+    // 11. Autoclaved Aerated Concrete (AAC Lightweight Block)
+    fillBase('#dde1e7', '#cfd4db');
+    drawAggregates(['#bdc2ca', '#edf1f7', '#a8aeb7'], 300, 0.5, 1.2);
+    // Dense cellular microscopic air bubble voids
+    for (let i = 0; i < 90; i++) {
+      const ax = 3 + Math.random() * (w - 6);
+      const ay = 3 + Math.random() * (h - 6);
+      const ar = 0.8 + Math.random() * 1.3;
+      ctx.fillStyle = 'rgba(45, 52, 62, 0.35)';
+      ctx.beginPath();
+      ctx.arc(ax, ay, ar, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.beginPath();
+      ctx.arc(ax, ay + ar * 0.4, ar * 0.5, 0, Math.PI);
+      ctx.fill();
+    }
+    drawChamfer('rgba(255, 255, 255, 0.32)', 'rgba(0, 0, 0, 0.22)');
+
+  } else if (type === 'weathered_patina') {
+    // 12. Weathered Brutalist Concrete with Atmospheric Patina
+    fillBase('#7e8288', '#6e7277');
+    drawAggregates(['#5b5e63', '#a2a7ae', '#47494d', '#c2c7ce'], 380, 0.6, 1.8);
+    drawBugholes(24);
+    // Vertical water-runoff rain streaks
+    for (let x = 6; x < w - 6; x += 11) {
+      const streakW = 2 + (x % 3);
+      ctx.fillStyle = 'rgba(20, 24, 28, 0.22)';
+      ctx.fillRect(x, 2, streakW, h - 4);
+    }
+    // Faint mineral efflorescence patch
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.arc(28, 36, 14, 0, Math.PI * 2);
+    ctx.fill();
+    drawTieHoles([[14, 14], [50, 14], [14, 50], [50, 50]], 2.4, '#1b1d20');
+    drawChamfer('rgba(255, 255, 255, 0.18)', 'rgba(0, 0, 0, 0.44)');
+  }
+}
+
+function getOrCreateBlockTexture(type, face) {
+  const key = `${type}_${face}`;
+  if (blockTextureCache.has(key)) return blockTextureCache.get(key);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+
+  drawBlockFace(ctx, type, face);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  blockTextureCache.set(key, texture);
+  return texture;
+}
+
+const blockMaterialCache = new Map();
+
+function getBlockMaterials(type) {
+  const t = resolveBlockType(type);
+  if (blockMaterialCache.has(t)) return blockMaterialCache.get(t);
+
+  const def = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
+
+  // Faces order: [+X, -X, +Y, -Y, +Z, -Z] -> [right, left, top, bottom, front, back]
+  const faces = ['side', 'side', 'top', 'bottom', 'side', 'side'];
+  const mats = faces.map(face => {
+    const tex = getOrCreateBlockTexture(t, face);
+    return new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: def.roughness || 0.88,
+      metalness: def.metalness || 0.04,
+      transparent: false,
+      opacity: 1.0,
+      emissive: 0x000000
+    });
+  });
+
+  blockMaterialCache.set(t, mats);
+  return mats;
+}
+
+// Master Cube Geometry for all Concrete Blocks (0.5m modular dimension)
+const cubeGeometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+
+// Master Concrete Block Factory
+function createConcreteBlock(type, initPos, customName) {
+  const t = resolveBlockType(type);
+  const info = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
+  const templateMats = getBlockMaterials(t);
+  
+  // Clone materials for individual highlight / emissive control
+  const mats = templateMats.map(m => m.clone());
+
+  const mesh = new THREE.Mesh(cubeGeometry, mats);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.position.copy(initPos);
+
+  const name = customName || `${info.name} #${pickables.length + 1}`;
+  const half = BLOCK_SIZE / 2;
+
+  mesh.userData = {
     name,
-    type,
-    width,
-    height,
-    depth,
-    halfX,
-    halfY,
-    halfZ,
-    boundingRadius,
+    type: t,
+    isConcreteBlock: true,
+    isMinecraftBlock: true, // compatibility flag
+    width: BLOCK_SIZE,
+    height: BLOCK_SIZE,
+    depth: BLOCK_SIZE,
+    halfX: half,
+    halfY: half,
+    halfZ: half,
+    boundingRadius: half * 1.732,
     velocity: new THREE.Vector3(),
     held: false,
     initPos: initPos.clone(),
-    mat: baseMat,
-    origColor: colorHex,
-    origEmissive: emissiveHex
+    materials: mats,
+    origEmissive: 0x000000
   };
 
-  scene.add(group);
-  pickables.push(group);
-  return group;
+  scene.add(mesh);
+  pickables.push(mesh);
+  updateBlockCountBadge();
+  return mesh;
 }
 
-// Retain legacy factory alias for compatibility
-const createLegoObject = createArchitecturalBlock;
+const createMinecraftBlock = createConcreteBlock;
+
+// Compatibility alias for legacy callers
+function createArchitecturalBlock(type, width, height, depth, colorHex, initPos, name) {
+  return createConcreteBlock(type, initPos, name);
+}
+
+function updateBlockCountBadge() {
+  const badge = document.getElementById('blockCountBadge');
+  if (badge) {
+    badge.textContent = `${pickables.length} Blocks`;
+  }
+}
 
 // -------------------------------------------------------------
-// SPAWN FULL-SCALE ARCHITECTURAL STUDIO PIECES
+// SPAWN INITIAL ARCHITECTURAL CONCRETE PAVILION & STAGING BAYS
 // -------------------------------------------------------------
 const FY = FLOOR_Y;
+const half = BLOCK_SIZE / 2;
 
-// A. STARTER VILLA RESIDENCE ON CENTRAL PLOT (Pre-assembled starter structure)
-// 1. Foundation Slabs (1.0m x 0.12m x 1.0m each)
-createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0, 0x854d0e, new THREE.Vector3(-0.5, FY + 0.06, 1.4), "Nordic Oak Foundation Deck", 0x451a03);
-createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0, 0xe2e8f0, new THREE.Vector3( 0.5, FY + 0.06, 1.4), "Limestone Foundation Slab", 0x475569);
+function assembleStarterPavilion() {
+  // Clear any existing pavilion blocks on the central plot
+  const toRemove = [];
+  pickables.forEach(p => {
+    if (p && p.userData && (p.userData.isCabinBlock || p.userData.isPavilionBlock)) {
+      toRemove.push(p);
+    }
+  });
+  toRemove.forEach(p => {
+    scene.remove(p);
+    const idx = pickables.indexOf(p);
+    if (idx !== -1) pickables.splice(idx, 1);
+  });
 
-// 2. Back Solid Wall (1.0m x 0.9m x 0.16m)
-createArchitecturalBlock('wall', 1.0, 0.9, 0.16, 0x334155, new THREE.Vector3(-0.5, FY + 0.12 + 0.45, 0.9), "Slate Modern Back Wall", 0x0f172a);
+  const CX = STUDIO_CENTER_X;
+  const CZ = STUDIO_CENTER_Z;
 
-// 3. Back Window Wall with Azure Glass (1.0m x 0.9m x 0.16m)
-createArchitecturalBlock('window_wall', 1.0, 0.9, 0.16, 0xf8fafc, new THREE.Vector3( 0.5, FY + 0.12 + 0.45, 0.9), "Panoramic Glass Window Wall", 0x64748b);
+  // Helper to place a pavilion block at relative grid coordinates
+  function placePavilion(type, gx, layer, gz, label) {
+    const worldX = CX + gx * BLOCK_SIZE;
+    const worldY = FY + half + layer * BLOCK_SIZE;
+    const worldZ = CZ + gz * BLOCK_SIZE;
+    const block = createConcreteBlock(type, new THREE.Vector3(worldX, worldY, worldZ), label);
+    block.userData.isPavilionBlock = true;
+    block.userData.isCabinBlock = true;
+    return block;
+  }
 
-// 4. Structural Porch Columns (0.24m x 0.9m x 0.24m)
-createArchitecturalBlock('column', 0.24, 0.9, 0.24, 0xf8fafc, new THREE.Vector3(-0.9, FY + 0.12 + 0.45, 1.8), "White Marble Porch Column", 0x64748b);
-createArchitecturalBlock('column', 0.24, 0.9, 0.24, 0x1e293b, new THREE.Vector3( 0.9, FY + 0.12 + 0.45, 1.8), "Dark Granite Porch Column", 0x0284c7);
+  // 1. LAYER 0 (Heavy Foundation Plinth - Charcoal Basalt & CMU Masonry)
+  placePavilion('charcoal_basalt', -1.5, 0, -1.5, "Foundation Corner BL");
+  placePavilion('cinder_block',    -0.5, 0, -1.5, "Foundation CMU Back");
+  placePavilion('cinder_block',     0.5, 0, -1.5, "Foundation CMU Back");
+  placePavilion('charcoal_basalt',  1.5, 0, -1.5, "Foundation Corner BR");
+  placePavilion('cinder_block',    -1.5, 0, -0.5, "Foundation CMU Left");
+  placePavilion('cinder_block',    -1.5, 0,  0.5, "Foundation CMU Left");
+  placePavilion('cinder_block',     1.5, 0, -0.5, "Foundation CMU Right");
+  placePavilion('cinder_block',     1.5, 0,  0.5, "Foundation CMU Right");
+  placePavilion('charcoal_basalt', -1.5, 0,  1.5, "Foundation Corner FL");
+  placePavilion('smooth_white',    -0.5, 0,  1.5, "Pavilion Threshold");
+  placePavilion('cinder_block',     0.5, 0,  1.5, "Foundation Front CMU");
+  placePavilion('charcoal_basalt',  1.5, 0,  1.5, "Foundation Corner FR");
 
-// 5. Upper Terrace Slab (1.0m x 0.12m x 1.0m) ready for second story!
-createArchitecturalBlock('roof_flat', 1.0, 0.12, 1.0, 0x475569, new THREE.Vector3(-0.5, FY + 0.12 + 0.90 + 0.06, 1.4), "Rooftop Terrace Slab", 0x1e293b);
+  // 2. LAYER 1 (Walls & Columns - Board-Formed Concrete & Cast Grey)
+  placePavilion('board_formed',       -1.5, 1, -1.5, "Board-Formed Pillar BL");
+  placePavilion('cast_grey',          -0.5, 1, -1.5, "Cast Grey Wall Back");
+  placePavilion('cast_grey',           0.5, 1, -1.5, "Cast Grey Wall Back");
+  placePavilion('board_formed',        1.5, 1, -1.5, "Board-Formed Pillar BR");
+  placePavilion('cast_grey',          -1.5, 1, -0.5, "Cast Grey Wall Left");
+  placePavilion('fluted_ribbed',      -1.5, 1,  0.5, "Fluted Accent Left");
+  placePavilion('cast_grey',           1.5, 1, -0.5, "Cast Grey Wall Right");
+  placePavilion('fluted_ribbed',       1.5, 1,  0.5, "Fluted Accent Right");
+  placePavilion('board_formed',       -1.5, 1,  1.5, "Board-Formed Pillar FL");
+  // Open doorway portal at (-0.5, 1, 1.5)
+  placePavilion('cast_grey',           0.5, 1,  1.5, "Cast Grey Wall Front");
+  placePavilion('board_formed',        1.5, 1,  1.5, "Board-Formed Pillar FR");
 
-// B. LEFT STAGING BAY: WALLS, WINDOWS & ARCHWAYS (x = -2.1 to -2.7)
-createArchitecturalBlock('wall',        1.0, 0.9, 0.16, 0xf8fafc, new THREE.Vector3(-2.35, FY + 0.45, 0.65), "Pure White Wall Module", 0x475569);
-createArchitecturalBlock('wall',        1.0, 0.9, 0.16, 0xc2410c, new THREE.Vector3(-2.35, FY + 0.45, 1.15), "Tuscan Terracotta Wall", 0x7c2d12);
-createArchitecturalBlock('window_wall', 1.0, 0.9, 0.16, 0x1e293b, new THREE.Vector3(-2.35, FY + 0.45, 1.65), "Charcoal Window Wall", 0x0f172a);
-createArchitecturalBlock('door_wall',   1.0, 0.9, 0.16, 0xd97706, new THREE.Vector3(-2.35, FY + 0.45, 2.15), "Sandstone Arch Doorway", 0x78350f);
-createArchitecturalBlock('half_wall',   0.5, 0.9, 0.16, 0x047857, new THREE.Vector3(-2.35, FY + 0.45, 2.65), "Emerald Half-Wall Spacer", 0x064e3b);
+  // 3. LAYER 2 (Upper Lintels & Cantilevers)
+  placePavilion('board_formed',       -1.5, 2, -1.5, "Board-Formed Pillar BL L2");
+  placePavilion('smooth_white',       -0.5, 2, -1.5, "White Precast Lintel Back");
+  placePavilion('cast_grey',           0.5, 2, -1.5, "Cast Grey Upper Back");
+  placePavilion('board_formed',        1.5, 2, -1.5, "Board-Formed Pillar BR L2");
+  placePavilion('cast_grey',          -1.5, 2, -0.5, "Cast Grey Upper Left");
+  placePavilion('smooth_white',       -1.5, 2,  0.5, "White Precast Lintel Left");
+  placePavilion('cast_grey',           1.5, 2, -0.5, "Cast Grey Upper Right");
+  placePavilion('smooth_white',        1.5, 2,  0.5, "White Precast Lintel Right");
+  placePavilion('board_formed',       -1.5, 2,  1.5, "Board-Formed Pillar FL L2");
+  placePavilion('smooth_white',       -0.5, 2,  1.5, "Entrance Portal Lintel");
+  placePavilion('cast_grey',           0.5, 2,  1.5, "Cast Grey Upper Front");
+  placePavilion('board_formed',        1.5, 2,  1.5, "Board-Formed Pillar FR L2");
 
-// C. RIGHT STAGING BAY: STRUCTURAL COLUMNS & FLOOR SLABS (x = 2.1 to 2.7)
-createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0xf8fafc, new THREE.Vector3( 2.15, FY + 0.45, 0.70), "Carrara Marble Column", 0x475569);
-createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0x1d4ed8, new THREE.Vector3( 2.55, FY + 0.45, 0.70), "Blueprint Cobalt Column", 0x1e3a8a);
-createArchitecturalBlock('column',     0.24, 0.9, 0.24, 0xb45309, new THREE.Vector3( 2.35, FY + 0.45, 1.20), "Timber Post Pillar", 0x451a03);
-createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0,  0x334155, new THREE.Vector3( 2.35, FY + 0.06, 1.80), "Anthracite Deck Slab", 0x0f172a);
-createArchitecturalBlock('floor_slab', 1.0, 0.12, 1.0,  0x94a3b8, new THREE.Vector3( 2.35, FY + 0.06, 2.40), "Polished Concrete Slab", 0x334155);
+  // 4. LAYER 3 (Roof Parapet & Overhang Beam)
+  placePavilion('reinforced',         -1.5, 3,  0.0, "Reinforced Beam Left");
+  placePavilion('sandstone_concrete', -0.5, 3,  0.0, "Sandstone Precast Ridge");
+  placePavilion('sandstone_concrete',  0.5, 3,  0.0, "Sandstone Precast Ridge");
+  placePavilion('reinforced',          1.5, 3,  0.0, "Reinforced Beam Right");
 
-// D. FRONT STAGING BAY: ROOFS, GABLES & ORNAMENTS (z = 2.75)
-createArchitecturalBlock('roof_gable', 1.0, 0.55, 1.0,  0xb91c1c, new THREE.Vector3(-1.05, FY + 0.28, 2.75), "Crimson Pitch Gable Roof", 0x7f1d1d);
-createArchitecturalBlock('roof_gable', 1.0, 0.55, 1.0,  0x0284c7, new THREE.Vector3( 0.00, FY + 0.28, 2.75), "Sapphire Villa Gable Roof", 0x075985);
-createArchitecturalBlock('roof_flat',  1.0, 0.12, 1.0,  0x047857, new THREE.Vector3( 1.05, FY + 0.06, 2.75), "Garden Green Rooftop Slab", 0x064e3b);
-createArchitecturalBlock('finial',     0.24, 0.24, 0.24, 0xf59e0b, new THREE.Vector3(-1.60, FY + 0.12, 2.75), "Gilded Dome Finial", 0xb45309);
-createArchitecturalBlock('finial',     0.24, 0.24, 0.24, 0x7e22ce, new THREE.Vector3( 1.60, FY + 0.12, 2.75), "Amethyst Orb Finial", 0x581c87);
+  updateBlockCountBadge();
+}
+
+const assembleStarterCabin = assembleStarterPavilion;
+
+// Staging Depot Concrete Block Stacks (Organized on Left, Right, & Back perimeters)
+// Central Building Site (0, 1.4) is left 100% open, spacious, and clean for construction!
+
+// 1. LEFT MATERIAL DEPOT (Structural & Heavy Masonry Concrete Blocks)
+const L_DEPOT_X = -3.8;
+// Stack 1: Cast Grey Concrete (2 cubes stacked)
+createConcreteBlock('cast_grey',        new THREE.Vector3(L_DEPOT_X - 0.35, FY + half, 0.4), "Cast Grey Concrete Base");
+createConcreteBlock('cast_grey',        new THREE.Vector3(L_DEPOT_X - 0.35, FY + half + BLOCK_SIZE, 0.4), "Cast Grey Concrete Top");
+// Stack 2: CMU Split-Face Masonry Block (2 cubes stacked)
+createConcreteBlock('cinder_block',     new THREE.Vector3(L_DEPOT_X + 0.35, FY + half, 0.4), "CMU Masonry Block Base");
+createConcreteBlock('cinder_block',     new THREE.Vector3(L_DEPOT_X + 0.35, FY + half + BLOCK_SIZE, 0.4), "CMU Masonry Block Top");
+// Stack 3: Basalt Charcoal Concrete (2 cubes stacked)
+createConcreteBlock('charcoal_basalt',  new THREE.Vector3(L_DEPOT_X - 0.35, FY + half, 1.6), "Basalt Charcoal Concrete Base");
+createConcreteBlock('charcoal_basalt',  new THREE.Vector3(L_DEPOT_X - 0.35, FY + half + BLOCK_SIZE, 1.6), "Basalt Charcoal Concrete Top");
+// Stack 4: Industrial Reinforced Concrete (2 cubes stacked)
+createConcreteBlock('reinforced',       new THREE.Vector3(L_DEPOT_X + 0.35, FY + half, 1.6), "Industrial Reinforced Concrete Base");
+createConcreteBlock('reinforced',       new THREE.Vector3(L_DEPOT_X + 0.35, FY + half + BLOCK_SIZE, 1.6), "Industrial Reinforced Concrete Top");
+
+// 2. RIGHT MATERIAL DEPOT (Architectural Finishes & Facade Precast Blocks)
+const R_DEPOT_X = 3.8;
+// Stack 1: Fair-Faced White Precast Concrete (2 cubes stacked)
+createConcreteBlock('smooth_white',     new THREE.Vector3(R_DEPOT_X - 0.35, FY + half, 0.4), "White Precast Concrete Base");
+createConcreteBlock('smooth_white',     new THREE.Vector3(R_DEPOT_X - 0.35, FY + half + BLOCK_SIZE, 0.4), "White Precast Concrete Top");
+// Stack 2: Board-Formed Timber Concrete (2 cubes stacked)
+createConcreteBlock('board_formed',     new THREE.Vector3(R_DEPOT_X + 0.35, FY + half, 0.4), "Board-Formed Concrete Base");
+createConcreteBlock('board_formed',     new THREE.Vector3(R_DEPOT_X + 0.35, FY + half + BLOCK_SIZE, 0.4), "Board-Formed Concrete Top");
+// Stack 3: Polished Terrazzo Aggregate Concrete (2 cubes stacked)
+createConcreteBlock('terrazzo',         new THREE.Vector3(R_DEPOT_X - 0.35, FY + half, 1.6), "Terrazzo Aggregate Base");
+createConcreteBlock('terrazzo',         new THREE.Vector3(R_DEPOT_X - 0.35, FY + half + BLOCK_SIZE, 1.6), "Terrazzo Aggregate Top");
+// Stack 4: Fluted Ribbed Facade Block (2 cubes stacked)
+createConcreteBlock('fluted_ribbed',    new THREE.Vector3(R_DEPOT_X + 0.35, FY + half, 1.6), "Fluted Ribbed Block Base");
+createConcreteBlock('fluted_ribbed',    new THREE.Vector3(R_DEPOT_X + 0.35, FY + half + BLOCK_SIZE, 1.6), "Fluted Ribbed Block Top");
+
+// 3. BACK SPECIALTY PALLET (Specialty & Accent Architectural Concrete Blocks)
+const B_PALLET_Z = -2.8;
+// Stack 1: Sandstone Precast Concrete (2 cubes stacked)
+createConcreteBlock('sandstone_concrete', new THREE.Vector3(-1.2, FY + half, B_PALLET_Z), "Sandstone Precast Base");
+createConcreteBlock('sandstone_concrete', new THREE.Vector3(-1.2, FY + half + BLOCK_SIZE, B_PALLET_Z), "Sandstone Precast Top");
+// Stack 2: Terracotta Pigmented Red Concrete (2 cubes stacked)
+createConcreteBlock('terracotta_concrete',new THREE.Vector3(-0.4, FY + half, B_PALLET_Z), "Terracotta Pigmented Base");
+createConcreteBlock('terracotta_concrete',new THREE.Vector3(-0.4, FY + half + BLOCK_SIZE, B_PALLET_Z), "Terracotta Pigmented Top");
+// Stack 3: Aerated AAC Lightweight Block (2 cubes stacked)
+createConcreteBlock('aerated_aac',        new THREE.Vector3( 0.4, FY + half, B_PALLET_Z), "Aerated AAC Lightweight Base");
+createConcreteBlock('aerated_aac',        new THREE.Vector3( 0.4, FY + half + BLOCK_SIZE, B_PALLET_Z), "Aerated AAC Lightweight Top");
+// Stack 4: Weathered Brutalist Concrete (2 cubes stacked)
+createConcreteBlock('weathered_patina',   new THREE.Vector3( 1.2, FY + half, B_PALLET_Z), "Weathered Brutalist Base");
+createConcreteBlock('weathered_patina',   new THREE.Vector3( 1.2, FY + half + BLOCK_SIZE, B_PALLET_Z), "Weathered Brutalist Top");
+
+updateBlockCountBadge();
 
 // Pedestals array for compatibility
 const pedestals = [];
 
 /* ============================================================
-   REAL-TIME ARCHITECTURAL SNAP GUIDE (Translucent Metric Ghost Box)
+   REAL-TIME MINECRAFT VOXEL SNAP GUIDE (Face & Grid Snapping)
    ============================================================ */
 const ghostGuideMat = new THREE.MeshBasicMaterial({
-  color: 0x2563eb,
+  color: 0x10b981,
   wireframe: true,
   transparent: true,
-  opacity: 0.75
+  opacity: 0.85
 });
-const ghostBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+const ghostBoxGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 const ghostSnapGuide = new THREE.Mesh(ghostBoxGeo, ghostGuideMat);
 ghostSnapGuide.visible = false;
 scene.add(ghostSnapGuide);
 
-// Predicts the exact architectural snap position for any held object
+// Predicts the exact Minecraft voxel face or ground snap position for any held cube
 function calculateSnapTarget(obj) {
   if (!obj || !obj.userData) return null;
-  const objHalfX = obj.userData?.halfX || 0.5;
-  const objHalfY = obj.userData?.halfY || 0.45;
-  const objHalfZ = obj.userData?.halfZ || 0.08;
 
-  // 1. Check stacking atop another architectural block
-  let bestSupport = null;
-  let highestSupportY = -Infinity;
+  // 1. Check Face-Snapping to any adjacent Minecraft Cube in the world
+  let nearestNeighbor = null;
+  let minNeighborDist = 0.95; // Snap proximity threshold
+  let bestNormal = null;
+
   for (const other of pickables) {
     if (!other || other === obj || (other.userData && other.userData.held)) continue;
-    const dx = Math.abs(obj.position.x - other.position.x);
-    const dz = Math.abs(obj.position.z - other.position.z);
-    const otherHalfX = other.userData?.halfX || 0.5;
-    const otherHalfY = other.userData?.halfY || 0.45;
-    const otherHalfZ = other.userData?.halfZ || 0.08;
+    const dx = obj.position.x - other.position.x;
+    const dy = obj.position.y - other.position.y;
+    const dz = obj.position.z - other.position.z;
+    const dist = Math.hypot(dx, dy, dz);
 
-    const overlapX = (objHalfX + otherHalfX) * 1.08;
-    const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
-    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.75) {
-      if (other.position.y > highestSupportY) {
-        highestSupportY = other.position.y;
-        bestSupport = other;
+    if (dist < minNeighborDist) {
+      minNeighborDist = dist;
+      nearestNeighbor = other;
+
+      // Determine the dominant snap face based on largest offset axis
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      const absZ = Math.abs(dz);
+
+      if (absY >= absX && absY >= absZ) {
+        bestNormal = new THREE.Vector3(0, Math.sign(dy) || 1, 0);
+      } else if (absX >= absY && absX >= absZ) {
+        bestNormal = new THREE.Vector3(Math.sign(dx) || 1, 0, 0);
+      } else {
+        bestNormal = new THREE.Vector3(0, 0, Math.sign(dz) || 1);
       }
     }
   }
 
-  if (bestSupport) {
-    const bestHalfY = bestSupport.userData?.halfY || 0.45;
-    let targetX = obj.position.x;
-    let targetZ = obj.position.z;
-    let targetRotY = obj.rotation.y;
-    if (snapToLegoGrid) {
-      targetX = Math.round(targetX / ARCH_GRID) * ARCH_GRID;
-      targetZ = Math.round(targetZ / ARCH_GRID) * ARCH_GRID;
-      targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
-    }
+  if (nearestNeighbor && bestNormal) {
+    const targetPos = nearestNeighbor.position.clone().addScaledVector(bestNormal, BLOCK_SIZE);
+    // Ensure cube doesn't sink beneath the floor
+    targetPos.y = Math.max(FLOOR_Y + half, targetPos.y);
     return {
-      pos: new THREE.Vector3(targetX, bestSupport.position.y + bestHalfY + objHalfY, targetZ),
-      rotY: targetRotY,
-      scale: new THREE.Vector3(objHalfX * 2, objHalfY * 2, objHalfZ * 2),
+      pos: targetPos,
+      rotY: 0,
+      scale: new THREE.Vector3(1, 1, 1),
       isStack: true
     };
   }
 
-  // 2. Check Studio Floor Foundation Placement
-  if (obj.position.y < FLOOR_Y + 1.2) {
-    let targetX = obj.position.x;
-    let targetZ = obj.position.z;
-    let targetRotY = obj.rotation.y;
-    if (snapToLegoGrid) {
-      targetX = Math.round(targetX / ARCH_GRID) * ARCH_GRID;
-      targetZ = Math.round(targetZ / ARCH_GRID) * ARCH_GRID;
-      targetRotY = Math.round(targetRotY / (Math.PI / 2)) * (Math.PI / 2);
-    }
+  // 2. Snap to the Vast 36m Ground Foundation Grid
+  if (obj.position.y < FLOOR_Y + 1.25) {
+    const gridX = Math.round((obj.position.x - STUDIO_CENTER_X) / BLOCK_SIZE) * BLOCK_SIZE + STUDIO_CENTER_X;
+    const gridZ = Math.round((obj.position.z - STUDIO_CENTER_Z) / BLOCK_SIZE) * BLOCK_SIZE + STUDIO_CENTER_Z;
     return {
-      pos: new THREE.Vector3(targetX, FLOOR_Y + objHalfY, targetZ),
-      rotY: targetRotY,
-      scale: new THREE.Vector3(objHalfX * 2, objHalfY * 2, objHalfZ * 2),
+      pos: new THREE.Vector3(gridX, FLOOR_Y + half, gridZ),
+      rotY: 0,
+      scale: new THREE.Vector3(1, 1, 1),
       isStack: false
     };
   }
@@ -1230,12 +1704,89 @@ function updateGhostGuide(heldObj) {
   if (snap) {
     ghostSnapGuide.position.copy(snap.pos);
     ghostSnapGuide.rotation.y = snap.rotY;
-    ghostSnapGuide.scale.copy(snap.scale).multiplyScalar(1.02);
+    ghostSnapGuide.scale.set(1.03, 1.03, 1.03);
     ghostSnapGuide.visible = true;
-    ghostGuideMat.color.setHex(snap.isStack ? 0x10b981 : 0x2563eb); // Emerald for stacking, Cobalt for ground
+    ghostGuideMat.color.setHex(snap.isStack ? 0x10b981 : 0x2563eb); // Emerald for cube face snap, Cobalt for ground
   } else {
     ghostSnapGuide.visible = false;
   }
+}
+
+// -------------------------------------------------------------
+// DYNAMIC BLOCK SPAWNER & INVENTORY ACTIONS
+// -------------------------------------------------------------
+function spawnBlockAtPlayer(type, customOffset) {
+  initAudio();
+  const t = type || selectedBlockType || 'cast_grey';
+  const def = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
+
+  // Calculate spawn point directly in front of the player
+  let spawnPos;
+  if (customOffset) {
+    spawnPos = customOffset.clone();
+  } else {
+    const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    spawnPos = new THREE.Vector3()
+      .copy(player.pos)
+      .addScaledVector(forward, 1.2);
+    // Clamp to ergonomic height
+    spawnPos.y = Math.max(FLOOR_Y + half, player.pos.y + 0.65);
+
+    // Snap to grid for clean alignment
+    if (snapToLegoGrid) {
+      spawnPos.x = Math.round((spawnPos.x - STUDIO_CENTER_X) / BLOCK_SIZE) * BLOCK_SIZE + STUDIO_CENTER_X;
+      spawnPos.z = Math.round((spawnPos.z - STUDIO_CENTER_Z) / BLOCK_SIZE) * BLOCK_SIZE + STUDIO_CENTER_Z;
+      spawnPos.y = Math.round((spawnPos.y - FLOOR_Y) / BLOCK_SIZE) * BLOCK_SIZE + FLOOR_Y + half;
+    }
+  }
+
+  const block = createConcreteBlock(t, spawnPos);
+  
+  // Pop animation
+  block.scale.set(0.1, 0.1, 0.1);
+  let scaleProgress = 0.1;
+  const popTimer = setInterval(() => {
+    scaleProgress += 0.18;
+    if (scaleProgress >= 1.0) {
+      block.scale.set(1, 1, 1);
+      clearInterval(popTimer);
+    } else {
+      block.scale.set(scaleProgress, scaleProgress, scaleProgress);
+    }
+  }, 16);
+
+  showBanner(`SPAWNED: ${def.name.toUpperCase()}`, def.icon, 'pick');
+  playTone(740, 0.08, 'sine', 0.18);
+  setTimeout(() => playTone(980, 0.09, 'sine', 0.2), 35);
+  return block;
+}
+
+function cloneHeldBlock() {
+  initAudio();
+  let sourceObj = leftGrab.heldObject || rightGrab.heldObject || mouseDragObj;
+  if (!sourceObj) {
+    // If nothing held, pick candidate or spawn selected
+    sourceObj = rightGrab.candidate || leftGrab.candidate;
+  }
+  const type = (sourceObj && sourceObj.userData && sourceObj.userData.type) ? sourceObj.userData.type : selectedBlockType;
+  const spawnOffset = sourceObj ? sourceObj.position.clone().add(new THREE.Vector3(0, BLOCK_SIZE, 0)) : null;
+  spawnBlockAtPlayer(type, spawnOffset);
+}
+
+function spawnBatchSupply() {
+  initAudio();
+  const t = selectedBlockType || 'cast_grey';
+  const def = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
+
+  // Staging stack placement
+  const bayX = L_BAY_X;
+  const zBase = 2.6;
+  for (let i = 0; i < 4; i++) {
+    const pos = new THREE.Vector3(bayX, FY + half + i * BLOCK_SIZE, zBase);
+    createConcreteBlock(t, pos, `${def.name} Supply #${i + 1}`);
+  }
+  showBanner(`+4 SUPPLY: ${def.name.toUpperCase()} STACKED`, def.icon, 'pick');
+  playModeFanfare(false);
 }
 
 /* ============================================================
@@ -1320,6 +1871,173 @@ const leftReticle = new THREE.Mesh(
 leftReticle.visible = false;
 leftHandGroup.add(leftReticle);
 
+/* ============================================================
+   VR RAYCAST BEAM & TRACTOR SYSTEM (Meta Quest & Apple Vision Pro Engine)
+   ============================================================ */
+let laserPointerMode = true;
+
+const laserGroup = new THREE.Group();
+scene.add(laserGroup);
+
+function createVRBeam(defaultCoreColor, defaultGlowColor) {
+  const group = new THREE.Group();
+
+  // 1. Core High-Luminance Tapered Beam (Origin at base, extends along +Z)
+  // Radius: 0.005 at target, 0.010 at source, clearly visible at 20+ meters
+  const coreGeo = new THREE.CylinderGeometry(0.005, 0.010, 1, 12);
+  coreGeo.translate(0, 0.5, 0);
+  coreGeo.rotateX(Math.PI / 2);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: defaultCoreColor,
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false
+  });
+  const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+  group.add(coreMesh);
+
+  // 2. Outer Volumetric Glowing Halo (Additive Blending)
+  // Radius: 0.016 at target, 0.032 at source
+  const glowGeo = new THREE.CylinderGeometry(0.016, 0.032, 1, 12);
+  glowGeo.translate(0, 0.5, 0);
+  glowGeo.rotateX(Math.PI / 2);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: defaultGlowColor,
+    transparent: true,
+    opacity: 0.55,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+  group.add(glowMesh);
+
+  // 3. VR Impact Targeting Reticle (Concentric Ring + Core Dot + Ticks)
+  const reticleGroup = new THREE.Group();
+
+  // Outer Targeting Ring
+  const ringGeo = new THREE.RingGeometry(0.055, 0.085, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: defaultCoreColor,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false
+  });
+  const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+  reticleGroup.add(ringMesh);
+
+  // Inner Focus Dot
+  const dotGeo = new THREE.CircleGeometry(0.024, 20);
+  const dotMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false
+  });
+  const dotMesh = new THREE.Mesh(dotGeo, dotMat);
+  reticleGroup.add(dotMesh);
+
+  // 4 Targeting Crosshair Pips
+  const tickGeo = new THREE.PlaneGeometry(0.014, 0.042);
+  const tickMat = new THREE.MeshBasicMaterial({
+    color: defaultGlowColor,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+    depthWrite: false
+  });
+  for (let i = 0; i < 4; i++) {
+    const tick = new THREE.Mesh(tickGeo, tickMat);
+    const ang = (i * Math.PI) / 2;
+    tick.position.set(Math.cos(ang) * 0.108, Math.sin(ang) * 0.108, 0.001);
+    tick.rotation.z = ang;
+    reticleGroup.add(tick);
+  }
+
+  laserGroup.add(group);
+  laserGroup.add(reticleGroup);
+  group.visible = false;
+  reticleGroup.visible = false;
+
+  return {
+    group,
+    coreMesh,
+    glowMesh,
+    coreMat,
+    glowMat,
+    reticleGroup,
+    ringMesh,
+    ringMat,
+    dotMesh,
+    dotMat,
+    update(origin, targetPoint, hitNormal, state, time) {
+      group.visible = true;
+      reticleGroup.visible = true;
+
+      // Position beam from origin looking at targetPoint
+      group.position.copy(origin);
+      group.lookAt(targetPoint);
+      const dist = Math.max(0.05, origin.distanceTo(targetPoint));
+      coreMesh.scale.set(1, 1, dist);
+      glowMesh.scale.set(1, 1, dist);
+
+      // Position reticle at targetPoint
+      reticleGroup.position.copy(targetPoint);
+      if (hitNormal) {
+        reticleGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), hitNormal);
+      } else {
+        reticleGroup.lookAt(camera.position);
+      }
+
+      // Dynamic animation & Color States (IDLE, HOVER, LOCKED)
+      const pulse = 1.0 + Math.sin((time || 0) * 8) * 0.08;
+      const targetScale = (state === 'LOCKED') ? 1.45 : (state === 'HOVER' ? 1.25 : 1.0);
+      reticleGroup.scale.setScalar(targetScale * pulse);
+
+      if (state === 'LOCKED') {
+        // Vibrant energetic emerald tractor beam
+        coreMat.color.setHex(0xa7f3d0); // Light mint
+        glowMat.color.setHex(0x10b981); // Emerald glow
+        ringMat.color.setHex(0x34d399);
+      } else if (state === 'HOVER') {
+        // Electric golden amber (target acquired)
+        coreMat.color.setHex(0xfef08a); // Sunlight core
+        glowMat.color.setHex(0xf59e0b); // Radiant amber
+        ringMat.color.setHex(0xfbbf24);
+      } else {
+        // Idle scanning beam
+        coreMat.color.setHex(defaultCoreColor);
+        glowMat.color.setHex(defaultGlowColor);
+        ringMat.color.setHex(defaultCoreColor);
+      }
+    },
+    hide() {
+      group.visible = false;
+      reticleGroup.visible = false;
+    }
+  };
+}
+
+const rightVRBeam = createVRBeam(0x38bdf8, 0x0284c7);
+const leftVRBeam = createVRBeam(0x34d399, 0x059669);
+const mouseVRBeam = createVRBeam(0x38bdf8, 0x2563eb);
+
+// Backward compatibility references
+const laserRightMesh = rightVRBeam.group;
+const laserLeftMesh = leftVRBeam.group;
+const laserRightDot = rightVRBeam.reticleGroup;
+const laserLeftDot = leftVRBeam.reticleGroup;
+const laserMatRight = rightVRBeam.coreMat;
+const laserMatLeft = leftVRBeam.coreMat;
+const laserMatLocked = rightVRBeam.coreMat;
+
+const laserDistances = {
+  right: 4.5,
+  left: 4.5,
+  mouse: 4.5
+};
+
 // Retain legacy references for backward compatibility
 const handGroup = rightHandGroup;
 const joints = rightRig.joints;
@@ -1344,12 +2062,13 @@ function mapRange(v, a1, b1, a2, b2) {
   return a2 + t * (b2 - a2);
 }
 
-// Exponential Smoothing State for Dual Hands (Eliminates webcam micro-jitter)
+// Exponential Smoothing State for Dual Hands
 const smoothedLeftLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
 const smoothedRightLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
 let smoothedLeftBaseZ = null;
 let smoothedRightBaseZ = null;
 
+// 0-Latency High-Precision Hand Tracking Filter
 function filterLandmarks(rawLm, smoothedArr) {
   const filtered = [];
   for (let i = 0; i < 21; i++) {
@@ -1361,9 +2080,9 @@ function filterLandmarks(rawLm, smoothedArr) {
       sm.z = raw.z || 0;
       sm.initialized = true;
     } else {
-      // Adaptive low-pass: quick responsive factor for fast motion, strong damping for still hands
+      // 0-latency adaptive filter: 80% to 98% immediate single-frame response
       const d = Math.hypot(raw.x - sm.x, raw.y - sm.y);
-      const alpha = clamp(0.35 + d * 5.0, 0.35, 0.88);
+      const alpha = clamp(0.80 + d * 8.0, 0.80, 0.98);
       sm.x += (raw.x - sm.x) * alpha;
       sm.y += (raw.y - sm.y) * alpha;
       sm.z += ((raw.z || 0) - sm.z) * alpha;
@@ -1454,6 +2173,11 @@ const viewWalkBtn = document.getElementById('viewWalkBtn') || document.getElemen
 const viewTableBtn = viewWalkBtn;
 const overviewBtn = document.getElementById('overviewBtn');
 const zenBtn = document.getElementById('zenBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn') || zenBtn;
+const laserToggleBtn = document.getElementById('laserToggleBtn');
+const laserMiniBtn = document.getElementById('laserMiniBtn');
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
 const reachToggleBtn = document.getElementById('reachToggleBtn');
 const snapToggleBtn = document.getElementById('snapToggleBtn');
 const blueprintBtn = document.getElementById('blueprintBtn');
@@ -1617,41 +2341,156 @@ function toggleTableView() {
   toggleOverviewView();
 }
 
-function toggleZenMode() {
-  zenMode = !zenMode;
-  document.body.classList.toggle('zen-mode', zenMode);
-  if (zenBtn) {
-    zenBtn.textContent = zenMode ? '✕ Exit Zen' : '⛶ Fullscreen';
-    zenBtn.classList.toggle('active', zenMode);
-  }
-  if (zenMode) {
-    showBanner('ZEN MODE: ALL CONTROLS & INSTRUCTIONS HIDDEN', '⛶', 'pick');
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+function toggleFullscreenMode() {
+  initAudio();
+  if (!document.fullscreenElement) {
+    if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
   } else {
-    showBanner('STANDARD CONTROLS RESTORED', '👁️', 'pick');
-    if (document.fullscreenElement && document.exitFullscreen) {
+    if (document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
     }
+  }
+}
+
+function updateFullscreenUI() {
+  const isFs = !!document.fullscreenElement;
+  if (fullscreenBtn) {
+    fullscreenBtn.textContent = isFs ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+    fullscreenBtn.classList.toggle('active', isFs);
+  }
+  // Guarantee studioBox and camera wrap remain strictly visible and interactive
+  if (studioBox) {
+    studioBox.style.display = 'block';
+    studioBox.style.opacity = '1';
+    studioBox.style.pointerEvents = 'auto';
+  }
+  if (camWrap && camViewerVisible) {
+    camWrap.style.display = 'block';
+  }
+  // Instant canvas resize
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  setOverlaySize();
+  showBanner(isFs ? 'FULLSCREEN ENTERED (CONTROLS ACTIVE)' : 'STANDARD VIEWPORT RESTORED', '⛶', 'pick');
+  playTone(isFs ? 680 : 480, 0.1, 'sine', 0.14);
+}
+
+document.addEventListener('fullscreenchange', updateFullscreenUI);
+document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+
+function toggleLaserPointer() {
+  initAudio();
+  laserPointerMode = !laserPointerMode;
+  if (laserToggleBtn) {
+    laserToggleBtn.textContent = laserPointerMode ? '🔦 Laser: ON' : '🔦 Laser: OFF';
+    laserToggleBtn.classList.toggle('active', laserPointerMode);
+  }
+  if (laserMiniBtn) {
+    laserMiniBtn.textContent = laserPointerMode ? '🔦 Laser: ON' : '🔦 Laser: OFF';
+    laserMiniBtn.classList.toggle('active', laserPointerMode);
+    laserMiniBtn.style.background = laserPointerMode ? '#0284c7' : '#64748b';
+  }
+  if (!laserPointerMode) {
+    rightVRBeam.hide();
+    leftVRBeam.hide();
+    mouseVRBeam.hide();
+  }
+  showBanner(laserPointerMode ? 'VR RAYCAST BEAM: ACTIVE (POINT & GRAB)' : 'LASER POINTER: OFF', '🔦', 'pick');
+  playTone(laserPointerMode ? 820 : 460, 0.1, 'sine', 0.15);
+}
+
+function adjustCameraZoom(delta) {
+  initAudio();
+  if (viewMode === 'OVERVIEW') {
+    // In overview mode, zoom distance & height to keep the construction plot in perfect view
+    cameraRig.orbitDistance = clamp(cameraRig.orbitDistance + delta * 1.0, 2.0, 14.0);
+    cameraRig.cameraHeight = clamp(cameraRig.cameraHeight + delta * 0.6, 1.2, 8.0);
+    showBanner(`OVERVIEW DISTANCE: ${cameraRig.orbitDistance.toFixed(1)}M`, '🔍', 'pick');
+    playTone(delta < 0 ? 740 : 520, 0.08, 'sine', 0.12);
+  } else {
+    // In in-situ mode, adjust FOV
+    currentFov = clamp(currentFov + delta * 8.0, 45, 105);
+    camera.fov = currentFov;
+    camera.updateProjectionMatrix();
+    showBanner(`CAMERA FOV: ${Math.round(currentFov)}°`, '🔍', 'pick');
+    playTone(delta < 0 ? 740 : 520, 0.08, 'sine', 0.12);
   }
 }
 
 if (modeToggleBtn) modeToggleBtn.addEventListener('click', () => toggleMode('PICK'));
 if (viewWalkBtn) viewWalkBtn.addEventListener('click', () => toggleMode('WALK'));
 if (overviewBtn) overviewBtn.addEventListener('click', toggleOverviewView);
-if (zenBtn) zenBtn.addEventListener('click', toggleZenMode);
+if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreenMode);
+if (laserToggleBtn) laserToggleBtn.addEventListener('click', toggleLaserPointer);
+if (laserMiniBtn) {
+  laserMiniBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleLaserPointer();
+  });
+}
+if (zoomInBtn) zoomInBtn.addEventListener('click', () => adjustCameraZoom(-1));
+if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => adjustCameraZoom(1));
 if (reachToggleBtn) reachToggleBtn.addEventListener('click', cycleReachMultiplier);
+
+// Minecraft Voxel Spawner UI Wiring
+const quickAddBtn = document.getElementById('quickAddBtn');
+const spawnSelectedBtn = document.getElementById('spawnSelectedBtn');
+const cloneHeldBtn = document.getElementById('cloneHeldBtn');
+const spawnBatchBtn = document.getElementById('spawnBatchBtn');
+const blockPaletteGrid = document.getElementById('blockPaletteGrid');
+
+if (quickAddBtn) {
+  quickAddBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    spawnBlockAtPlayer(selectedBlockType);
+  });
+}
+
+if (spawnSelectedBtn) {
+  spawnSelectedBtn.addEventListener('click', () => {
+    spawnBlockAtPlayer(selectedBlockType);
+  });
+}
+
+if (cloneHeldBtn) {
+  cloneHeldBtn.addEventListener('click', () => {
+    cloneHeldBlock();
+  });
+}
+
+if (spawnBatchBtn) {
+  spawnBatchBtn.addEventListener('click', () => {
+    spawnBatchSupply();
+  });
+}
+
+if (blockPaletteGrid) {
+  const paletteBtns = blockPaletteGrid.querySelectorAll('.palette-btn');
+  paletteBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      paletteBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedBlockType = btn.getAttribute('data-type') || 'wood_planks';
+      const def = BLOCK_DEFINITIONS[selectedBlockType] || BLOCK_DEFINITIONS.wood_planks;
+      showBanner(`SELECTED: ${def.name.toUpperCase()}`, def.icon, 'pick');
+      playTone(620, 0.08, 'sine', 0.15);
+    });
+  });
+}
 
 // Studio Snap toggle button
 if (snapToggleBtn) {
   snapToggleBtn.addEventListener('click', () => {
     initAudio();
     snapToLegoGrid = !snapToLegoGrid;
-    snapToggleBtn.textContent = snapToLegoGrid ? '📐 Studio Snap: ON' : '📐 Studio Snap: OFF';
+    snapToggleBtn.textContent = snapToLegoGrid ? '📐 Concrete Snap: ON' : '📐 Concrete Snap: OFF';
     snapToggleBtn.classList.toggle('active', snapToLegoGrid);
     showBanner(
-      snapToLegoGrid ? 'ARCHITECTURAL SNAP: 25CM GRID' : 'SNAP: OFF (FREEFORM)',
+      snapToLegoGrid ? 'CONCRETE SNAP: 0.5M GRID & FACES' : 'SNAP: OFF (FREEFORM)',
       '📐',
       'pick'
     );
@@ -1659,21 +2498,14 @@ if (snapToggleBtn) {
   });
 }
 
-// Starter Villa Assembly button
+// Starter Pavilion Assembly button
 if (blueprintBtn) {
   blueprintBtn.addEventListener('click', () => {
     initAudio();
     releaseAllHeld();
-    pickables.forEach((obj) => {
-      if (obj && obj.userData && obj.userData.initPos) {
-        obj.position.copy(obj.userData.initPos);
-        if (obj.userData.velocity) obj.userData.velocity.set(0, 0, 0);
-        obj.rotation.set(0, 0, 0);
-        obj.userData.held = false;
-      }
-    });
+    assembleStarterPavilion();
     playModeFanfare(false);
-    showBanner("STARTER VILLA ASSEMBLED ON PLOT", "🏠", "pick");
+    showBanner("STARTER PAVILION ASSEMBLED ON PLOT", "🏛️", "pick");
   });
 }
 
@@ -1690,22 +2522,40 @@ if (camToggleBtn) {
   });
 }
 
-// Keyboard controls (Space toggles mode, T toggles table view, M cycles reach multiplier, F toggles zen, H toggles box, R resets)
+// Keyboard controls (Space toggles mode, T/O toggles overview, M cycles reach, F toggles zen, H toggles box, R resets, N spawns cube, C clones held)
 const keys = {};
 window.addEventListener('keydown', (e) => {
   keys[e.code] = true;
   if (e.code === 'Space') {
     e.preventDefault();
     toggleMode();
+  } else if (e.code === 'KeyN') {
+    e.preventDefault();
+    spawnBlockAtPlayer(selectedBlockType);
+  } else if (e.code === 'KeyC') {
+    e.preventDefault();
+    cloneHeldBlock();
+  } else if (e.code === 'KeyB') {
+    e.preventDefault();
+    spawnBatchSupply();
   } else if (e.code === 'KeyM') {
     e.preventDefault();
     cycleReachMultiplier();
   } else if (e.code === 'KeyT' || e.code === 'KeyO') {
     e.preventDefault();
     toggleOverviewView();
+  } else if (e.code === 'KeyL') {
+    e.preventDefault();
+    toggleLaserPointer();
+  } else if (e.code === 'KeyZ' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+    e.preventDefault();
+    adjustCameraZoom(-1); // Zoom in closer
+  } else if (e.code === 'KeyX' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
+    e.preventDefault();
+    adjustCameraZoom(1); // Zoom out wider
   } else if (e.code === 'KeyF') {
     e.preventDefault();
-    toggleZenMode();
+    toggleFullscreenMode();
   } else if (e.code === 'KeyH') {
     e.preventDefault();
     toggleStudioBox();
@@ -1751,14 +2601,16 @@ let lastHighlighted = null;
 
 function setHighlight(obj, on) {
   if (!obj || !obj.userData) return;
-  const mat = obj.userData.mat;
-  if (!mat) return;
-  if (on) {
-    mat.emissive.setHex(0x38bdf8);
-    mat.emissiveIntensity = 1.0;
-  } else {
-    mat.emissive.setHex(obj.userData.origEmissive || 0x000000);
-    mat.emissiveIntensity = 0.45;
+  const mats = obj.userData.materials || (obj.material ? (Array.isArray(obj.material) ? obj.material : [obj.material]) : (obj.userData.mat ? [obj.userData.mat] : []));
+  for (const mat of mats) {
+    if (!mat || !mat.emissive) continue;
+    if (on) {
+      mat.emissive.setHex(0x38bdf8);
+      mat.emissiveIntensity = 0.85;
+    } else {
+      mat.emissive.setHex(obj.userData.origEmissive || 0x000000);
+      mat.emissiveIntensity = 0.0;
+    }
   }
 }
 
@@ -1772,19 +2624,19 @@ function updatePhysics(dt) {
     obj.position.addScaledVector(v, dt);
 
     // 1. Studio Floor collision
-    const halfY = obj.userData.halfY || 0.45;
+    const halfY = obj.userData.halfY || (BLOCK_SIZE / 2);
     let effectiveFloor = FLOOR_Y + halfY;
 
-    // 2. Architectural Block Stacking collisions (support from structures resting underneath)
+    // 2. Minecraft Voxel Cube Stacking collisions
     for (const other of pickables) {
       if (!other || other === obj || (other.userData && other.userData.held)) continue;
       const dx = Math.abs(obj.position.x - other.position.x);
       const dz = Math.abs(obj.position.z - other.position.z);
-      const otherHalfX = other.userData?.halfX || 0.5;
-      const otherHalfY = other.userData?.halfY || 0.45;
-      const otherHalfZ = other.userData?.halfZ || 0.08;
-      const overlapX = ((obj.userData.halfX || 0.5) + otherHalfX) * 0.95;
-      const overlapZ = ((obj.userData.halfZ || 0.08) + otherHalfZ) * 0.95;
+      const otherHalfX = other.userData?.halfX || (BLOCK_SIZE / 2);
+      const otherHalfY = other.userData?.halfY || (BLOCK_SIZE / 2);
+      const otherHalfZ = other.userData?.halfZ || (BLOCK_SIZE / 2);
+      const overlapX = ((obj.userData.halfX || (BLOCK_SIZE / 2)) + otherHalfX) * 0.95;
+      const overlapZ = ((obj.userData.halfZ || (BLOCK_SIZE / 2)) + otherHalfZ) * 0.95;
       if (dx < overlapX && dz < overlapZ && obj.position.y >= other.position.y) {
         effectiveFloor = Math.max(effectiveFloor, other.position.y + otherHalfY + halfY);
       }
@@ -1801,18 +2653,18 @@ function updatePhysics(dt) {
       v.x *= 0.75;
       v.z *= 0.75;
 
-      // Physics sleep threshold: eliminates microscopic jitter in resting or stacked architectural elements
+      // Physics sleep threshold: eliminates jitter in resting or stacked voxel cubes
       if (Math.abs(v.y) < 0.05) v.y = 0;
       if (Math.abs(v.x) < 0.02) v.x = 0;
       if (Math.abs(v.z) < 0.02) v.z = 0;
     }
 
-    // Boundary bounce
+    // Boundary bounce within vast 80m world
     const dCenter = Math.hypot(obj.position.x, obj.position.z);
-    if (dCenter > WORLD_RADIUS - 0.7) {
+    if (dCenter > WORLD_RADIUS - 1.0) {
       const norm = new THREE.Vector2(obj.position.x, obj.position.z).normalize();
-      obj.position.x = norm.x * (WORLD_RADIUS - 0.7);
-      obj.position.z = norm.y * (WORLD_RADIUS - 0.7);
+      obj.position.x = norm.x * (WORLD_RADIUS - 1.0);
+      obj.position.z = norm.y * (WORLD_RADIUS - 1.0);
       v.x = -v.x * 0.5;
       v.z = -v.z * 0.5;
     }
@@ -1828,55 +2680,10 @@ function releaseHeld(grab) {
   }
 
   let snapped = false;
-
-  // 1. Check for Architectural Block Stacking (releasing directly atop foundation, wall, column, or slab)
-  let bestSupport = null;
-  let highestSupportY = -Infinity;
-  for (const other of pickables) {
-    if (!other || other === obj || (other.userData && other.userData.held)) continue;
-    const dx = Math.abs(obj.position.x - other.position.x);
-    const dz = Math.abs(obj.position.z - other.position.z);
-    const objHalfX = obj.userData?.halfX || 0.5;
-    const objHalfY = obj.userData?.halfY || 0.45;
-    const objHalfZ = obj.userData?.halfZ || 0.08;
-    const otherHalfX = other.userData?.halfX || 0.5;
-    const otherHalfY = other.userData?.halfY || 0.45;
-    const otherHalfZ = other.userData?.halfZ || 0.08;
-
-    const overlapX = (objHalfX + otherHalfX) * 1.08;
-    const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
-    if (dx < overlapX && dz < overlapZ && other.position.y < obj.position.y + 0.75) {
-      if (other.position.y > highestSupportY) {
-        highestSupportY = other.position.y;
-        bestSupport = other;
-      }
-    }
-  }
-
-  if (bestSupport) {
-    // Snap flush atop supporting architectural element
-    const bestHalfY = bestSupport.userData?.halfY || 0.45;
-    const objHalfY = obj.userData?.halfY || 0.45;
-    obj.position.y = bestSupport.position.y + bestHalfY + objHalfY;
-    if (snapToLegoGrid) {
-      obj.position.x = Math.round(obj.position.x / ARCH_GRID) * ARCH_GRID;
-      obj.position.z = Math.round(obj.position.z / ARCH_GRID) * ARCH_GRID;
-      obj.rotation.y = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-    }
-    if (obj.userData && obj.userData.velocity) {
-      obj.userData.velocity.set(0, 0, 0);
-    }
-    playLegoSnapSound();
-    snapped = true;
-  } else if (obj.position.y < FLOOR_Y + 1.2) {
-    // 2. Snap to Studio Foundation Ground Grid
-    const objHalfY = obj.userData?.halfY || 0.45;
-    obj.position.y = FLOOR_Y + objHalfY;
-    if (snapToLegoGrid) {
-      obj.position.x = Math.round(obj.position.x / ARCH_GRID) * ARCH_GRID;
-      obj.position.z = Math.round(obj.position.z / ARCH_GRID) * ARCH_GRID;
-      obj.rotation.y = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-    }
+  const snap = calculateSnapTarget(obj);
+  if (snap && snapToLegoGrid) {
+    obj.position.copy(snap.pos);
+    obj.rotation.y = snap.rotY;
     if (obj.userData && obj.userData.velocity) {
       obj.userData.velocity.set(0, 0, 0);
     }
@@ -1950,32 +2757,62 @@ let landmarkerReady = false;
 let landmarkerLoading = false;
 
 async function loadLandmarker() {
-  if (landmarkerLoading) return;
+  if (landmarkerLoading || landmarkerReady) return;
   landmarkerLoading = true;
   try {
-    const vision = await FilesetResolver.forVisionTasks(`${MP_CDN}/wasm`);
+    let vision = null;
+    // 1. Resolve WASM fileset (Local first, CDN fallback)
     try {
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: "GPU" },
-        runningMode: "VIDEO",
-        numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-    } catch(gpuErr) {
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: "CPU" },
-        runningMode: "VIDEO",
-        numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
+      vision = await FilesetResolver.forVisionTasks(LOCAL_WASM_PATH);
+    } catch (localWasmErr) {
+      console.warn("Local WASM failed, attempting CDN fallback:", localWasmErr);
+      vision = await FilesetResolver.forVisionTasks(CDN_WASM_PATH);
     }
-    landmarkerReady = true;
+
+    if (!vision) throw new Error("Could not initialize vision FilesetResolver");
+
+    // 2. Initialize HandLandmarker (Local model first, CDN fallback; GPU first, CPU fallback)
+    const modelCandidates = [LOCAL_MODEL_URL, REMOTE_MODEL_URL];
+    let created = false;
+
+    for (const modelPath of modelCandidates) {
+      if (created) break;
+      try {
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
+          runningMode: "VIDEO",
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        created = true;
+        break;
+      } catch(gpuErr) {
+        try {
+          handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
+            runningMode: "VIDEO",
+            numHands: 2,
+            minHandDetectionConfidence: 0.5,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
+          created = true;
+          break;
+        } catch(cpuErr) {
+          console.warn("Model candidate failed on " + modelPath, cpuErr);
+        }
+      }
+    }
+
+    if (created && handLandmarker) {
+      landmarkerReady = true;
+    } else {
+      throw new Error("Unable to create HandLandmarker from available model sources");
+    }
   } catch(e) {
-    console.error("Landmarker failed to load", e);
+    console.warn("HandLandmarker initialization warning:", e);
     landmarkerReady = false;
   } finally {
     landmarkerLoading = false;
@@ -2170,6 +3007,8 @@ function processHands() {
   if (rightHand) {
     rightHand.thumbTipWorld = rightRig.joints[4].getWorldPosition(new THREE.Vector3());
     rightHand.indexTipWorld = rightRig.joints[8].getWorldPosition(new THREE.Vector3());
+    rightHand.wristWorld = rightRig.joints[0].getWorldPosition(new THREE.Vector3());
+    rightHand.indexMCPWorld = rightRig.joints[5].getWorldPosition(new THREE.Vector3());
   } else {
     rightHandGroup.visible = false;
     rightReticle.visible = false;
@@ -2178,6 +3017,8 @@ function processHands() {
   if (leftHand) {
     leftHand.thumbTipWorld = leftRig.joints[4].getWorldPosition(new THREE.Vector3());
     leftHand.indexTipWorld = leftRig.joints[8].getWorldPosition(new THREE.Vector3());
+    leftHand.wristWorld = leftRig.joints[0].getWorldPosition(new THREE.Vector3());
+    leftHand.indexMCPWorld = leftRig.joints[5].getWorldPosition(new THREE.Vector3());
   } else {
     leftHandGroup.visible = false;
     leftReticle.visible = false;
@@ -2229,10 +3070,15 @@ function handleFivePinch(isPinchingNow, isHoldingAnyObject) {
    DUAL-HAND PICKING & BUILDING ENGINE
    ============================================================ */
 function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
+  const isLeft = (grab === leftGrab);
+  const vrBeam = isLeft ? leftVRBeam : rightVRBeam;
+  const handKey = isLeft ? 'left' : 'right';
+
   if (!hand || !hand.thumbTipWorld || !hand.indexTipWorld) {
     if (grab.heldObject) releaseHeld(grab);
     grab.havePrevPinchMid = false;
     reticle.visible = false;
+    vrBeam.hide();
     grab.candidate = null;
     return;
   }
@@ -2250,24 +3096,98 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     ? ((hand.pinchRatio < PINCH_RATIO_RELEASE) || (dist < PINCH_OFF))
     : ((hand.pinchRatio < PINCH_RATIO_GRAB) || (dist < PINCH_ON));
 
-  // Identify Candidate Object for this hand
   let candidate = null;
-  let bestDist = Infinity;
+  let pointDir = new THREE.Vector3();
+  const origin = hand.indexTipWorld.clone();
+  const nowSec = performance.now() * 0.001;
 
-  if (!grab.heldObject) {
-    for (const obj of pickables) {
-      if (!obj || !obj.userData) continue;
-      // Cannot grab object if already held by the other hand!
-      if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
+  if (laserPointerMode) {
+    // True VR raycasting: blend finger pointing with eye sightline
+    if (hand.indexMCPWorld) {
+      const fingerDir = new THREE.Vector3().subVectors(hand.indexTipWorld, hand.indexMCPWorld).normalize();
+      const sightDir = new THREE.Vector3().subVectors(hand.indexTipWorld, camera.position).normalize();
+      pointDir.copy(fingerDir).lerp(sightDir, 0.48).normalize();
+    } else {
+      pointDir.subVectors(hand.indexTipWorld, camera.position).normalize();
+    }
+    const laserRay = new THREE.Ray(origin, pointDir);
 
-      const d3d = obj.position.distanceTo(midWorld);
-      const boundR = obj.userData.boundingRadius || 0.18;
-      const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN;
-      if (d3d <= touchThreshold && d3d < bestDist) {
-        bestDist = d3d;
-        candidate = obj;
+    let hitObj = null;
+    let hitDist = Infinity;
+    const hitPt = new THREE.Vector3();
+    let hitNormal = new THREE.Vector3(0, 1, 0);
+
+    if (!grab.heldObject) {
+      for (const obj of pickables) {
+        if (!obj || !obj.userData) continue;
+        if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
+
+        const sphere = new THREE.Sphere(obj.position, (obj.userData.boundingRadius || 0.28) * 1.35);
+        const isect = new THREE.Vector3();
+        if (laserRay.intersectSphere(sphere, isect)) {
+          const d = origin.distanceTo(isect);
+          if (d < hitDist) {
+            hitDist = d;
+            hitObj = obj;
+            hitPt.copy(isect);
+            hitNormal.subVectors(isect, obj.position).normalize();
+          }
+        }
       }
     }
+
+    if (grab.heldObject) {
+      // Locked telekinesis tractor beam
+      const target = origin.clone().addScaledVector(pointDir, laserDistances[handKey]);
+      grab.heldObject.position.lerp(target, 0.92);
+      const halfY = grab.heldObject.userData?.halfY || 0.25;
+      if (grab.heldObject.position.y < FLOOR_Y + halfY) {
+        grab.heldObject.position.y = FLOOR_Y + halfY;
+      }
+      vrBeam.update(origin, grab.heldObject.position, null, 'LOCKED', nowSec);
+    } else if (hitObj) {
+      candidate = hitObj;
+      vrBeam.update(origin, hitPt, hitNormal, 'HOVER', nowSec);
+    } else {
+      // Floor intersection or far distance beam
+      if (pointDir.y < -0.01) {
+        const t = (FLOOR_Y - origin.y) / pointDir.y;
+        if (t > 0 && t < 38) {
+          const floorHit = origin.clone().addScaledVector(pointDir, t);
+          vrBeam.update(origin, floorHit, new THREE.Vector3(0, 1, 0), 'IDLE', nowSec);
+        } else {
+          const far = origin.clone().addScaledVector(pointDir, 22);
+          vrBeam.update(origin, far, null, 'IDLE', nowSec);
+        }
+      } else {
+        const far = origin.clone().addScaledVector(pointDir, 22);
+        vrBeam.update(origin, far, null, 'IDLE', nowSec);
+      }
+    }
+  } else {
+    // Standard proximity grab
+    vrBeam.hide();
+
+    let bestDist = Infinity;
+    if (!grab.heldObject) {
+      for (const obj of pickables) {
+        if (!obj || !obj.userData) continue;
+        if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
+
+        const d3d = obj.position.distanceTo(midWorld);
+        const boundR = obj.userData.boundingRadius || 0.18;
+        const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN;
+        if (d3d <= touchThreshold && d3d < bestDist) {
+          bestDist = d3d;
+          candidate = obj;
+        }
+      }
+    }
+  }
+
+  // Audio feedback on acquiring target
+  if (candidate && candidate !== grab.candidate && !grab.heldObject) {
+    playHoverPip();
   }
   grab.candidate = candidate;
 
@@ -2280,7 +3200,11 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
       if (candidate.userData.velocity) {
         candidate.userData.velocity.set(0, 0, 0);
       }
-      grab.heldOffsetWorld.subVectors(candidate.position, midWorld);
+      if (laserPointerMode) {
+        laserDistances[handKey] = Math.max(1.2, candidate.position.distanceTo(origin));
+      } else {
+        grab.heldOffsetWorld.subVectors(candidate.position, midWorld);
+      }
       setHighlight(candidate, true);
       playGrabSound();
     }
@@ -2291,8 +3215,8 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     }
   }
 
-  // Follow hand with smooth physics and instant responsiveness
-  if (grab.heldObject) {
+  // Follow hand for proximity grab
+  if (grab.heldObject && !laserPointerMode) {
     const target = new THREE.Vector3().addVectors(midWorld, grab.heldOffsetWorld);
     grab.heldObject.position.lerp(target, FOLLOW_LERP);
 
@@ -2580,6 +3504,9 @@ async function attemptStart() {
   if (camWrap) camWrap.classList.add('show');
   running = true;
   updateHUDForMode();
+  if (!landmarkerReady) {
+    showBanner('HAND TRACKING INITIALIZING IN BACKGROUND (MOUSE & KEYS READY)', 'ℹ️', 'pick');
+  }
 }
 
 startBtn.addEventListener('click', attemptStart);
@@ -2646,9 +3573,10 @@ window.addEventListener('pointerdown', (e) => {
 });
 
 window.addEventListener('pointermove', (e) => {
+  mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
   if (mouseDragObj && mouseDragObj.userData) {
-    mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouseVec, camera);
     if (raycaster.ray.intersectPlane(mouseDragPlane, mousePlaneHit)) {
       const halfY = mouseDragObj.userData.halfY || 0.45;
@@ -2666,7 +3594,7 @@ window.addEventListener('pointermove', (e) => {
 
     if (viewMode === 'OVERVIEW') {
       cameraRig.orbitAngle -= dx * 0.006;
-      cameraRig.cameraHeight = clamp(cameraRig.cameraHeight + dy * 0.003, 0.25, 2.5);
+      cameraRig.cameraHeight = clamp(cameraRig.cameraHeight + dy * 0.008, 1.2, 8.0);
     } else {
       player.yaw -= dx * 0.005;
       player.pitch = clamp((player.pitch || -0.16) - dy * 0.004, -1.1, 0.85);
@@ -2683,53 +3611,10 @@ window.addEventListener('pointerup', () => {
     }
 
     let snapped = false;
-
-    // 1. Check Architectural Block Stacking
-    let bestSupport = null;
-    let highestSupportY = -Infinity;
-    for (const other of pickables) {
-      if (!other || other === mouseDragObj || (other.userData && other.userData.held)) continue;
-      const dx = Math.abs(mouseDragObj.position.x - other.position.x);
-      const dz = Math.abs(mouseDragObj.position.z - other.position.z);
-      const objHalfX = mouseDragObj.userData?.halfX || 0.5;
-      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
-      const objHalfZ = mouseDragObj.userData?.halfZ || 0.08;
-      const otherHalfX = other.userData?.halfX || 0.5;
-      const otherHalfY = other.userData?.halfY || 0.45;
-      const otherHalfZ = other.userData?.halfZ || 0.08;
-      const overlapX = (objHalfX + otherHalfX) * 1.08;
-      const overlapZ = (objHalfZ + otherHalfZ) * 1.08;
-      if (dx < overlapX && dz < overlapZ && other.position.y < mouseDragObj.position.y + 0.75) {
-        if (other.position.y > highestSupportY) {
-          highestSupportY = other.position.y;
-          bestSupport = other;
-        }
-      }
-    }
-
-    if (bestSupport) {
-      const bestHalfY = bestSupport.userData?.halfY || 0.45;
-      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
-      mouseDragObj.position.y = bestSupport.position.y + bestHalfY + objHalfY;
-      if (snapToLegoGrid) {
-        mouseDragObj.position.x = Math.round(mouseDragObj.position.x / ARCH_GRID) * ARCH_GRID;
-        mouseDragObj.position.z = Math.round(mouseDragObj.position.z / ARCH_GRID) * ARCH_GRID;
-        mouseDragObj.rotation.y = Math.round(mouseDragObj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-      }
-      if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
-        mouseDragObj.userData.velocity.set(0, 0, 0);
-      }
-      playLegoSnapSound();
-      snapped = true;
-    } else if (mouseDragObj.position.y < FLOOR_Y + 1.2) {
-      // 2. Snap to Studio Foundation Ground Grid
-      const objHalfY = mouseDragObj.userData?.halfY || 0.45;
-      mouseDragObj.position.y = FLOOR_Y + objHalfY;
-      if (snapToLegoGrid) {
-        mouseDragObj.position.x = Math.round(mouseDragObj.position.x / ARCH_GRID) * ARCH_GRID;
-        mouseDragObj.position.z = Math.round(mouseDragObj.position.z / ARCH_GRID) * ARCH_GRID;
-        mouseDragObj.rotation.y = Math.round(mouseDragObj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-      }
+    const snap = calculateSnapTarget(mouseDragObj);
+    if (snap && snapToLegoGrid) {
+      mouseDragObj.position.copy(snap.pos);
+      mouseDragObj.rotation.y = snap.rotY;
       if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
         mouseDragObj.userData.velocity.set(0, 0, 0);
       }
@@ -2746,11 +3631,104 @@ window.addEventListener('pointerup', () => {
   }
 });
 
-// Mouse wheel zoom in Room Roam view
+// Mouse wheel: distance control in laser mode, or camera zoom
 window.addEventListener('wheel', (e) => {
-  if (!running || viewMode !== 'ROOM') return;
-  cameraRig.orbitDistance = clamp(cameraRig.orbitDistance + e.deltaY * 0.0015, 1.3, 3.8);
+  if (!running) return;
+  if (e.target.closest('#studioBoxBody, #blockPaletteGrid, #hudContent')) return;
+  const dir = e.deltaY > 0 ? 1 : -1;
+  if (laserPointerMode && (rightGrab.heldObject || leftGrab.heldObject || mouseDragObj)) {
+    if (rightGrab.heldObject) laserDistances.right = clamp(laserDistances.right + dir * 0.4, 1.2, 14.0);
+    if (leftGrab.heldObject) laserDistances.left = clamp(laserDistances.left + dir * 0.4, 1.2, 14.0);
+    if (mouseDragObj) {
+      const camDir = new THREE.Vector3();
+      camera.getWorldDirection(camDir);
+      mouseDragObj.position.addScaledVector(camDir, -dir * 0.35);
+      mouseDragPlane.setFromNormalAndCoplanarPoint(camDir.negate(), mouseDragObj.position);
+    }
+    playTone(dir > 0 ? 520 : 640, 0.04, 'sine', 0.08);
+    return;
+  }
+  adjustCameraZoom(dir * 0.4);
 }, { passive: true });
+
+let lastMouseHoverObj = null;
+
+function updateMouseLaser(nowSec) {
+  if (!laserPointerMode || !running) {
+    mouseVRBeam.hide();
+    return;
+  }
+
+  // If hands are active in webcam view, hands drive the VR laser rays
+  if ((rightHandGroup && rightHandGroup.visible) || (leftHandGroup && leftHandGroup.visible)) {
+    mouseVRBeam.hide();
+    return;
+  }
+
+  // Virtual VR controller origin (positioned in lower-right hand corner in camera local space)
+  const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const camFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const virtualOrigin = camera.position.clone()
+    .addScaledVector(camRight, 0.22)
+    .addScaledVector(camUp, -0.18)
+    .addScaledVector(camFwd, 0.40);
+
+  raycaster.setFromCamera(mouseVec, camera);
+
+  if (mouseDragObj) {
+    // Tractor beam locked onto held object
+    mouseVRBeam.update(virtualOrigin, mouseDragObj.position, null, 'LOCKED', nowSec);
+    return;
+  }
+
+  // Test hits with pickables
+  const hits = raycaster.intersectObjects(pickables, true);
+  let hitObj = null;
+  let hitPoint = null;
+  let hitNormal = null;
+
+  if (hits.length > 0) {
+    let target = hits[0].object;
+    while (target && (!target.userData || !target.userData.velocity) && target.parent) {
+      target = target.parent;
+    }
+    if (target && target.userData && target.userData.velocity) {
+      hitObj = target;
+      hitPoint = hits[0].point;
+      hitNormal = hits[0].face ? hits[0].face.normal.clone().transformDirection(hits[0].object.matrixWorld) : null;
+    }
+  }
+
+  if (hitObj && hitPoint) {
+    if (hitObj !== lastMouseHoverObj) {
+      if (lastMouseHoverObj) setHighlight(lastMouseHoverObj, false);
+      setHighlight(hitObj, true);
+      lastMouseHoverObj = hitObj;
+      playHoverPip();
+    }
+    mouseVRBeam.update(virtualOrigin, hitPoint, hitNormal, 'HOVER', nowSec);
+  } else {
+    if (lastMouseHoverObj) {
+      setHighlight(lastMouseHoverObj, false);
+      lastMouseHoverObj = null;
+    }
+    // Floor test
+    if (raycaster.ray.direction.y < -0.01) {
+      const t = (FLOOR_Y - raycaster.ray.origin.y) / raycaster.ray.direction.y;
+      if (t > 0 && t < 38) {
+        const floorHit = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, t);
+        mouseVRBeam.update(virtualOrigin, floorHit, new THREE.Vector3(0, 1, 0), 'IDLE', nowSec);
+      } else {
+        const far = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, 20);
+        mouseVRBeam.update(virtualOrigin, far, null, 'IDLE', nowSec);
+      }
+    } else {
+      const far = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, 20);
+      mouseVRBeam.update(virtualOrigin, far, null, 'IDLE', nowSec);
+    }
+  }
+}
 
 function setOverlaySize() {
   const rect = camWrap.getBoundingClientRect();
@@ -2794,27 +3772,36 @@ function animate() {
     } else {
       updateWalkMode(hands.left || hands.right, dt);
     }
+
+    // VR Raycast beam update for mouse/desktop fallback when hands aren't in view
+    updateMouseLaser(now * 0.001);
   }
 
   // Camera positioning with smooth easing across modes (Wide-angle perspectives)
   if (viewMode === 'OVERVIEW') {
-    // 1. Expansive wide-angle studio overview (82° FOV)
-    if (Math.abs(camera.fov - 82) > 0.05) {
-      camera.fov += (82 - camera.fov) * 0.14;
+    // Dynamic recalculation of overview camera position based on orbit distance & height
+    const target = cameraRig.lookTarget || new THREE.Vector3(0, FLOOR_Y + 0.5, 1.4);
+    const camX = target.x + Math.sin(cameraRig.orbitAngle) * cameraRig.orbitDistance;
+    const camY = FLOOR_Y + cameraRig.cameraHeight;
+    const camZ = target.z + Math.cos(cameraRig.orbitAngle) * cameraRig.orbitDistance;
+    TABLE_CAM_POS.set(camX, camY, camZ);
+    TABLE_CAM_LOOK.copy(target);
+
+    if (Math.abs(camera.fov - currentFov) > 0.05) {
+      camera.fov += (currentFov - camera.fov) * 0.16;
       camera.updateProjectionMatrix();
     }
-    camera.position.lerp(TABLE_CAM_POS, 0.10);
-    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.10);
+    camera.position.lerp(TABLE_CAM_POS, 0.15);
+    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.15);
     camera.lookAt(smoothedCameraLookAt);
   } else {
-    // 2. In-Situ First-Person Perspective: Always remains directly at the player's walking position!
-    const targetFov = (currentMode === 'WALK') ? 80 : 82;
-    if (Math.abs(camera.fov - targetFov) > 0.05) {
-      camera.fov += (targetFov - camera.fov) * 0.14;
+    // In-Situ First-Person Perspective: Always remains directly at the player's walking position!
+    if (Math.abs(camera.fov - currentFov) > 0.05) {
+      camera.fov += (currentFov - camera.fov) * 0.16;
       camera.updateProjectionMatrix();
     }
     const targetEyePos = new THREE.Vector3(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
-    camera.position.lerp(targetEyePos, 0.25);
+    camera.position.lerp(targetEyePos, 0.35);
     camera.rotation.set(player.pitch || -0.16, player.yaw, 0, 'YXZ');
   }
 
