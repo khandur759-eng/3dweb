@@ -1,6 +1,6 @@
 {
   "name": "Virtual Picker",
-  "description": "Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking.",
+  "description": "Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

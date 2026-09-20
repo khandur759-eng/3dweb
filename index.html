@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Virtual Picker - 3D Architectural Concrete Studio</title>
-<meta name="description" content="Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking." />
+<meta name="description" content="Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub." />
 <meta property="og:title" content="Virtual Picker - 3D Architectural Concrete Studio" />
-<meta property="og:description" content="Interactive 3D architectural concrete construction studio with a vast 36m building grid, modular concrete blocks (cast grey, CMU masonry, white precast, charcoal basalt, board-formed, terrazzo, fluted, reinforced, and terracotta), dynamic block spawning, and simultaneous dual-hand webcam tracking." />
+<meta property="og:description" content="Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub." />
 <meta property="og:type" content="website" />
 <style>
   :root{
@@ -114,38 +114,43 @@
   /* ---------- Unified Studio Control Hub (Tap to Maximize / Minimize) ---------- */
   #studioBox{
     position:fixed; top:16px; left:16px; z-index:35;
-    max-width:440px; width:auto;
+    width: min(440px, calc(100vw - 32px));
+    max-width: 440px;
     background:rgba(255, 255, 255, 0.95);
     border:1px solid rgba(0, 0, 0, 0.12);
     border-radius:20px;
-    box-shadow:0 14px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
-    backdrop-filter:blur(20px);
+    box-shadow:0 16px 44px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+    backdrop-filter:blur(22px);
     overflow:hidden;
     pointer-events:auto;
     opacity:0; transform:translateY(-8px);
-    transition: max-width 0.40s cubic-bezier(0.16, 1, 0.3, 1),
-                border-radius 0.40s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.40s cubic-bezier(0.16, 1, 0.3, 1),
+    transition: width 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+                max-width 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.46s cubic-bezier(0.16, 1, 0.3, 1),
                 opacity 0.28s ease,
-                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+                transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
     user-select:none;
+    will-change: width, transform, border-radius;
   }
   #studioBox.show{ opacity:1; transform:translateY(0); }
 
   /* Minimized state: single compact tap-friendly pill */
   #studioBox.minimized{
     border-radius:999px;
-    max-width:fit-content;
-    box-shadow:0 6px 22px rgba(15, 23, 42, 0.10);
+    width: 295px;
+    max-width: 295px;
+    box-shadow:0 6px 20px rgba(15, 23, 42, 0.10);
   }
 
   /* Smooth collapsible body wrapper using CSS Grid animation (zero popping or snapping) */
   #studioBoxBodyWrap{
     display:grid;
     grid-template-rows: 1fr;
-    transition: grid-template-rows 0.38s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.28s ease;
+    transition: grid-template-rows 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 1;
+    will-change: grid-template-rows, opacity;
   }
   #studioBox.minimized #studioBoxBodyWrap{
     grid-template-rows: 0fr;
@@ -157,11 +162,15 @@
     overflow-y: auto;
     max-height: calc(85vh - 60px);
     padding: 0 14px 14px;
-    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.46s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.35s ease;
     transform: translateY(0);
+    opacity: 1;
+    will-change: transform, opacity;
   }
   #studioBox.minimized #studioBoxBody{
-    transform: translateY(-8px);
+    transform: translateY(-12px);
+    opacity: 0;
   }
 
   /* Header / Tap bar */
@@ -264,6 +273,26 @@
   }
   .target-badge .action{
     color:var(--gold); font-weight:700;
+  }
+
+  /* Spatial Eye Tracking Gaze Reticle */
+  #gazeFocalPoint {
+    position:fixed; z-index:24; pointer-events:none;
+    transform:translate(-50%, -50%);
+    display:none;
+    width:24px; height:24px;
+    border-radius:50%;
+    border:1.5px solid rgba(14, 165, 233, 0.7);
+    background:radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0) 70%);
+    box-shadow:0 0 14px rgba(14, 165, 233, 0.45);
+    transition:opacity .25s ease;
+  }
+  .gaze-focal-dot {
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    width:5px; height:5px; border-radius:50%;
+    background:#0284c7;
+    box-shadow:0 0 8px rgba(2, 132, 199, 0.95);
   }
 
   /* ---------- Mode Flash Banner ---------- */
@@ -521,8 +550,9 @@
         <span id="modeText">DUAL BUILDER</span>
       </div>
       <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.5x</span>
-      <button id="headTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#7c3aed; box-shadow:0 2px 6px rgba(124,58,237,0.35);" title="Toggle 6-DOF Physical Head Tracking (Hotkey: T | Recenter: C)">👤 Head: ON</button>
-      <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
+      <button id="headTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#7c3aed; box-shadow:0 2px 6px rgba(124,58,237,0.35);" title="Toggle 6-DOF Physical Head Tracking (Hotkey: T | Recenter: Y)">👤 Head: ON</button>
+      <button id="eyeTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Eye Tracking: look around up/down/left/right! (Hotkey: G | Recenter: Y)">👁️ Eyes: ON</button>
+      <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#059669; box-shadow:0 2px 6px rgba(5,150,105,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
       <button id="quickAddBtn" type="button" class="quick-add-btn" title="Quickly spawn a concrete block (Hotkey: N)">+ Add Block</button>
       <div class="box-toggle-btn" id="boxToggleIndicator">
         <span id="boxToggleText">Controls</span>
@@ -591,9 +621,11 @@
         <!-- Quick Actions Grid -->
         <div class="box-section-title">Studio Tools</div>
         <div class="box-action-grid">
-          <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
+          <button id="eyeTrackingBtn" type="button" class="tool-btn active" title="Toggle Eye Tracking: look around up, down, left, and right! (Hotkey: G)">👁️ Eye Tracking: ON</button>
+          <button id="recenterEyeBtn" type="button" class="tool-btn" title="Recenter eye gaze calibration to current forward sightline (Hotkey: Y)">🎯 Recenter Gaze</button>
           <button id="headTrackingBtn" type="button" class="tool-btn active" title="Toggle 6-DOF Physical Head Tracking: move close to camera to move close to objects! (Hotkey: T)">👤 Head Tracking: ON</button>
-          <button id="recenterHeadBtn" type="button" class="tool-btn" title="Recenter current head position as neutral reference (Hotkey: C)">🎯 Recenter Head</button>
+          <button id="recenterHeadBtn" type="button" class="tool-btn" title="Recenter current head position as neutral reference (Hotkey: Y)">🎯 Recenter Head</button>
+          <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
           <button id="overviewBtn" type="button" class="tool-btn" title="Toggle high-angle Studio Overview (Hotkey: O)">🏛️ Overview Cam</button>
           <button id="zoomInBtn" type="button" class="tool-btn" title="Zoom camera in closer (Hotkey: + or Z)">🔍 Zoom In [+]</button>
           <button id="zoomOutBtn" type="button" class="tool-btn" title="Zoom camera out wider (Hotkey: - or X)">🔍 Zoom Out [-]</button>
@@ -609,9 +641,10 @@
 
         <!-- Guidance instructions card -->
         <div id="hudContent">
-          <b id="hudTitle">VR Set Life Experience:</b><br/>
-          • <b>👤 6-DOF Head Tracking:</b> Lean towards your camera to move physically close to blocks and inspect them in 3D! Lean back to pull away, and move sideways or stand up to peek in any direction without having to switch to Walk mode.<br/>
-          • <b>🔦 3D Laser Manipulation:</b> Move objects in all directions (X, Y, and inward/forward Z depth)! Push arm forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">W</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">S</kbd> / mouse wheel.<br/>
+          <b id="hudTitle">VR Set Spatial Experience:</b><br/>
+          • <b>👁️ Eye Tracking (Look Around):</b> Move your eyes up, down, left, or right to angle your sightline effortlessly! Looking toward screen edges continuously pans your view in full 360°.<br/>
+          • <b>👤 6-DOF Head Tracking (Proximity):</b> Lean physically closer to camera to zoom forward into structures and inspect masonry up close; lean back to retreat; peek sideways to parallax around pillars.<br/>
+          • <b>🔦 3D Laser Manipulation:</b> Grab and move objects in full 3D (X, Y, and depth Z)! Push your hand forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">E</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Q</kbd> / mouse wheel.<br/>
           • <b>🖐️ Dual Builder Reach:</b> Grab, stack, and align modular concrete blocks simultaneously with both hands.<br/>
           • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
         </div>
@@ -622,6 +655,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Spatial Eye Tracking Gaze Focal Indicator (Vision Pro style) -->
+  <div id="gazeFocalPoint">
+    <div class="gaze-focal-dot"></div>
   </div>
 
   <!-- Real-time Object Targeting Tag -->
@@ -683,7 +721,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script type="module">
-import { FilesetResolver, HandLandmarker, FaceDetector } from "@mediapipe/tasks-vision";
+import { FilesetResolver, HandLandmarker, FaceDetector, FaceLandmarker } from "@mediapipe/tasks-vision";
 
 // Gracefully handle benign Emscripten WebAssembly streaming compile fallback warnings
 const _origConsoleWarn = console.warn;
@@ -2225,6 +2263,10 @@ const laserMiniBtn = document.getElementById('laserMiniBtn');
 const headTrackingBtn = document.getElementById('headTrackingBtn');
 const recenterHeadBtn = document.getElementById('recenterHeadBtn');
 const headTrackMiniBtn = document.getElementById('headTrackMiniBtn');
+const eyeTrackingBtn = document.getElementById('eyeTrackingBtn');
+const recenterEyeBtn = document.getElementById('recenterEyeBtn');
+const eyeTrackMiniBtn = document.getElementById('eyeTrackMiniBtn');
+const gazeFocalPoint = document.getElementById('gazeFocalPoint');
 const zoomInBtn = document.getElementById('zoomInBtn');
 const zoomOutBtn = document.getElementById('zoomOutBtn');
 const reachToggleBtn = document.getElementById('reachToggleBtn');
@@ -2232,12 +2274,22 @@ const snapToggleBtn = document.getElementById('snapToggleBtn');
 const blueprintBtn = document.getElementById('blueprintBtn');
 const camToggleBtn = document.getElementById('camToggleBtn');
 
-// 6-DOF Physical Head Tracking (Lean to approach / pull back, peek around objects)
+/* ============================================================
+   6-DOF PHYSICAL HEAD TRACKING + SPATIAL EYE TRACKING
+   - Head Tracking: Leaning forward/inward moves in 3D scene; lateral/vertical peeking
+   - Eye Tracking: Looking up, down, left, right rotates & tilts view; edge glancing pans 360°
+   ============================================================ */
 let headTrackingEnabled = true;
 let headTrackingActive = false;
+let eyeTrackingEnabled = true;
+let eyeTrackingActive = false;
+
 let faceDetector = null;
 let faceDetectorReady = false;
+let faceLandmarker = null;
+let faceLandmarkerReady = false;
 
+// 6-DOF Head Neutral Reference & Smoothed Offsets
 const neutralHead = {
   x: 0.5,
   y: 0.38,
@@ -2256,48 +2308,205 @@ const currentHead = {
 const headRawOffset = new THREE.Vector3();
 const headSmoothedOffset = new THREE.Vector3();
 
-// High-speed fallback optical face centroid detector
+// Eye Tracking / Gaze Neutral Reference & Look Offsets
+const neutralGaze = {
+  x: 0,
+  y: 0,
+  initialized: false,
+  sampleCount: 0
+};
+
+const currentGaze = {
+  x: 0,
+  y: 0,
+  confidence: 0,
+  leftEye: null,
+  rightEye: null,
+  direction: 'CENTER'
+};
+
+const smoothedEyeGaze = { x: 0, y: 0 };
+const eyeLookOffset = { yaw: 0, pitch: 0 };
+
+// Dedicated canvases for optical tracking fallbacks
 const headCanvas = document.createElement('canvas');
 headCanvas.width = 64;
 headCanvas.height = 48;
 const headCtx = headCanvas.getContext('2d', { willReadFrequently: true });
 
-function trackHead() {
+const eyeCanvas = document.createElement('canvas');
+eyeCanvas.width = 64;
+eyeCanvas.height = 32;
+const eyeCtx = eyeCanvas.getContext('2d', { willReadFrequently: true });
+
+function trackHeadAndEyes(dt = 0.016) {
   if (!camReady || !video || video.readyState < 2) return;
   const now = performance.now();
 
-  let detectedX = null;
-  let detectedY = null;
-  let detectedSize = null;
-  let conf = 0;
+  let detHeadX = null;
+  let detHeadY = null;
+  let detHeadSize = null;
+  let headConf = 0;
 
-  // 1. Primary: MediaPipe BlazeFace FaceDetector if ready
-  if (faceDetectorReady && faceDetector) {
+  let detGazeX = null;
+  let detGazeY = null;
+  let gazeConf = 0;
+  let leftEyePt = null;
+  let rightEyePt = null;
+
+  // 1. Primary High-Precision: MediaPipe FaceLandmarker (478 3D landmarks + blendshapes)
+  if (faceLandmarkerReady && faceLandmarker) {
+    try {
+      const res = faceLandmarker.detectForVideo(video, now);
+      if (res && res.faceLandmarks && res.faceLandmarks.length > 0) {
+        const lm = res.faceLandmarks[0];
+        // Head position: center between outer eye corners (33, 263) & forehead/chin (10, 152)
+        detHeadX = (lm[33].x + lm[263].x) * 0.5;
+        detHeadY = (lm[10].y + lm[152].y) * 0.5;
+        detHeadSize = Math.max(Math.hypot(lm[263].x - lm[33].x, lm[263].y - lm[33].y) * 1.85, Math.abs(lm[152].y - lm[10].y));
+        headConf = 0.98;
+
+        // Eye locations (iris centers: left 468, right 473)
+        leftEyePt = { x: lm[468].x, y: lm[468].y };
+        rightEyePt = { x: lm[473].x, y: lm[473].y };
+
+        // Relative iris displacement within eye sockets:
+        // Left eye: outer 33, inner 133, top 159, bottom 145
+        const leftW = Math.max(0.005, Math.abs(lm[133].x - lm[33].x));
+        const leftH = Math.max(0.005, Math.abs(lm[145].y - lm[159].y));
+        const leftIrisRelX = (lm[468].x - lm[33].x) / leftW - 0.5;
+        const leftIrisRelY = (lm[468].y - lm[159].y) / leftH - 0.5;
+
+        // Right eye: inner 362, outer 263, top 386, bottom 374
+        const rightW = Math.max(0.005, Math.abs(lm[263].x - lm[362].x));
+        const rightH = Math.max(0.005, Math.abs(lm[374].y - lm[386].y));
+        const rightIrisRelX = (lm[473].x - lm[362].x) / rightW - 0.5;
+        const rightIrisRelY = (lm[473].y - lm[386].y) / rightH - 0.5;
+
+        // Blendshapes (eyeLookOutLeft, eyeLookInRight, etc.)
+        let blendGazeX = 0;
+        let blendGazeY = 0;
+        if (res.faceBlendshapes && res.faceBlendshapes[0]?.categories) {
+          const cats = res.faceBlendshapes[0].categories;
+          let outL = 0, inL = 0, outR = 0, inR = 0, upL = 0, upR = 0, downL = 0, downR = 0;
+          for (let i = 0; i < cats.length; i++) {
+            const cat = cats[i];
+            if (cat.categoryName === 'eyeLookOutLeft') outL = cat.score;
+            else if (cat.categoryName === 'eyeLookInLeft') inL = cat.score;
+            else if (cat.categoryName === 'eyeLookOutRight') outR = cat.score;
+            else if (cat.categoryName === 'eyeLookInRight') inR = cat.score;
+            else if (cat.categoryName === 'eyeLookUpLeft') upL = cat.score;
+            else if (cat.categoryName === 'eyeLookUpRight') upR = cat.score;
+            else if (cat.categoryName === 'eyeLookDownLeft') downL = cat.score;
+            else if (cat.categoryName === 'eyeLookDownRight') downR = cat.score;
+          }
+          // In mirrored video: looking left on screen increases eyeLookOutLeft and eyeLookInRight
+          blendGazeX = ((outL + inR) - (inL + outR)) * 1.5;
+          blendGazeY = ((upL + upR) - (downL + downR)) * 1.5;
+        }
+
+        const rawIrisX = ((leftIrisRelX + rightIrisRelX) * 0.5) * 3.8;
+        const rawIrisY = -((leftIrisRelY + rightIrisRelY) * 0.5) * 3.8; // Looking up: image y is lower, so inverted is positive
+
+        detGazeX = (blendGazeX !== 0) ? (blendGazeX * 0.65 + rawIrisX * 0.35) : rawIrisX;
+        detGazeY = (blendGazeY !== 0) ? (blendGazeY * 0.65 + rawIrisY * 0.35) : rawIrisY;
+        gazeConf = 0.96;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Secondary Fast: MediaPipe BlazeFace FaceDetector + Optical Iris Centroid
+  if ((detHeadX === null || detGazeX === null) && faceDetectorReady && faceDetector) {
     try {
       const res = faceDetector.detectForVideo(video, now);
       if (res && res.detections && res.detections.length > 0) {
         const det = res.detections[0];
         const box = det.boundingBox;
-        if (box && video.videoWidth && video.videoHeight) {
-          detectedX = (box.originX + box.width * 0.5) / video.videoWidth;
-          detectedY = (box.originY + box.height * 0.5) / video.videoHeight;
-          detectedSize = Math.max(box.width / video.videoWidth, box.height / video.videoHeight);
-          conf = det.categories?.[0]?.score || 0.95;
+        const vw = video.videoWidth || 640;
+        const vh = video.videoHeight || 480;
+
+        if (box && vw && vh) {
+          if (detHeadX === null) {
+            detHeadX = (box.originX + box.width * 0.5) / vw;
+            detHeadY = (box.originY + box.height * 0.5) / vh;
+            detHeadSize = Math.max(box.width / vw, box.height / vh);
+            headConf = det.categories?.[0]?.score || 0.95;
+          }
+
+          const kp = det.keypoints;
+          if (kp && kp.length >= 3) {
+            // kp[0]: right eye in face (camera left side), kp[1]: left eye in face (camera right side), kp[2]: nose tip
+            const rx = kp[0].x;
+            const ry = kp[0].y;
+            const lx = kp[1].x;
+            const ly = kp[1].y;
+            const nx = kp[2].x;
+            const ny = kp[2].y;
+
+            leftEyePt = { x: lx, y: ly };
+            rightEyePt = { x: rx, y: ry };
+
+            // Eye span and head-pose gaze component
+            const eyeSpanX = Math.abs(lx - rx) || 0.12;
+            const eyeMidX = (lx + rx) * 0.5;
+            const eyeMidY = (ly + ry) * 0.5;
+
+            // Nose shift relative to eye midpoint:
+            // When turning eyes/head to look left on mirrored video: nx > eyeMidX (toward user left)
+            const headYawOffset = (nx - eyeMidX) / eyeSpanX * 2.0;
+            const headPitchOffset = -((ny - eyeMidY) - eyeSpanX * 0.42) / eyeSpanX * 2.2;
+
+            // High-speed optical iris pupil centroid on eyeCanvas
+            let irisShiftX = 0;
+            let irisShiftY = 0;
+            try {
+              const patchW = Math.max(16, eyeSpanX * vw * 0.55);
+              const patchH = Math.max(12, eyeSpanX * vh * 0.38);
+
+              // Draw right eye to left half of eyeCanvas (32x32), left eye to right half (32x32)
+              eyeCtx.drawImage(video, rx * vw - patchW * 0.5, ry * vh - patchH * 0.5, patchW, patchH, 0, 0, 32, 32);
+              eyeCtx.drawImage(video, lx * vw - patchW * 0.5, ly * vh - patchH * 0.5, patchW, patchH, 32, 0, 32, 32);
+
+              const eyeData = eyeCtx.getImageData(0, 0, 64, 32).data;
+              let darkSumX = 0, darkSumY = 0, darkCount = 0;
+              for (let y = 6; y < 26; y++) {
+                for (let x = 6; x < 58; x++) {
+                  if (x >= 26 && x <= 38) continue; // skip seam
+                  const idx = (y * 64 + x) * 4;
+                  const lum = eyeData[idx] * 0.299 + eyeData[idx + 1] * 0.587 + eyeData[idx + 2] * 0.114;
+                  if (lum < 75) {
+                    const weight = (75 - lum);
+                    const localX = (x < 32) ? (x - 16) : (x - 48);
+                    const localY = (y - 16);
+                    darkSumX += localX * weight;
+                    darkSumY += localY * weight;
+                    darkCount += weight;
+                  }
+                }
+              }
+              if (darkCount > 40) {
+                irisShiftX = (darkSumX / darkCount) / 8.0;
+                irisShiftY = -(darkSumY / darkCount) / 8.0;
+              }
+            } catch (e) {}
+
+            if (detGazeX === null) {
+              detGazeX = irisShiftX * 1.6 + headYawOffset * 0.9;
+              detGazeY = irisShiftY * 1.6 + headPitchOffset * 0.9;
+              gazeConf = 0.88;
+            }
+          }
         }
       }
-    } catch (e) {
-      // Fall through to optical detector
-    }
+    } catch (e) {}
   }
 
-  // 2. High-speed optical centroid fallback / augmentation
-  if (detectedX === null) {
+  // 3. Fallback: High-speed optical face centroid detector
+  if (detHeadX === null) {
     try {
       headCtx.drawImage(video, 0, 0, 64, 48);
       const img = headCtx.getImageData(0, 0, 64, 48).data;
-      let totalW = 0;
-      let sumX = 0;
-      let sumY = 0;
+      let totalW = 0, sumX = 0, sumY = 0;
       const maxRows = Math.floor(48 * 0.72);
       for (let y = 3; y < maxRows; y++) {
         for (let x = 4; x < 60; x++) {
@@ -2313,32 +2522,32 @@ function trackHead() {
         }
       }
       if (totalW > 30) {
-        detectedX = (sumX / totalW) / 64;
-        detectedY = (sumY / totalW) / 48;
-        detectedSize = clamp(Math.sqrt(totalW / (64 * 48)) * 0.55, 0.08, 0.45);
-        conf = 0.75;
+        detHeadX = (sumX / totalW) / 64;
+        detHeadY = (sumY / totalW) / 48;
+        detHeadSize = clamp(Math.sqrt(totalW / (64 * 48)) * 0.55, 0.08, 0.45);
+        headConf = 0.75;
       }
     } catch (e) {}
   }
 
-  if (detectedX !== null) {
-    currentHead.x = detectedX;
-    currentHead.y = detectedY;
-    currentHead.size = detectedSize;
-    currentHead.confidence = conf;
+  // 4. Update Head Tracking State
+  if (detHeadX !== null) {
+    currentHead.x = detHeadX;
+    currentHead.y = detHeadY;
+    currentHead.size = detHeadSize;
+    currentHead.confidence = headConf;
     headTrackingActive = true;
 
-    // Auto-calibrate neutral head reference during first seconds
     if (!neutralHead.initialized) {
       neutralHead.sampleCount++;
       if (neutralHead.sampleCount === 1) {
-        neutralHead.x = detectedX;
-        neutralHead.y = detectedY;
-        neutralHead.size = detectedSize;
+        neutralHead.x = detHeadX;
+        neutralHead.y = detHeadY;
+        neutralHead.size = detHeadSize;
       } else {
-        neutralHead.x = neutralHead.x * 0.85 + detectedX * 0.15;
-        neutralHead.y = neutralHead.y * 0.85 + detectedY * 0.15;
-        neutralHead.size = neutralHead.size * 0.85 + detectedSize * 0.15;
+        neutralHead.x = neutralHead.x * 0.85 + detHeadX * 0.15;
+        neutralHead.y = neutralHead.y * 0.85 + detHeadY * 0.15;
+        neutralHead.size = neutralHead.size * 0.85 + detHeadSize * 0.15;
       }
       if (neutralHead.sampleCount >= 20) {
         neutralHead.initialized = true;
@@ -2346,48 +2555,141 @@ function trackHead() {
     }
   } else {
     currentHead.confidence *= 0.85;
-    if (currentHead.confidence < 0.2) {
-      headTrackingActive = false;
-    }
+    if (currentHead.confidence < 0.2) headTrackingActive = false;
   }
 
-  // Calculate 6-DOF World Offset
+  // Calculate 6-DOF Physical Head World Offset (Meters in 3D Scene)
   if (headTrackingEnabled && headTrackingActive && neutralHead.initialized) {
-    // In mirrored webcam: user leans right -> face moves left in mirrored video (detectedX < neutralHead.x)
+    // In mirrored webcam: user leans right -> face moves left in video (detHeadX < neutralHead.x)
     const physX = (neutralHead.x - currentHead.x);
-    // User stands up / raises head -> face moves up (detectedY < neutralHead.y)
+    // User stands up / raises head -> face moves up in video (detHeadY < neutralHead.y)
     const physY = (neutralHead.y - currentHead.y);
     // User moves closer to camera -> face size increases
     const sizeRatio = (currentHead.size - neutralHead.size) / Math.max(0.06, neutralHead.size);
 
-    // Gaze and camera orientation vectors
     const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
     const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const up = new THREE.Vector3(0, 1, 0);
 
-    // Natural physical movement gains (in meters):
-    // Moving closer to camera: moves forward towards objects by up to ~4.5m
-    const forwardGain = 4.4;
-    // Moving left/right: strafes by up to ~3.6m
-    const lateralGain = 3.6;
-    // Standing up / ducking: moves up/down by up to ~2.2m
-    const verticalGain = 2.2;
+    const forwardGain = 4.4; // up to ~4.5m forward approach
+    const lateralGain = 3.6; // up to ~3.6m lateral peek
+    const verticalGain = 2.2; // up to ~2.2m vertical reach
 
     headRawOffset.set(0, 0, 0)
       .addScaledVector(fwd, sizeRatio * forwardGain)
       .addScaledVector(right, physX * lateralGain)
       .addScaledVector(up, physY * verticalGain);
 
-    // Filter tremors with smooth exponential lerp
     headSmoothedOffset.lerp(headRawOffset, 0.14);
   } else {
     headSmoothedOffset.lerp(new THREE.Vector3(0, 0, 0), 0.10);
   }
+
+  // 5. Update Eye Tracking / Gaze State
+  if (detGazeX !== null && detGazeY !== null) {
+    currentGaze.x = detGazeX;
+    currentGaze.y = detGazeY;
+    currentGaze.confidence = gazeConf;
+    currentGaze.leftEye = leftEyePt || currentGaze.leftEye || { x: currentHead.x + 0.05, y: currentHead.y - 0.03 };
+    currentGaze.rightEye = rightEyePt || currentGaze.rightEye || { x: currentHead.x - 0.05, y: currentHead.y - 0.03 };
+    eyeTrackingActive = true;
+
+    if (!neutralGaze.initialized) {
+      neutralGaze.sampleCount++;
+      if (neutralGaze.sampleCount === 1) {
+        neutralGaze.x = detGazeX;
+        neutralGaze.y = detGazeY;
+      } else {
+        neutralGaze.x = neutralGaze.x * 0.88 + detGazeX * 0.12;
+        neutralGaze.y = neutralGaze.y * 0.88 + detGazeY * 0.12;
+      }
+      if (neutralGaze.sampleCount >= 20) {
+        neutralGaze.initialized = true;
+      }
+    }
+  } else {
+    currentGaze.confidence *= 0.85;
+    if (currentGaze.confidence < 0.2) eyeTrackingActive = false;
+  }
+
+  // Calculate Spatial Gaze Look-Around Offsets & Panoramic Panning
+  if (eyeTrackingEnabled && eyeTrackingActive && neutralGaze.initialized) {
+    const rawDiffX = currentGaze.x - neutralGaze.x;
+    const rawDiffY = currentGaze.y - neutralGaze.y;
+
+    // Smooth filtering for steady, natural gaze
+    smoothedEyeGaze.x = smoothedEyeGaze.x * 0.80 + rawDiffX * 0.20;
+    smoothedEyeGaze.y = smoothedEyeGaze.y * 0.80 + rawDiffY * 0.20;
+
+    // Classify Gaze Direction for HUD & Feedback
+    let dirH = '';
+    if (smoothedEyeGaze.x > 0.16) dirH = 'LEFT';
+    else if (smoothedEyeGaze.x < -0.16) dirH = 'RIGHT';
+
+    let dirV = '';
+    if (smoothedEyeGaze.y > 0.16) dirV = 'UP';
+    else if (smoothedEyeGaze.y < -0.16) dirV = 'DOWN';
+
+    if (dirV && dirH) currentGaze.direction = `${dirV}-${dirH}`;
+    else if (dirH) currentGaze.direction = dirH;
+    else if (dirV) currentGaze.direction = dirV;
+    else currentGaze.direction = 'CENTER';
+
+    // Jitter Deadband: zero-shake when user looks straight at center
+    const deadband = 0.04;
+    const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
+    let effGazeX = 0;
+    let effGazeY = 0;
+    if (gazeMag > deadband) {
+      const factor = (gazeMag - deadband) / (1 - deadband);
+      effGazeX = (smoothedEyeGaze.x / gazeMag) * factor;
+      effGazeY = (smoothedEyeGaze.y / gazeMag) * factor;
+    }
+
+    // 1. Direct Glance Look-Angle:
+    // User looks Left -> positive yaw (turns camera to the left)
+    // User looks Right -> negative yaw (turns camera to the right)
+    // User looks Up -> positive pitch (tilts camera up)
+    // User looks Down -> negative pitch (tilts camera down)
+    const maxGlanceYaw = 0.66; // ~38 degrees glance view
+    const maxGlancePitch = 0.46; // ~26 degrees glance tilt
+    eyeLookOffset.yaw = effGazeX * maxGlanceYaw;
+    eyeLookOffset.pitch = effGazeY * maxGlancePitch;
+
+    // 2. Continuous Edge Panning (Full 360° panoramic navigation):
+    // Looking toward screen edges continuously pans player sightline
+    const panThreshold = 0.25;
+    if (Math.abs(smoothedEyeGaze.x) > panThreshold && dt > 0) {
+      const panSign = Math.sign(smoothedEyeGaze.x);
+      const panNorm = (Math.abs(smoothedEyeGaze.x) - panThreshold) / (1.0 - panThreshold);
+      player.yaw += panSign * panNorm * 1.65 * dt;
+    }
+    if (Math.abs(smoothedEyeGaze.y) > 0.35 && dt > 0) {
+      const tiltSign = Math.sign(smoothedEyeGaze.y);
+      const tiltNorm = (Math.abs(smoothedEyeGaze.y) - 0.35) / (1.0 - 0.35);
+      player.pitch = clamp((player.pitch || -0.16) + tiltSign * tiltNorm * 0.85 * dt, -0.85, 0.85);
+    }
+
+    // 3. Update Floating Vision Pro-style Gaze Reticle
+    if (gazeFocalPoint) {
+      const screenX = window.innerWidth * (0.5 + clamp(smoothedEyeGaze.x, -0.92, 0.92) * 0.44);
+      const screenY = window.innerHeight * (0.5 - clamp(smoothedEyeGaze.y, -0.92, 0.92) * 0.44);
+      gazeFocalPoint.style.left = `${screenX}px`;
+      gazeFocalPoint.style.top = `${screenY}px`;
+      gazeFocalPoint.style.display = 'block';
+    }
+  } else {
+    eyeLookOffset.yaw *= 0.88;
+    eyeLookOffset.pitch *= 0.88;
+    if (gazeFocalPoint) gazeFocalPoint.style.display = 'none';
+  }
 }
+
+const trackHead = () => trackHeadAndEyes(0.016);
 
 function recenterHeadTracking() {
   initAudio();
-  if (currentHead.confidence > 0.3) {
+  if (currentHead.confidence > 0.25) {
     neutralHead.x = currentHead.x;
     neutralHead.y = currentHead.y;
     neutralHead.size = currentHead.size;
@@ -2395,12 +2697,38 @@ function recenterHeadTracking() {
     neutralHead.sampleCount = 30;
     headSmoothedOffset.set(0, 0, 0);
     headRawOffset.set(0, 0, 0);
-    showBanner('HEAD TRACKING RECENTERED (6-DOF ZEROED)', '🎯', 'pick');
+    showBanner('HEAD TRACKING RECENTERED (6-DOF ZEROED)', '👤', 'pick');
     playTone(880, 0.12, 'sine', 0.16);
   } else {
     showBanner('LOOK AT CAMERA TO RECENTER HEAD', '👤', 'pick');
     playTone(440, 0.1, 'sine', 0.12);
   }
+}
+
+function recenterEyeTracking() {
+  initAudio();
+  if (currentGaze.confidence > 0.25) {
+    neutralGaze.x = currentGaze.x;
+    neutralGaze.y = currentGaze.y;
+    neutralGaze.initialized = true;
+    neutralGaze.sampleCount = 30;
+    smoothedEyeGaze.x = 0;
+    smoothedEyeGaze.y = 0;
+    eyeLookOffset.yaw = 0;
+    eyeLookOffset.pitch = 0;
+    showBanner('EYE TRACKING RECENTERED (GAZE ZEROED)', '👁️', 'pick');
+    playTone(920, 0.12, 'triangle', 0.16);
+  } else {
+    showBanner('LOOK FORWARD AT SCREEN TO RECENTER GAZE', '👁️', 'pick');
+    playTone(480, 0.1, 'sine', 0.12);
+  }
+}
+
+function recenterHeadAndEyes() {
+  initAudio();
+  recenterHeadTracking();
+  recenterEyeTracking();
+  showBanner('HEAD & EYE TRACKING RECENTERED', '🎯', 'pick');
 }
 
 function toggleHeadTracking() {
@@ -2420,6 +2748,27 @@ function toggleHeadTracking() {
   playTone(headTrackingEnabled ? 760 : 420, 0.1, 'triangle', 0.15);
 }
 
+function toggleEyeTracking() {
+  initAudio();
+  eyeTrackingEnabled = !eyeTrackingEnabled;
+  if (!eyeTrackingEnabled) {
+    eyeLookOffset.yaw = 0;
+    eyeLookOffset.pitch = 0;
+    smoothedEyeGaze.x = 0;
+    smoothedEyeGaze.y = 0;
+    if (gazeFocalPoint) gazeFocalPoint.style.display = 'none';
+  } else {
+    recenterEyeTracking();
+  }
+  updateEyeTrackingUI();
+  showBanner(
+    eyeTrackingEnabled ? 'EYE TRACKING: ON (LOOK UP/DOWN/LEFT/RIGHT TO LOOK AROUND)' : 'EYE TRACKING: OFF (MANUAL AIM)',
+    '👁️',
+    'pick'
+  );
+  playTone(eyeTrackingEnabled ? 840 : 420, 0.1, 'sine', 0.16);
+}
+
 function updateHeadTrackingUI() {
   if (headTrackingBtn) {
     headTrackingBtn.textContent = headTrackingEnabled ? '👤 Head Tracking: ON' : '👤 Head Tracking: OFF';
@@ -2432,12 +2781,33 @@ function updateHeadTrackingUI() {
   }
 }
 
+function updateEyeTrackingUI() {
+  if (eyeTrackingBtn) {
+    eyeTrackingBtn.textContent = eyeTrackingEnabled ? '👁️ Eye Tracking: ON' : '👁️ Eye Tracking: OFF';
+    eyeTrackingBtn.classList.toggle('active', eyeTrackingEnabled);
+  }
+  if (eyeTrackMiniBtn) {
+    eyeTrackMiniBtn.textContent = eyeTrackingEnabled ? '👁️ Eyes: ON' : '👁️ Eyes: OFF';
+    eyeTrackMiniBtn.classList.toggle('active', eyeTrackingEnabled);
+    eyeTrackMiniBtn.style.background = eyeTrackingEnabled ? '#0284c7' : '#64748b';
+  }
+}
+
 if (headTrackingBtn) headTrackingBtn.addEventListener('click', toggleHeadTracking);
-if (recenterHeadBtn) recenterHeadBtn.addEventListener('click', recenterHeadTracking);
+if (recenterHeadBtn) recenterHeadBtn.addEventListener('click', recenterHeadAndEyes);
 if (headTrackMiniBtn) {
   headTrackMiniBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleHeadTracking();
+  });
+}
+
+if (eyeTrackingBtn) eyeTrackingBtn.addEventListener('click', toggleEyeTracking);
+if (recenterEyeBtn) recenterEyeBtn.addEventListener('click', recenterEyeTracking);
+if (eyeTrackMiniBtn) {
+  eyeTrackMiniBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleEyeTracking();
   });
 }
 
@@ -2806,12 +3176,15 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyT') {
     e.preventDefault();
     toggleHeadTracking();
+  } else if (e.code === 'KeyE') {
+    e.preventDefault();
+    toggleEyeTracking();
   } else if (e.code === 'KeyO') {
     e.preventDefault();
     toggleOverviewView();
   } else if (e.code === 'KeyY') {
     e.preventDefault();
-    recenterHeadTracking();
+    recenterHeadAndEyes();
   } else if (e.code === 'KeyL') {
     e.preventDefault();
     toggleLaserPointer();
@@ -3089,7 +3462,7 @@ async function loadLandmarker() {
       throw new Error("Unable to create HandLandmarker from available model sources");
     }
 
-    // 3. Initialize FaceDetector for 6-DOF Natural Physical Head Tracking
+    // 3. Initialize FaceDetector for fast 6-DOF Physical Head & Optical Gaze Tracking
     try {
       FaceDetector.createFromOptions(vision, {
         baseOptions: {
@@ -3113,11 +3486,48 @@ async function loadLandmarker() {
           faceDetector = fd;
           faceDetectorReady = true;
         }).catch(err => {
-          console.warn("FaceDetector optional initialization fallback notice:", err);
+          console.warn("FaceDetector fallback notice:", err);
         });
       });
     } catch(faceInitErr) {
-      console.warn("FaceDetector initialization catch notice:", faceInitErr);
+      console.warn("FaceDetector initialization notice:", faceInitErr);
+    }
+
+    // 4. Initialize FaceLandmarker for high-precision 478-landmark Iris & Blendshape Gaze Tracking
+    try {
+      FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        outputFaceBlendshapes: true,
+        minFaceDetectionConfidence: 0.35,
+        minTrackingConfidence: 0.35
+      }).then(fl => {
+        faceLandmarker = fl;
+        faceLandmarkerReady = true;
+      }).catch(() => {
+        FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "CPU"
+          },
+          runningMode: "VIDEO",
+          numFaces: 1,
+          outputFaceBlendshapes: true,
+          minFaceDetectionConfidence: 0.35,
+          minTrackingConfidence: 0.35
+        }).then(fl => {
+          faceLandmarker = fl;
+          faceLandmarkerReady = true;
+        }).catch(err => {
+          console.warn("FaceLandmarker fallback notice:", err);
+        });
+      });
+    } catch(flErr) {
+      console.warn("FaceLandmarker initialization notice:", flErr);
     }
   } catch(e) {
     console.warn("HandLandmarker initialization warning:", e);
@@ -3216,6 +3626,52 @@ function drawDualOverlay(leftHand, rightHand) {
     octx.fillStyle = '#c084fc';
     octx.textAlign = 'center';
     octx.fillText('👤 HEAD TRACK', hx, Math.max(12, hy - hr - 4));
+    octx.restore();
+  }
+
+  if (eyeTrackingEnabled && eyeTrackingActive && currentGaze.leftEye && currentGaze.rightEye) {
+    const lx = currentGaze.leftEye.x * overlay.width;
+    const ly = currentGaze.leftEye.y * overlay.height;
+    const rx = currentGaze.rightEye.x * overlay.width;
+    const ry = currentGaze.rightEye.y * overlay.height;
+
+    octx.save();
+    // Eye points
+    octx.strokeStyle = 'rgba(14, 165, 233, 0.9)';
+    octx.lineWidth = 1.5;
+    octx.fillStyle = '#38bdf8';
+
+    octx.beginPath();
+    octx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+    octx.stroke();
+    octx.beginPath();
+    octx.arc(lx, ly, 1.8, 0, Math.PI * 2);
+    octx.fill();
+
+    octx.beginPath();
+    octx.arc(rx, ry, 4.5, 0, Math.PI * 2);
+    octx.stroke();
+    octx.beginPath();
+    octx.arc(rx, ry, 1.8, 0, Math.PI * 2);
+    octx.fill();
+
+    // Gaze direction vectors from each eye
+    const gVecX = smoothedEyeGaze.x * 24;
+    const gVecY = -smoothedEyeGaze.y * 24;
+    octx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    octx.lineWidth = 2;
+    octx.beginPath();
+    octx.moveTo(lx, ly);
+    octx.lineTo(lx + gVecX, ly + gVecY);
+    octx.moveTo(rx, ry);
+    octx.lineTo(rx + gVecX, ry + gVecY);
+    octx.stroke();
+
+    // Gaze HUD badge
+    octx.font = 'bold 9px sans-serif';
+    octx.fillStyle = '#0284c7';
+    octx.textAlign = 'center';
+    octx.fillText(`👁️ GAZE: ${currentGaze.direction}`, overlay.width * 0.5, overlay.height - 5);
     octx.restore();
   }
 }
@@ -4172,8 +4628,8 @@ function animate() {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
-  // Process 6-DOF Natural Physical Head Tracking (Move closer/further, peek left/right/up/down)
-  trackHead();
+  // Process 6-DOF Natural Physical Head Tracking & Spatial Eye Gaze Tracking
+  trackHeadAndEyes(dt);
 
   // 1. Synchronize camera position & world matrix FIRST so all raycasting and hand tracking have 100% accurate coordinates
   if (viewMode === 'OVERVIEW') {
@@ -4187,6 +4643,11 @@ function animate() {
       TABLE_CAM_POS.add(headSmoothedOffset);
     }
     TABLE_CAM_LOOK.copy(target);
+    if (eyeTrackingEnabled && eyeTrackingActive) {
+      const right = new THREE.Vector3(Math.cos(cameraRig.orbitAngle), 0, -Math.sin(cameraRig.orbitAngle));
+      TABLE_CAM_LOOK.addScaledVector(right, -eyeLookOffset.yaw * 1.6);
+      TABLE_CAM_LOOK.y += eyeLookOffset.pitch * 1.2;
+    }
 
     if (Math.abs(camera.fov - currentFov) > 0.05) {
       camera.fov += (currentFov - camera.fov) * 0.16;
@@ -4207,7 +4668,11 @@ function animate() {
       player.pos.z + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.z : 0)
     );
     camera.position.lerp(targetEyePos, 0.35);
-    camera.rotation.set(player.pitch || -0.16, player.yaw, 0, 'YXZ');
+
+    // Apply eye gaze rotational look-around (up/down/left/right) to first-person view
+    const effectivePitch = clamp((player.pitch || -0.16) + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.pitch : 0), -1.15, 1.15);
+    const effectiveYaw = player.yaw + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.yaw : 0);
+    camera.rotation.set(effectivePitch, effectiveYaw, 0, 'YXZ');
   }
   camera.updateMatrixWorld(true);
 
