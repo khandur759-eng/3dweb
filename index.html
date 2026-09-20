@@ -275,24 +275,24 @@
     color:var(--gold); font-weight:700;
   }
 
-  /* Spatial Eye Tracking Gaze Reticle */
+  /* Minimalist Face Look Tracking Focus Reticle */
   #gazeFocalPoint {
     position:fixed; z-index:24; pointer-events:none;
     transform:translate(-50%, -50%);
     display:none;
-    width:24px; height:24px;
+    width:16px; height:16px;
     border-radius:50%;
-    border:1.5px solid rgba(14, 165, 233, 0.7);
-    background:radial-gradient(circle, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0) 70%);
-    box-shadow:0 0 14px rgba(14, 165, 233, 0.45);
+    border:1px solid rgba(168, 85, 247, 0.6);
+    background:radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0) 70%);
+    box-shadow:0 0 10px rgba(168, 85, 247, 0.35);
     transition:opacity .25s ease;
   }
   .gaze-focal-dot {
     position:absolute; top:50%; left:50%;
     transform:translate(-50%, -50%);
-    width:5px; height:5px; border-radius:50%;
-    background:#0284c7;
-    box-shadow:0 0 8px rgba(2, 132, 199, 0.95);
+    width:3px; height:3px; border-radius:50%;
+    background:#c084fc;
+    box-shadow:0 0 6px rgba(192, 132, 252, 0.85);
   }
 
   /* ---------- Mode Flash Banner ---------- */
@@ -551,7 +551,7 @@
       </div>
       <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.5x</span>
       <button id="headTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#7c3aed; box-shadow:0 2px 6px rgba(124,58,237,0.35);" title="Toggle 6-DOF Physical Head Tracking (Hotkey: T | Recenter: Y)">👤 Head: ON</button>
-      <button id="eyeTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Eye Tracking: look around up/down/left/right! (Hotkey: G | Recenter: Y)">👁️ Eyes: ON</button>
+      <button id="eyeTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#9333ea; box-shadow:0 2px 6px rgba(147,51,234,0.35);" title="Toggle Face Look Tracking: turn face to look around up/down/left/right! (Hotkey: G | Recenter: Y)">🧭 Face: ON</button>
       <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#059669; box-shadow:0 2px 6px rgba(5,150,105,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
       <button id="quickAddBtn" type="button" class="quick-add-btn" title="Quickly spawn a concrete block (Hotkey: N)">+ Add Block</button>
       <div class="box-toggle-btn" id="boxToggleIndicator">
@@ -621,8 +621,8 @@
         <!-- Quick Actions Grid -->
         <div class="box-section-title">Studio Tools</div>
         <div class="box-action-grid">
-          <button id="eyeTrackingBtn" type="button" class="tool-btn active" title="Toggle Eye Tracking: look around up, down, left, and right! (Hotkey: G)">👁️ Eye Tracking: ON</button>
-          <button id="recenterEyeBtn" type="button" class="tool-btn" title="Recenter eye gaze calibration to current forward sightline (Hotkey: Y)">🎯 Recenter Gaze</button>
+          <button id="eyeTrackingBtn" type="button" class="tool-btn active" title="Toggle Face Look Tracking: turn face left, right, up, and down to look around! (Hotkey: G)">🧭 Face Look: ON</button>
+          <button id="recenterEyeBtn" type="button" class="tool-btn" title="Recenter face look calibration to current forward sightline (Hotkey: Y)">🎯 Recenter Face</button>
           <button id="headTrackingBtn" type="button" class="tool-btn active" title="Toggle 6-DOF Physical Head Tracking: move close to camera to move close to objects! (Hotkey: T)">👤 Head Tracking: ON</button>
           <button id="recenterHeadBtn" type="button" class="tool-btn" title="Recenter current head position as neutral reference (Hotkey: Y)">🎯 Recenter Head</button>
           <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
@@ -712,7 +712,10 @@
 
       <div id="errBox">
         <div id="errMsg"></div>
-        <button id="errRetryBtn" type="button"></button>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;">
+          <button id="errRetryBtn" type="button"></button>
+          <button id="errMouseBtn" type="button" class="tool-btn" style="padding:7px 14px; font-weight:600;">🖱️ Enter with Mouse &amp; Keyboard</button>
+        </div>
       </div>
 
       <div class="privacy">Webcam stream runs 100% locally on your device. Zero video data is recorded or uploaded.</div>
@@ -721,6 +724,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script type="module">
+import * as THREE from "three";
+window.THREE = window.THREE || THREE;
 import { FilesetResolver, HandLandmarker, FaceDetector, FaceLandmarker } from "@mediapipe/tasks-vision";
 
 // Gracefully handle benign Emscripten WebAssembly streaming compile fallback warnings
@@ -821,10 +826,16 @@ function playPedestalChime() {
    CONFIG & CONSTANTS
    ============================================================ */
 const LOCAL_WASM_PATH = "/wasm";
-const CDN_WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
+const CDN_WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const LOCAL_MODEL_URL = "/models/hand_landmarker.task";
 const REMOTE_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const LOCAL_FACE_DETECTOR_URL = "/models/blaze_face_short_range.tflite";
+const REMOTE_FACE_DETECTOR_URL =
+  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+const LOCAL_FACE_LANDMARKER_URL = "/models/face_landmarker.task";
+const REMOTE_FACE_LANDMARKER_URL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
 // Hand Reach & Anatomical Scale Configuration:
 // Reaching volume: maps user's hand position across webcam to virtual first-person space
@@ -1144,7 +1155,7 @@ function drawBlockFace(ctx, rawType, face) {
   }
 
   // Draw chamfered/beveled edges characteristic of precast concrete masonry units
-  function drawChamfer(highlightColor, shadowColor, seamColor) {
+  function drawChamfer(highlightColor = 'rgba(255, 255, 255, 0.22)', shadowColor = 'rgba(0, 0, 0, 0.28)', seamColor = 'rgba(0, 0, 0, 0.35)') {
     // 1px outer joint gap
     ctx.strokeStyle = seamColor || 'rgba(0, 0, 0, 0.35)';
     ctx.lineWidth = 1;
@@ -1497,7 +1508,7 @@ function getBlockMaterials(type) {
 const cubeGeometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
 // Master Concrete Block Factory
-function createConcreteBlock(type, initPos, customName) {
+function createConcreteBlock(type = 'cast_grey', initPos = new THREE.Vector3(0, FLOOR_Y + BLOCK_SIZE / 2, 1.4), customName = '') {
   const t = resolveBlockType(type);
   const info = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
   const templateMats = getBlockMaterials(t);
@@ -1644,6 +1655,7 @@ const assembleStarterCabin = assembleStarterPavilion;
 
 // 1. LEFT MATERIAL DEPOT (Structural & Heavy Masonry Concrete Blocks)
 const L_DEPOT_X = -3.8;
+const L_BAY_X = L_DEPOT_X;
 // Stack 1: Cast Grey Concrete (2 cubes stacked)
 createConcreteBlock('cast_grey',        new THREE.Vector3(L_DEPOT_X - 0.35, FY + half, 0.4), "Cast Grey Concrete Base");
 createConcreteBlock('cast_grey',        new THREE.Vector3(L_DEPOT_X - 0.35, FY + half + BLOCK_SIZE, 0.4), "Cast Grey Concrete Top");
@@ -1788,7 +1800,7 @@ function updateGhostGuide(heldObj) {
 // -------------------------------------------------------------
 // DYNAMIC BLOCK SPAWNER & INVENTORY ACTIONS
 // -------------------------------------------------------------
-function spawnBlockAtPlayer(type, customOffset) {
+function spawnBlockAtPlayer(type = 'cast_grey', customOffset = null) {
   initAudio();
   const t = type || selectedBlockType || 'cast_grey';
   const def = BLOCK_DEFINITIONS[t] || BLOCK_DEFINITIONS.cast_grey;
@@ -1955,13 +1967,13 @@ scene.add(laserGroup);
 function createVRBeam(defaultCoreColor, defaultGlowColor) {
   const group = new THREE.Group();
 
-  // 1. Core High-Luminance Tapered Beam (Origin at base, extends along +Z)
-  // Radius: 0.005 at target, 0.010 at source, clearly visible at 20+ meters
-  const coreGeo = new THREE.CylinderGeometry(0.005, 0.010, 1, 12);
+  // 1. Core Sleek High-Precision Beam (Ultra-thin needle laser)
+  // Radius: 0.0012 (1.2mm) at target, 0.0016 (1.6mm) at source
+  const coreGeo = new THREE.CylinderGeometry(0.0012, 0.0016, 1, 8);
   coreGeo.translate(0, 0.5, 0);
   coreGeo.rotateX(Math.PI / 2);
   const coreMat = new THREE.MeshBasicMaterial({
-    color: defaultCoreColor,
+    color: 0xffffff,
     transparent: true,
     opacity: 0.95,
     depthWrite: false
@@ -1969,38 +1981,38 @@ function createVRBeam(defaultCoreColor, defaultGlowColor) {
   const coreMesh = new THREE.Mesh(coreGeo, coreMat);
   group.add(coreMesh);
 
-  // 2. Outer Volumetric Glowing Halo (Additive Blending)
-  // Radius: 0.016 at target, 0.032 at source
-  const glowGeo = new THREE.CylinderGeometry(0.016, 0.032, 1, 12);
+  // 2. Delicate Volumetric Glowing Aura (Additive Blending)
+  // Radius: 0.0030 (3mm) at target, 0.0045 (4.5mm) at source
+  const glowGeo = new THREE.CylinderGeometry(0.0030, 0.0045, 1, 8);
   glowGeo.translate(0, 0.5, 0);
   glowGeo.rotateX(Math.PI / 2);
   const glowMat = new THREE.MeshBasicMaterial({
     color: defaultGlowColor,
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.42,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   });
   const glowMesh = new THREE.Mesh(glowGeo, glowMat);
   group.add(glowMesh);
 
-  // 3. VR Impact Targeting Reticle (Concentric Ring + Core Dot + Ticks)
+  // 3. VR Impact Targeting Reticle (Delicate Ring + Core Dot + Micro Ticks)
   const reticleGroup = new THREE.Group();
 
-  // Outer Targeting Ring
-  const ringGeo = new THREE.RingGeometry(0.055, 0.085, 32);
+  // Outer Targeting Ring: crisp and minimal
+  const ringGeo = new THREE.RingGeometry(0.022, 0.030, 24);
   const ringMat = new THREE.MeshBasicMaterial({
     color: defaultCoreColor,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.88,
+    opacity: 0.85,
     depthWrite: false
   });
   const ringMesh = new THREE.Mesh(ringGeo, ringMat);
   reticleGroup.add(ringMesh);
 
   // Inner Focus Dot
-  const dotGeo = new THREE.CircleGeometry(0.024, 20);
+  const dotGeo = new THREE.CircleGeometry(0.008, 16);
   const dotMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,
@@ -2011,19 +2023,19 @@ function createVRBeam(defaultCoreColor, defaultGlowColor) {
   const dotMesh = new THREE.Mesh(dotGeo, dotMat);
   reticleGroup.add(dotMesh);
 
-  // 4 Targeting Crosshair Pips
-  const tickGeo = new THREE.PlaneGeometry(0.014, 0.042);
+  // 4 Targeting Crosshair Pips (Delicate micro-ticks)
+  const tickGeo = new THREE.PlaneGeometry(0.003, 0.012);
   const tickMat = new THREE.MeshBasicMaterial({
     color: defaultGlowColor,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.80,
     depthWrite: false
   });
   for (let i = 0; i < 4; i++) {
     const tick = new THREE.Mesh(tickGeo, tickMat);
     const ang = (i * Math.PI) / 2;
-    tick.position.set(Math.cos(ang) * 0.108, Math.sin(ang) * 0.108, 0.001);
+    tick.position.set(Math.cos(ang) * 0.040, Math.sin(ang) * 0.040, 0.001);
     tick.rotation.z = ang;
     reticleGroup.add(tick);
   }
@@ -2188,9 +2200,17 @@ function updateHandSkeletonLocal(lm, vAspect, baseZ, outArray, screenOffsetX = 0
   const dy = (lm[0].y - lm[9].y);
   const span = Math.hypot(dx, dy) || 0.18;
 
-  // Hand root position in camera local space (scaled by reachMultiplier, default 2x distance)
+  // Hand root horizontal position in camera local space
   const rootX = (0.5 - palmX) * (BASE_REACH_SPAN_X * reachMultiplier) + screenOffsetX;
-  const rootY = (0.5 - palmY) * (BASE_REACH_SPAN_Y * reachMultiplier) - REACH_OFFSET_Y;
+
+  // Ergonomic vertical reach mapping:
+  // Sitting posture naturally places hands near the bottom edge of the webcam (palmY: 0.65 - 0.95).
+  // We map this comfortable resting baseline directly to prime waist/desktop manipulation height,
+  // preventing user arm fatigue and eliminating the need to hold hands unnaturally high in the air.
+  // Center of comfortable manipulation is calibrated around palmY = 0.72.
+  const normY = (0.72 - palmY);
+  const ergonomicScaleY = 2.4 * Math.min(reachMultiplier, 2.0);
+  const rootY = (normY * ergonomicScaleY) - 0.35;
   const rootZ = baseZ;
 
   // Real-life metric scaling
@@ -2202,6 +2222,22 @@ function updateHandSkeletonLocal(lm, vAspect, baseZ, outArray, screenOffsetX = 0
     const relZ = ((lm[i].z || 0) - palmZ) * metricScale * 1.2;
 
     outArray[i].set(rootX + relX, rootY + relY, rootZ + relZ);
+  }
+
+  // Physical Surface / Floor Penetration Protection:
+  // Ensure that no part of the hand ever drops below the floor surface (FLOOR_Y + clearance).
+  const eyeWorldY = (typeof camera !== 'undefined' && camera && camera.position) ? camera.position.y : 1.60;
+  let lowestJointWorldY = Infinity;
+  for (let i = 0; i < 21; i++) {
+    const jWorldY = eyeWorldY + outArray[i].y;
+    if (jWorldY < lowestJointWorldY) lowestJointWorldY = jWorldY;
+  }
+  const minSurfaceClearance = FLOOR_Y + 0.08; // Stay safely above floor surface
+  if (lowestJointWorldY < minSurfaceClearance) {
+    const liftDelta = minSurfaceClearance - lowestJointWorldY;
+    for (let i = 0; i < 21; i++) {
+      outArray[i].y += liftDelta;
+    }
   }
 
   return { palmCenter: { x: palmX, y: palmY, z: palmZ }, span };
@@ -2340,7 +2376,7 @@ eyeCanvas.height = 32;
 const eyeCtx = eyeCanvas.getContext('2d', { willReadFrequently: true });
 
 function trackHeadAndEyes(dt = 0.016) {
-  if (!camReady || !video || video.readyState < 2) return;
+  if (!camReady || !video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
   const now = performance.now();
 
   let detHeadX = null;
@@ -2354,68 +2390,54 @@ function trackHeadAndEyes(dt = 0.016) {
   let leftEyePt = null;
   let rightEyePt = null;
 
-  // 1. Primary High-Precision: MediaPipe FaceLandmarker (478 3D landmarks + blendshapes)
+  // 1. Primary High-Precision: MediaPipe FaceLandmarker (478 3D landmarks for Face Angle tracking)
   if (faceLandmarkerReady && faceLandmarker) {
     try {
       const res = faceLandmarker.detectForVideo(video, now);
       if (res && res.faceLandmarks && res.faceLandmarks.length > 0) {
         const lm = res.faceLandmarks[0];
-        // Head position: center between outer eye corners (33, 263) & forehead/chin (10, 152)
-        detHeadX = (lm[33].x + lm[263].x) * 0.5;
-        detHeadY = (lm[10].y + lm[152].y) * 0.5;
-        detHeadSize = Math.max(Math.hypot(lm[263].x - lm[33].x, lm[263].y - lm[33].y) * 1.85, Math.abs(lm[152].y - lm[10].y));
-        headConf = 0.98;
+        // Key Facial Structure Points:
+        // 234: left cheek / ear tragus, 454: right cheek / ear tragus
+        // 10: forehead center, 152: chin center, 1: nose tip
+        const earLeftX = lm[234].x, earLeftY = lm[234].y;
+        const earRightX = lm[454].x, earRightY = lm[454].y;
+        const foreY = lm[10].y, chinY = lm[152].y;
+        const noseX = lm[1].x, noseY = lm[1].y;
 
-        // Eye locations (iris centers: left 468, right 473)
-        leftEyePt = { x: lm[468].x, y: lm[468].y };
-        rightEyePt = { x: lm[473].x, y: lm[473].y };
+        const midEarX = (earLeftX + earRightX) * 0.5;
+        const midEarY = (earLeftY + earRightY) * 0.5;
+        const midFaceY = (foreY + chinY) * 0.5;
 
-        // Relative iris displacement within eye sockets:
-        // Left eye: outer 33, inner 133, top 159, bottom 145
-        const leftW = Math.max(0.005, Math.abs(lm[133].x - lm[33].x));
-        const leftH = Math.max(0.005, Math.abs(lm[145].y - lm[159].y));
-        const leftIrisRelX = (lm[468].x - lm[33].x) / leftW - 0.5;
-        const leftIrisRelY = (lm[468].y - lm[159].y) / leftH - 0.5;
+        const faceWidth = Math.max(0.08, Math.abs(earRightX - earLeftX));
+        const faceHeight = Math.max(0.10, Math.abs(chinY - foreY));
 
-        // Right eye: inner 362, outer 263, top 386, bottom 374
-        const rightW = Math.max(0.005, Math.abs(lm[263].x - lm[362].x));
-        const rightH = Math.max(0.005, Math.abs(lm[374].y - lm[386].y));
-        const rightIrisRelX = (lm[473].x - lm[362].x) / rightW - 0.5;
-        const rightIrisRelY = (lm[473].y - lm[386].y) / rightH - 0.5;
+        detHeadX = midEarX;
+        detHeadY = midFaceY;
+        detHeadSize = Math.max(faceWidth * 1.5, faceHeight);
+        headConf = 0.99;
 
-        // Blendshapes (eyeLookOutLeft, eyeLookInRight, etc.)
-        let blendGazeX = 0;
-        let blendGazeY = 0;
-        if (res.faceBlendshapes && res.faceBlendshapes[0]?.categories) {
-          const cats = res.faceBlendshapes[0].categories;
-          let outL = 0, inL = 0, outR = 0, inR = 0, upL = 0, upR = 0, downL = 0, downR = 0;
-          for (let i = 0; i < cats.length; i++) {
-            const cat = cats[i];
-            if (cat.categoryName === 'eyeLookOutLeft') outL = cat.score;
-            else if (cat.categoryName === 'eyeLookInLeft') inL = cat.score;
-            else if (cat.categoryName === 'eyeLookOutRight') outR = cat.score;
-            else if (cat.categoryName === 'eyeLookInRight') inR = cat.score;
-            else if (cat.categoryName === 'eyeLookUpLeft') upL = cat.score;
-            else if (cat.categoryName === 'eyeLookUpRight') upR = cat.score;
-            else if (cat.categoryName === 'eyeLookDownLeft') downL = cat.score;
-            else if (cat.categoryName === 'eyeLookDownRight') downR = cat.score;
-          }
-          // In mirrored video: looking left on screen increases eyeLookOutLeft and eyeLookInRight
-          blendGazeX = ((outL + inR) - (inL + outR)) * 1.5;
-          blendGazeY = ((upL + upR) - (downL + downR)) * 1.5;
-        }
+        leftEyePt = { x: lm[33].x, y: lm[159].y };
+        rightEyePt = { x: lm[263].x, y: lm[386].y };
 
-        const rawIrisX = ((leftIrisRelX + rightIrisRelX) * 0.5) * 3.8;
-        const rawIrisY = -((leftIrisRelY + rightIrisRelY) * 0.5) * 3.8; // Looking up: image y is lower, so inverted is positive
+        // 3D Face Angle (Head Pose Yaw & Pitch):
+        // In mirrored selfie video:
+        // Turning face to your LEFT moves the nose towards the left of the image (noseX < midEarX) -> positive yaw (turns camera left)
+        // Turning face to your RIGHT moves the nose towards the right of the image (noseX > midEarX) -> negative yaw (turns camera right)
+        const rawFaceYaw = (midEarX - noseX) / (faceWidth * 0.38);
 
-        detGazeX = (blendGazeX !== 0) ? (blendGazeX * 0.65 + rawIrisX * 0.35) : rawIrisX;
-        detGazeY = (blendGazeY !== 0) ? (blendGazeY * 0.65 + rawIrisY * 0.35) : rawIrisY;
-        gazeConf = 0.96;
+        // Tilting face UP moves nose and chin upward relative to face center -> positive pitch (tilts camera up)
+        // Tilting face DOWN moves nose and chin downward -> negative pitch (tilts camera down)
+        const baselineNoseY = faceHeight * 0.04;
+        const rawFacePitch = ((midFaceY - noseY) - baselineNoseY) / (faceHeight * 0.34);
+
+        detGazeX = clamp(rawFaceYaw, -1.8, 1.8);
+        detGazeY = clamp(rawFacePitch, -1.8, 1.8);
+        gazeConf = 0.98;
       }
     } catch (e) {}
   }
 
-  // 2. Secondary Fast: MediaPipe BlazeFace FaceDetector + Optical Iris Centroid
+  // 2. Secondary Fast: MediaPipe BlazeFace FaceDetector Keypoints
   if ((detHeadX === null || detGazeX === null) && faceDetectorReady && faceDetector) {
     try {
       const res = faceDetector.detectForVideo(video, now);
@@ -2435,65 +2457,26 @@ function trackHeadAndEyes(dt = 0.016) {
 
           const kp = det.keypoints;
           if (kp && kp.length >= 3) {
-            // kp[0]: right eye in face (camera left side), kp[1]: left eye in face (camera right side), kp[2]: nose tip
-            const rx = kp[0].x;
-            const ry = kp[0].y;
-            const lx = kp[1].x;
-            const ly = kp[1].y;
-            const nx = kp[2].x;
-            const ny = kp[2].y;
+            // kp[0]: right eye in face (video left), kp[1]: left eye in face (video right), kp[2]: nose tip
+            const rx = kp[0].x, ry = kp[0].y;
+            const lx = kp[1].x, ly = kp[1].y;
+            const nx = kp[2].x, ny = kp[2].y;
 
             leftEyePt = { x: lx, y: ly };
             rightEyePt = { x: rx, y: ry };
 
-            // Eye span and head-pose gaze component
-            const eyeSpanX = Math.abs(lx - rx) || 0.12;
             const eyeMidX = (lx + rx) * 0.5;
             const eyeMidY = (ly + ry) * 0.5;
+            const eyeSpan = Math.abs(lx - rx) || 0.12;
 
-            // Nose shift relative to eye midpoint:
-            // When turning eyes/head to look left on mirrored video: nx > eyeMidX (toward user left)
-            const headYawOffset = (nx - eyeMidX) / eyeSpanX * 2.0;
-            const headPitchOffset = -((ny - eyeMidY) - eyeSpanX * 0.42) / eyeSpanX * 2.2;
-
-            // High-speed optical iris pupil centroid on eyeCanvas
-            let irisShiftX = 0;
-            let irisShiftY = 0;
-            try {
-              const patchW = Math.max(16, eyeSpanX * vw * 0.55);
-              const patchH = Math.max(12, eyeSpanX * vh * 0.38);
-
-              // Draw right eye to left half of eyeCanvas (32x32), left eye to right half (32x32)
-              eyeCtx.drawImage(video, rx * vw - patchW * 0.5, ry * vh - patchH * 0.5, patchW, patchH, 0, 0, 32, 32);
-              eyeCtx.drawImage(video, lx * vw - patchW * 0.5, ly * vh - patchH * 0.5, patchW, patchH, 32, 0, 32, 32);
-
-              const eyeData = eyeCtx.getImageData(0, 0, 64, 32).data;
-              let darkSumX = 0, darkSumY = 0, darkCount = 0;
-              for (let y = 6; y < 26; y++) {
-                for (let x = 6; x < 58; x++) {
-                  if (x >= 26 && x <= 38) continue; // skip seam
-                  const idx = (y * 64 + x) * 4;
-                  const lum = eyeData[idx] * 0.299 + eyeData[idx + 1] * 0.587 + eyeData[idx + 2] * 0.114;
-                  if (lum < 75) {
-                    const weight = (75 - lum);
-                    const localX = (x < 32) ? (x - 16) : (x - 48);
-                    const localY = (y - 16);
-                    darkSumX += localX * weight;
-                    darkSumY += localY * weight;
-                    darkCount += weight;
-                  }
-                }
-              }
-              if (darkCount > 40) {
-                irisShiftX = (darkSumX / darkCount) / 8.0;
-                irisShiftY = -(darkSumY / darkCount) / 8.0;
-              }
-            } catch (e) {}
+            // Face Angle from keypoints:
+            const rawFaceYaw = (eyeMidX - nx) / (eyeSpan * 0.48);
+            const rawFacePitch = -((ny - eyeMidY) - eyeSpan * 0.44) / (eyeSpan * 0.45);
 
             if (detGazeX === null) {
-              detGazeX = irisShiftX * 1.6 + headYawOffset * 0.9;
-              detGazeY = irisShiftY * 1.6 + headPitchOffset * 0.9;
-              gazeConf = 0.88;
+              detGazeX = clamp(rawFaceYaw, -1.8, 1.8);
+              detGazeY = clamp(rawFacePitch, -1.8, 1.8);
+              gazeConf = 0.92;
             }
           }
         }
@@ -2617,26 +2600,26 @@ function trackHeadAndEyes(dt = 0.016) {
     const rawDiffX = currentGaze.x - neutralGaze.x;
     const rawDiffY = currentGaze.y - neutralGaze.y;
 
-    // Smooth filtering for steady, natural gaze
-    smoothedEyeGaze.x = smoothedEyeGaze.x * 0.80 + rawDiffX * 0.20;
-    smoothedEyeGaze.y = smoothedEyeGaze.y * 0.80 + rawDiffY * 0.20;
+    // Smooth filtering for steady, natural face look-around
+    smoothedEyeGaze.x = smoothedEyeGaze.x * 0.82 + rawDiffX * 0.18;
+    smoothedEyeGaze.y = smoothedEyeGaze.y * 0.82 + rawDiffY * 0.18;
 
-    // Classify Gaze Direction for HUD & Feedback
+    // Classify Face Look Direction for HUD & Feedback
     let dirH = '';
-    if (smoothedEyeGaze.x > 0.16) dirH = 'LEFT';
-    else if (smoothedEyeGaze.x < -0.16) dirH = 'RIGHT';
+    if (smoothedEyeGaze.x > 0.14) dirH = 'LEFT';
+    else if (smoothedEyeGaze.x < -0.14) dirH = 'RIGHT';
 
     let dirV = '';
-    if (smoothedEyeGaze.y > 0.16) dirV = 'UP';
-    else if (smoothedEyeGaze.y < -0.16) dirV = 'DOWN';
+    if (smoothedEyeGaze.y > 0.14) dirV = 'UP';
+    else if (smoothedEyeGaze.y < -0.14) dirV = 'DOWN';
 
     if (dirV && dirH) currentGaze.direction = `${dirV}-${dirH}`;
     else if (dirH) currentGaze.direction = dirH;
     else if (dirV) currentGaze.direction = dirV;
     else currentGaze.direction = 'CENTER';
 
-    // Jitter Deadband: zero-shake when user looks straight at center
-    const deadband = 0.04;
+    // Jitter Deadband: zero-shake when user looks straight forward
+    const deadband = 0.035;
     const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
     let effGazeX = 0;
     let effGazeY = 0;
@@ -2646,36 +2629,38 @@ function trackHeadAndEyes(dt = 0.016) {
       effGazeY = (smoothedEyeGaze.y / gazeMag) * factor;
     }
 
-    // 1. Direct Glance Look-Angle:
-    // User looks Left -> positive yaw (turns camera to the left)
-    // User looks Right -> negative yaw (turns camera to the right)
-    // User looks Up -> positive pitch (tilts camera up)
-    // User looks Down -> negative pitch (tilts camera down)
-    const maxGlanceYaw = 0.66; // ~38 degrees glance view
-    const maxGlancePitch = 0.46; // ~26 degrees glance tilt
+    // 1. Direct Glance Look-Angle from Face Angle:
+    // Face turned Left -> positive yaw (turns camera to the left)
+    // Face turned Right -> negative yaw (turns camera to the right)
+    // Face tilted Up -> positive pitch (tilts camera up)
+    // Face tilted Down -> negative pitch (tilts camera down)
+    const maxGlanceYaw = 0.76; // ~44 degrees natural look glance
+    const maxGlancePitch = 0.52; // ~30 degrees natural vertical tilt
     eyeLookOffset.yaw = effGazeX * maxGlanceYaw;
     eyeLookOffset.pitch = effGazeY * maxGlancePitch;
 
     // 2. Continuous Edge Panning (Full 360° panoramic navigation):
-    // Looking toward screen edges continuously pans player sightline
-    const panThreshold = 0.25;
+    // Turning and holding face toward periphery smoothly rotates sightline
+    const panThreshold = 0.32;
     if (Math.abs(smoothedEyeGaze.x) > panThreshold && dt > 0) {
       const panSign = Math.sign(smoothedEyeGaze.x);
       const panNorm = (Math.abs(smoothedEyeGaze.x) - panThreshold) / (1.0 - panThreshold);
-      player.yaw += panSign * panNorm * 1.65 * dt;
+      player.yaw += panSign * panNorm * 1.85 * dt;
     }
-    if (Math.abs(smoothedEyeGaze.y) > 0.35 && dt > 0) {
+    const tiltThreshold = 0.38;
+    if (Math.abs(smoothedEyeGaze.y) > tiltThreshold && dt > 0) {
       const tiltSign = Math.sign(smoothedEyeGaze.y);
-      const tiltNorm = (Math.abs(smoothedEyeGaze.y) - 0.35) / (1.0 - 0.35);
-      player.pitch = clamp((player.pitch || -0.16) + tiltSign * tiltNorm * 0.85 * dt, -0.85, 0.85);
+      const tiltNorm = (Math.abs(smoothedEyeGaze.y) - tiltThreshold) / (1.0 - tiltThreshold);
+      player.pitch = clamp((player.pitch || -0.16) + tiltSign * tiltNorm * 0.95 * dt, -0.95, 0.95);
     }
 
-    // 3. Update Floating Vision Pro-style Gaze Reticle
+    // 3. Update Minimalist Floating Focus Indicator
     if (gazeFocalPoint) {
       const screenX = window.innerWidth * (0.5 + clamp(smoothedEyeGaze.x, -0.92, 0.92) * 0.44);
       const screenY = window.innerHeight * (0.5 - clamp(smoothedEyeGaze.y, -0.92, 0.92) * 0.44);
       gazeFocalPoint.style.left = `${screenX}px`;
       gazeFocalPoint.style.top = `${screenY}px`;
+      gazeFocalPoint.style.opacity = gazeMag > deadband ? '0.75' : '0.25';
       gazeFocalPoint.style.display = 'block';
     }
   } else {
@@ -2716,10 +2701,10 @@ function recenterEyeTracking() {
     smoothedEyeGaze.y = 0;
     eyeLookOffset.yaw = 0;
     eyeLookOffset.pitch = 0;
-    showBanner('EYE TRACKING RECENTERED (GAZE ZEROED)', '👁️', 'pick');
+    showBanner('FACE LOOK RECENTERED (ZEROED FORWARD SIGHTLINE)', '🧭', 'pick');
     playTone(920, 0.12, 'triangle', 0.16);
   } else {
-    showBanner('LOOK FORWARD AT SCREEN TO RECENTER GAZE', '👁️', 'pick');
+    showBanner('LOOK FORWARD AT SCREEN TO RECENTER SIGHTLINE', '🧭', 'pick');
     playTone(480, 0.1, 'sine', 0.12);
   }
 }
@@ -2728,7 +2713,7 @@ function recenterHeadAndEyes() {
   initAudio();
   recenterHeadTracking();
   recenterEyeTracking();
-  showBanner('HEAD & EYE TRACKING RECENTERED', '🎯', 'pick');
+  showBanner('HEAD & FACE LOOK RECENTERED', '🎯', 'pick');
 }
 
 function toggleHeadTracking() {
@@ -2762,8 +2747,8 @@ function toggleEyeTracking() {
   }
   updateEyeTrackingUI();
   showBanner(
-    eyeTrackingEnabled ? 'EYE TRACKING: ON (LOOK UP/DOWN/LEFT/RIGHT TO LOOK AROUND)' : 'EYE TRACKING: OFF (MANUAL AIM)',
-    '👁️',
+    eyeTrackingEnabled ? 'FACE LOOK TRACKING: ON (TURN FACE LEFT/RIGHT/UP/DOWN TO LOOK AROUND)' : 'FACE LOOK TRACKING: OFF (MANUAL AIM)',
+    '🧭',
     'pick'
   );
   playTone(eyeTrackingEnabled ? 840 : 420, 0.1, 'sine', 0.16);
@@ -2783,13 +2768,13 @@ function updateHeadTrackingUI() {
 
 function updateEyeTrackingUI() {
   if (eyeTrackingBtn) {
-    eyeTrackingBtn.textContent = eyeTrackingEnabled ? '👁️ Eye Tracking: ON' : '👁️ Eye Tracking: OFF';
+    eyeTrackingBtn.textContent = eyeTrackingEnabled ? '🧭 Face Look: ON' : '🧭 Face Look: OFF';
     eyeTrackingBtn.classList.toggle('active', eyeTrackingEnabled);
   }
   if (eyeTrackMiniBtn) {
-    eyeTrackMiniBtn.textContent = eyeTrackingEnabled ? '👁️ Eyes: ON' : '👁️ Eyes: OFF';
+    eyeTrackMiniBtn.textContent = eyeTrackingEnabled ? '🧭 Face: ON' : '🧭 Face: OFF';
     eyeTrackMiniBtn.classList.toggle('active', eyeTrackingEnabled);
-    eyeTrackMiniBtn.style.background = eyeTrackingEnabled ? '#0284c7' : '#64748b';
+    eyeTrackMiniBtn.style.background = eyeTrackingEnabled ? '#9333ea' : '#64748b';
   }
 }
 
@@ -2812,7 +2797,7 @@ if (eyeTrackMiniBtn) {
 }
 
 // Studio Control Hub Minimize / Maximize state
-function toggleStudioBox(forceState) {
+function toggleStudioBox(forceState = null) {
   if (!studioBox) return;
   initAudio();
   const shouldMinimize = (typeof forceState === 'boolean') ? forceState : !studioBox.classList.contains('minimized');
@@ -2872,7 +2857,7 @@ function updatePinchDotsUI() {
   if (dot5) dot5.classList.toggle('active', pinchCount >= 5);
 }
 
-function showBanner(title, icon, modeClass) {
+function showBanner(title, icon = 'ℹ️', modeClass = 'pick') {
   bannerText.textContent = title;
   bannerIcon.textContent = icon;
   modeBanner.className = 'show ' + modeClass;
@@ -2921,7 +2906,7 @@ function updateHUDForMode() {
   }
 }
 
-function toggleMode(targetMode) {
+function toggleMode(targetMode = null) {
   releaseAllHeld();
   initAudio();
   if (targetMode) {
@@ -3102,8 +3087,8 @@ if (blockPaletteGrid) {
       initAudio();
       paletteBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      selectedBlockType = btn.getAttribute('data-type') || 'wood_planks';
-      const def = BLOCK_DEFINITIONS[selectedBlockType] || BLOCK_DEFINITIONS.wood_planks;
+      selectedBlockType = btn.getAttribute('data-type') || 'cast_grey';
+      const def = BLOCK_DEFINITIONS[selectedBlockType] || BLOCK_DEFINITIONS.cast_grey;
       showBanner(`SELECTED: ${def.name.toUpperCase()}`, def.icon, 'pick');
       playTone(620, 0.08, 'sine', 0.15);
     });
@@ -3464,30 +3449,27 @@ async function loadLandmarker() {
 
     // 3. Initialize FaceDetector for fast 6-DOF Physical Head & Optical Gaze Tracking
     try {
-      FaceDetector.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
-          delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        minDetectionConfidence: 0.38
-      }).then(fd => {
-        faceDetector = fd;
-        faceDetectorReady = true;
-      }).catch(() => {
-        FaceDetector.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
-            delegate: "CPU"
-          },
-          runningMode: "VIDEO",
-          minDetectionConfidence: 0.38
-        }).then(fd => {
-          faceDetector = fd;
-          faceDetectorReady = true;
-        }).catch(err => {
-          console.warn("FaceDetector fallback notice:", err);
-        });
+      const faceModelSources = [LOCAL_FACE_DETECTOR_URL, REMOTE_FACE_DETECTOR_URL];
+      const tryInitFaceDetector = async () => {
+        for (const modelPath of faceModelSources) {
+          for (const delegate of ["GPU", "CPU"]) {
+            try {
+              const fd = await FaceDetector.createFromOptions(vision, {
+                baseOptions: { modelAssetPath: modelPath, delegate },
+                runningMode: "VIDEO",
+                minDetectionConfidence: 0.38
+              });
+              if (fd) {
+                faceDetector = fd;
+                faceDetectorReady = true;
+                return;
+              }
+            } catch (err) {}
+          }
+        }
+      };
+      tryInitFaceDetector().catch(err => {
+        console.warn("FaceDetector fallback notice:", err);
       });
     } catch(faceInitErr) {
       console.warn("FaceDetector initialization notice:", faceInitErr);
@@ -3495,36 +3477,30 @@ async function loadLandmarker() {
 
     // 4. Initialize FaceLandmarker for high-precision 478-landmark Iris & Blendshape Gaze Tracking
     try {
-      FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-          delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numFaces: 1,
-        outputFaceBlendshapes: true,
-        minFaceDetectionConfidence: 0.35,
-        minTrackingConfidence: 0.35
-      }).then(fl => {
-        faceLandmarker = fl;
-        faceLandmarkerReady = true;
-      }).catch(() => {
-        FaceLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "CPU"
-          },
-          runningMode: "VIDEO",
-          numFaces: 1,
-          outputFaceBlendshapes: true,
-          minFaceDetectionConfidence: 0.35,
-          minTrackingConfidence: 0.35
-        }).then(fl => {
-          faceLandmarker = fl;
-          faceLandmarkerReady = true;
-        }).catch(err => {
-          console.warn("FaceLandmarker fallback notice:", err);
-        });
+      const landmarkerModelSources = [LOCAL_FACE_LANDMARKER_URL, REMOTE_FACE_LANDMARKER_URL];
+      const tryInitFaceLandmarker = async () => {
+        for (const modelPath of landmarkerModelSources) {
+          for (const delegate of ["GPU", "CPU"]) {
+            try {
+              const fl = await FaceLandmarker.createFromOptions(vision, {
+                baseOptions: { modelAssetPath: modelPath, delegate },
+                runningMode: "VIDEO",
+                numFaces: 1,
+                outputFaceBlendshapes: true,
+                minFaceDetectionConfidence: 0.35,
+                minTrackingConfidence: 0.35
+              });
+              if (fl) {
+                faceLandmarker = fl;
+                faceLandmarkerReady = true;
+                return;
+              }
+            } catch (err) {}
+          }
+        }
+      };
+      tryInitFaceLandmarker().catch(err => {
+        console.warn("FaceLandmarker fallback notice:", err);
       });
     } catch(flErr) {
       console.warn("FaceLandmarker initialization notice:", flErr);
@@ -3570,9 +3546,10 @@ async function startCamera() {
   camReady = true;
 }
 
-function drawHandSkel(landmarks, strokeCol, pointCol, label) {
+function drawHandSkel(landmarks, strokeCol, pointCol, isLeft, isPinching = false) {
+  // Ultra-thin, minimalist luminous bone filaments
   octx.strokeStyle = strokeCol;
-  octx.lineWidth = 2.5;
+  octx.lineWidth = 1.2;
   octx.beginPath();
   for (const [a, b] of HAND_CONNECTIONS) {
     const p1 = landmarks[a], p2 = landmarks[b];
@@ -3581,97 +3558,123 @@ function drawHandSkel(landmarks, strokeCol, pointCol, label) {
   }
   octx.stroke();
 
-  octx.fillStyle = pointCol;
-  for (const p of landmarks) {
+  // Subtle micro joint dots
+  octx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+  for (let i = 0; i < landmarks.length; i++) {
+    const p = landmarks[i];
     octx.beginPath();
-    octx.arc(p.x * overlay.width, p.y * overlay.height, 3, 0, Math.PI * 2);
+    octx.arc(p.x * overlay.width, p.y * overlay.height, 1.2, 0, Math.PI * 2);
     octx.fill();
   }
 
-  // Label tag above wrist
-  if (label && landmarks[0]) {
-    const lx = landmarks[0].x * overlay.width;
-    const ly = Math.max(16, landmarks[0].y * overlay.height - 10);
-    octx.font = 'bold 10px sans-serif';
-    octx.fillStyle = strokeCol;
+  // Fingertip subtle luminous points
+  octx.fillStyle = pointCol;
+  for (const idx of [4, 8, 12, 16, 20]) {
+    const p = landmarks[idx];
+    octx.beginPath();
+    octx.arc(p.x * overlay.width, p.y * overlay.height, 2.0, 0, Math.PI * 2);
+    octx.fill();
+  }
+
+  // Visual pinch spark if pinching
+  if (isPinching && landmarks[4] && landmarks[8]) {
+    const midX = (landmarks[4].x + landmarks[8].x) * 0.5 * overlay.width;
+    const midY = (landmarks[4].y + landmarks[8].y) * 0.5 * overlay.height;
+    octx.beginPath();
+    octx.arc(midX, midY, 3.5, 0, Math.PI * 2);
+    octx.fillStyle = '#ffffff';
+    octx.fill();
+  }
+
+  // Sleek, minimal wrist badge (e.g. "L" or "R")
+  if (landmarks[0]) {
+    const wx = landmarks[0].x * overlay.width;
+    const wy = Math.min(overlay.height - 12, Math.max(12, landmarks[0].y * overlay.height + 12));
+    octx.save();
+    octx.fillStyle = 'rgba(15, 23, 42, 0.70)';
+    if (octx.roundRect) {
+      octx.beginPath();
+      octx.roundRect(wx - 7, wy - 6, 14, 12, 3);
+      octx.fill();
+    } else {
+      octx.fillRect(wx - 7, wy - 6, 14, 12);
+    }
+    octx.font = '600 8px system-ui, -apple-system, sans-serif';
+    octx.fillStyle = pointCol;
     octx.textAlign = 'center';
-    octx.fillText(label, lx, ly);
+    octx.textBaseline = 'middle';
+    octx.fillText(isLeft ? 'L' : 'R', wx, wy);
+    octx.restore();
   }
 }
 
 function drawDualOverlay(leftHand, rightHand) {
   octx.clearRect(0, 0, overlay.width, overlay.height);
+
   if (leftHand) {
-    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.9)', '#34d399', '✋ LEFT: BUILDER');
+    const isPinching = (leftHand.pinchRatio < PINCH_RATIO_GRAB);
+    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.75)', '#34d399', true, isPinching);
   }
   if (rightHand) {
-    drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.9)', '#38bdf8', '👌 RIGHT: BUILDER');
+    const isPinching = (rightHand.pinchRatio < PINCH_RATIO_GRAB);
+    drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.75)', '#38bdf8', false, isPinching);
   }
-  if (headTrackingEnabled && headTrackingActive) {
+
+  // Minimalist Face Angle / Look Tracking indicator
+  if (eyeTrackingEnabled && eyeTrackingActive && currentHead && currentHead.confidence > 0.2) {
     const hx = currentHead.x * overlay.width;
     const hy = currentHead.y * overlay.height;
-    const hr = Math.max(14, currentHead.size * overlay.width * 0.45);
-    octx.save();
-    octx.strokeStyle = 'rgba(168, 85, 247, 0.85)';
-    octx.lineWidth = 1.5;
-    octx.setLineDash([4, 4]);
-    octx.beginPath();
-    octx.arc(hx, hy, hr, 0, Math.PI * 2);
-    octx.stroke();
-    octx.fillStyle = '#c084fc';
-    octx.beginPath();
-    octx.arc(hx, hy, 2.5, 0, Math.PI * 2);
-    octx.fill();
-    octx.font = 'bold 9px sans-serif';
-    octx.fillStyle = '#c084fc';
-    octx.textAlign = 'center';
-    octx.fillText('👤 HEAD TRACK', hx, Math.max(12, hy - hr - 4));
-    octx.restore();
-  }
-
-  if (eyeTrackingEnabled && eyeTrackingActive && currentGaze.leftEye && currentGaze.rightEye) {
-    const lx = currentGaze.leftEye.x * overlay.width;
-    const ly = currentGaze.leftEye.y * overlay.height;
-    const rx = currentGaze.rightEye.x * overlay.width;
-    const ry = currentGaze.rightEye.y * overlay.height;
 
     octx.save();
-    // Eye points
-    octx.strokeStyle = 'rgba(14, 165, 233, 0.9)';
-    octx.lineWidth = 1.5;
-    octx.fillStyle = '#38bdf8';
-
+    // Subtle crosshair at face center
+    octx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+    octx.lineWidth = 1.0;
     octx.beginPath();
-    octx.arc(lx, ly, 4.5, 0, Math.PI * 2);
-    octx.stroke();
-    octx.beginPath();
-    octx.arc(lx, ly, 1.8, 0, Math.PI * 2);
-    octx.fill();
-
-    octx.beginPath();
-    octx.arc(rx, ry, 4.5, 0, Math.PI * 2);
-    octx.stroke();
-    octx.beginPath();
-    octx.arc(rx, ry, 1.8, 0, Math.PI * 2);
-    octx.fill();
-
-    // Gaze direction vectors from each eye
-    const gVecX = smoothedEyeGaze.x * 24;
-    const gVecY = -smoothedEyeGaze.y * 24;
-    octx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
-    octx.lineWidth = 2;
-    octx.beginPath();
-    octx.moveTo(lx, ly);
-    octx.lineTo(lx + gVecX, ly + gVecY);
-    octx.moveTo(rx, ry);
-    octx.lineTo(rx + gVecX, ry + gVecY);
+    octx.moveTo(hx - 5, hy);
+    octx.lineTo(hx + 5, hy);
+    octx.moveTo(hx, hy - 5);
+    octx.lineTo(hx, hy + 5);
     octx.stroke();
 
-    // Gaze HUD badge
-    octx.font = 'bold 9px sans-serif';
-    octx.fillStyle = '#0284c7';
+    // Look vector
+    const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
+    if (gazeMag > 0.04) {
+      const gVecX = smoothedEyeGaze.x * 20;
+      const gVecY = -smoothedEyeGaze.y * 20;
+      octx.strokeStyle = 'rgba(192, 132, 252, 0.85)';
+      octx.lineWidth = 1.5;
+      octx.beginPath();
+      octx.moveTo(hx, hy);
+      octx.lineTo(hx + gVecX, hy + gVecY);
+      octx.stroke();
+
+      octx.fillStyle = '#c084fc';
+      octx.beginPath();
+      octx.arc(hx + gVecX, hy + gVecY, 2.0, 0, Math.PI * 2);
+      octx.fill();
+    }
+
+    // Discreet HUD Look badge in top-right corner
+    const dirText = currentGaze.direction || 'CENTER';
+    const badgeW = 74;
+    const badgeH = 15;
+    const badgeX = overlay.width - badgeW - 6;
+    const badgeY = 6;
+
+    octx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+    if (octx.roundRect) {
+      octx.beginPath();
+      octx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+      octx.fill();
+    } else {
+      octx.fillRect(badgeX, badgeY, badgeW, badgeH);
+    }
+    octx.font = '600 8px system-ui, -apple-system, sans-serif';
+    octx.fillStyle = (dirText === 'CENTER') ? '#94a3b8' : '#c084fc';
     octx.textAlign = 'center';
-    octx.fillText(`👁️ GAZE: ${currentGaze.direction}`, overlay.width * 0.5, overlay.height - 5);
+    octx.textBaseline = 'middle';
+    octx.fillText(`LOOK: ${dirText}`, badgeX + badgeW * 0.5, badgeY + badgeH * 0.5);
+
     octx.restore();
   }
 }
@@ -3746,14 +3749,19 @@ function buildHandInfo(lm, handednessType, index) {
 }
 
 function processHands() {
-  if (!camReady || !landmarkerReady || video.readyState < 2) {
+  if (!camReady || !landmarkerReady || !video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
     rightHandGroup.visible = false;
     leftHandGroup.visible = false;
     return { left: null, right: null };
   }
 
-  const result = handLandmarker.detectForVideo(video, performance.now());
-  if (!result.landmarks || result.landmarks.length === 0) {
+  let result = null;
+  try {
+    result = handLandmarker.detectForVideo(video, performance.now());
+  } catch (err) {
+    return { left: null, right: null };
+  }
+  if (!result || !result.landmarks || result.landmarks.length === 0) {
     rightHandGroup.visible = false;
     leftHandGroup.visible = false;
     drawDualOverlay(null, null);
@@ -4297,6 +4305,7 @@ const mouseModeBtn = document.getElementById('mouseModeBtn');
 const errBox = document.getElementById('errBox');
 const errMsg = document.getElementById('errMsg');
 const errRetryBtn = document.getElementById('errRetryBtn');
+const errMouseBtn = document.getElementById('errMouseBtn');
 const loadingNote = document.getElementById('loadingNote');
 const camWrap = document.getElementById('camWrap');
 const pinchMeterBar = document.getElementById('pinchMeterBar');
@@ -4378,6 +4387,18 @@ startBtn.addEventListener('click', attemptStart);
 
 if (mouseModeBtn) {
   mouseModeBtn.addEventListener('click', () => {
+    initAudio();
+    startOverlay.style.display = 'none';
+    if (studioBox) studioBox.classList.add('show');
+    if (camWrap) camWrap.classList.add('show');
+    running = true;
+    updateHUDForMode();
+    showBanner('KEYBOARD & MOUSE MODE ACTIVE', '🖱️', 'pick');
+  });
+}
+
+if (errMouseBtn) {
+  errMouseBtn.addEventListener('click', () => {
     initAudio();
     startOverlay.style.display = 'none';
     if (studioBox) studioBox.classList.add('show');
