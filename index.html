@@ -755,31 +755,31 @@ const REMOTE_MODEL_URL =
 
 // Hand Reach & Anatomical Scale Configuration:
 // Reaching volume: maps user's hand position across webcam to virtual first-person space
-const BASE_REACH_SPAN_X = 2.4;     // base lateral reaching span across view
-const BASE_REACH_SPAN_Y = 1.8;     // base vertical reaching span
-const REACH_OFFSET_Y = 0.40;       // ergonomically lowered to match table surface
+const BASE_REACH_SPAN_X = 4.4;     // Expansive lateral reaching span across view (full studio reach)
+const BASE_REACH_SPAN_Y = 3.2;     // Expansive vertical reaching span (floor to ceiling)
+const REACH_OFFSET_Y = 0.15;       // Ergonomic height alignment
 
-// Reach Multiplier: default 2.0x (double distance) as requested so hand doesn't need to over-extend
-let reachMultiplier = 2.0;
+// Reach Multiplier: default 2.5x so hand easily reaches everywhere without physical over-extension
+let reachMultiplier = 2.5;
 
 // True-to-life human hand anatomical dimensions:
 const REAL_HAND_METERS = 0.092;
 
 // Depth mapping configuration:
-const DEPTH_PUSHED_Z = -2.6; // forward reaching towards table
-const DEPTH_PULLED_Z = -0.7; // pulled back close to chest
-const NEUTRAL_SPAN   = 0.18; // natural resting hand size in webcam view
-const SPAN_CLOSE_CAM = 0.28; // hand close to webcam
+const DEPTH_PUSHED_Z = -7.2; // deep forward reaching across table and world
+const DEPTH_PULLED_Z = -0.45; // pulled back close to chest
+const NEUTRAL_SPAN   = 0.17; // natural resting hand size in webcam view
+const SPAN_CLOSE_CAM = 0.32; // hand extended towards webcam
 const SPAN_FAR_CAM   = 0.10; // hand further from webcam
 
 let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
 
-const PINCH_ON  = 0.040;   // world distance (4.0 cm) between fingertips to trigger pinch
-const PINCH_OFF = 0.068;   // hysteresis release (6.8 cm) - wide deadzone prevents accidental drops
-const PINCH_RATIO_GRAB = 0.36;    // Pinch ratio threshold to grab
-const PINCH_RATIO_RELEASE = 0.48; // Pinch ratio threshold to release (hysteresis)
-const PHYSICAL_GRAB_MARGIN = 0.26; // Generous physical touch margin for responsive pickup
-const FOLLOW_LERP = 0.65;  // Responsive, non-laggy follow interpolation
+const PINCH_ON  = 0.045;   // world distance (4.5 cm) between fingertips to trigger pinch
+const PINCH_OFF = 0.075;   // hysteresis release (7.5 cm) - wide deadzone prevents accidental drops
+const PINCH_RATIO_GRAB = 0.38;    // Pinch ratio threshold to grab
+const PINCH_RATIO_RELEASE = 0.50; // Pinch ratio threshold to release (hysteresis)
+const PHYSICAL_GRAB_MARGIN = 0.85; // Expansive magnetic touch margin for effortless non-laser pickup
+const FOLLOW_LERP = 0.85;  // Butter-smooth, zero-lag follow interpolation
 
 const FLOOR_Y = -1.15;
 const WORLD_RADIUS = 80.0;
@@ -2068,7 +2068,7 @@ const smoothedRightLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, in
 let smoothedLeftBaseZ = null;
 let smoothedRightBaseZ = null;
 
-// 0-Latency High-Precision Hand Tracking Filter
+// VR-Grade Jitter-Elimination Filter (rock-solid stationary pointing, instant response in motion)
 function filterLandmarks(rawLm, smoothedArr) {
   const filtered = [];
   for (let i = 0; i < 21; i++) {
@@ -2080,9 +2080,20 @@ function filterLandmarks(rawLm, smoothedArr) {
       sm.z = raw.z || 0;
       sm.initialized = true;
     } else {
-      // 0-latency adaptive filter: 80% to 98% immediate single-frame response
       const d = Math.hypot(raw.x - sm.x, raw.y - sm.y);
-      const alpha = clamp(0.80 + d * 8.0, 0.80, 0.98);
+      // Adaptive dual-speed stabilization:
+      // When stationary (d < 0.002), alpha is 0.16 to eliminate all sensor noise and micro-tremors.
+      // When moving, alpha scales progressively up to 0.88 for instant tracking.
+      let alpha;
+      if (d < 0.002) {
+        alpha = 0.16;
+      } else if (d < 0.015) {
+        const t = (d - 0.002) / 0.013;
+        alpha = 0.16 + t * 0.40;
+      } else {
+        const t = Math.min(1.0, (d - 0.015) / 0.035);
+        alpha = 0.56 + t * 0.32;
+      }
       sm.x += (raw.x - sm.x) * alpha;
       sm.y += (raw.y - sm.y) * alpha;
       sm.z += ((raw.z || 0) - sm.z) * alpha;
@@ -2204,20 +2215,20 @@ if (boxCollapseBtn) {
   });
 }
 
-// Reach Multiplier Presets (default is 2.0x double distance as requested)
+// Reach Multiplier Presets (default 2.5x for effortless spatial VR reach)
 const REACH_PRESETS = [
-  { mult: 2.0, label: '2.0x (Double Distance)' },
-  { mult: 2.5, label: '2.5x (High Reach)' },
-  { mult: 3.0, label: '3.0x (Triple Distance)' },
-  { mult: 1.0, label: '1.0x (1:1 Movement)' },
-  { mult: 1.5, label: '1.5x (1.5x Reach)' },
+  { mult: 2.5, label: '2.5x (Extended Reach)' },
+  { mult: 3.5, label: '3.5x (Deep Construction Reach)' },
+  { mult: 4.5, label: '4.5x (Omni-VR Infinity)' },
+  { mult: 1.5, label: '1.5x (Close Crafting)' },
+  { mult: 2.0, label: '2.0x (Standard Reach)' },
 ];
-let currentReachPresetIdx = 0; // starts at 2.0x
+let currentReachPresetIdx = 0; // starts at 2.5x
 
 function updateReachMultiplierUI() {
   const preset = REACH_PRESETS[currentReachPresetIdx];
   reachMultiplier = preset.mult;
-  const btnText = `⚡ Reach: ${reachMultiplier.toFixed(1)}x${reachMultiplier === 2.0 ? ' (Double)' : ''}`;
+  const btnText = `⚡ Reach: ${reachMultiplier.toFixed(1)}x${reachMultiplier >= 2.5 ? ' (Wide)' : ''}`;
   if (reachToggleBtn) {
     reachToggleBtn.textContent = btnText;
     reachToggleBtn.classList.toggle('active', reachMultiplier !== 1.0);
@@ -2581,7 +2592,11 @@ const leftGrab = {
   prevPinchMidWorld: new THREE.Vector3(),
   havePrevPinchMid: false,
   pinchVelocity: new THREE.Vector3(),
-  candidate: null
+  candidate: null,
+  lastCandidate: null,
+  lastCandidateTime: 0,
+  aimNDC: new THREE.Vector2(0, 0),
+  aimNDCInit: false
 };
 
 const rightGrab = {
@@ -2592,7 +2607,11 @@ const rightGrab = {
   prevPinchMidWorld: new THREE.Vector3(),
   havePrevPinchMid: false,
   pinchVelocity: new THREE.Vector3(),
-  candidate: null
+  candidate: null,
+  lastCandidate: null,
+  lastCandidateTime: 0,
+  aimNDC: new THREE.Vector2(0, 0),
+  aimNDCInit: false
 };
 
 // Legacy references for compatibility
@@ -2906,18 +2925,22 @@ function buildHandInfo(lm, handednessType, index) {
   const dy = (filteredLM[0].y - filteredLM[9].y);
   const span = Math.hypot(dx, dy) || 0.18;
 
-  const targetNearZ = depthPushOnApproach ? DEPTH_PULLED_Z : DEPTH_PUSHED_Z;
-  const targetFarZ  = depthPushOnApproach ? DEPTH_PUSHED_Z : DEPTH_PULLED_Z;
-  // Amplify depth motion relative to neutral resting hand position by reachMultiplier (2x distance)
-  const amplifiedSpan = NEUTRAL_SPAN + (span - NEUTRAL_SPAN) * reachMultiplier;
-  const rawBaseZ = clamp(mapRange(amplifiedSpan, SPAN_FAR_CAM, SPAN_CLOSE_CAM, targetNearZ, targetFarZ), -3.4, -0.6);
+  // Expansive, progressive depth mapping without artificial brick-wall clamps
+  const normSpan = clamp((span - 0.10) / 0.22, 0, 1);
+  const curvedT = Math.pow(normSpan, 1.25);
+  // Full spatial range from -0.45m (close to chest) to -7.8m (across the entire pavilion and depot)
+  const nearZ = DEPTH_PULLED_Z; // -0.45m
+  const farZ = DEPTH_PUSHED_Z * (reachMultiplier / 2.5); // scales dynamically with reach multiplier
+  const rawBaseZ = depthPushOnApproach
+    ? mapRange(curvedT, 0, 1, nearZ, farZ)
+    : mapRange(curvedT, 0, 1, farZ, nearZ);
 
   let baseZ;
   if (isLeft) {
-    smoothedLeftBaseZ = smoothedLeftBaseZ === null ? rawBaseZ : smoothedLeftBaseZ * 0.72 + rawBaseZ * 0.28;
+    smoothedLeftBaseZ = smoothedLeftBaseZ === null ? rawBaseZ : smoothedLeftBaseZ * 0.76 + rawBaseZ * 0.24;
     baseZ = smoothedLeftBaseZ;
   } else {
-    smoothedRightBaseZ = smoothedRightBaseZ === null ? rawBaseZ : smoothedRightBaseZ * 0.72 + rawBaseZ * 0.28;
+    smoothedRightBaseZ = smoothedRightBaseZ === null ? rawBaseZ : smoothedRightBaseZ * 0.76 + rawBaseZ * 0.24;
     baseZ = smoothedRightBaseZ;
   }
 
@@ -3098,74 +3121,110 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
 
   let candidate = null;
   let pointDir = new THREE.Vector3();
-  const origin = hand.indexTipWorld.clone();
+  const origin = hand.indexTipWorld ? hand.indexTipWorld.clone() : camera.position.clone();
   const nowSec = performance.now() * 0.001;
+  const nowMs = performance.now();
 
   if (laserPointerMode) {
-    // True VR raycasting: blend finger pointing with eye sightline
-    if (hand.indexMCPWorld) {
-      const fingerDir = new THREE.Vector3().subVectors(hand.indexTipWorld, hand.indexMCPWorld).normalize();
-      const sightDir = new THREE.Vector3().subVectors(hand.indexTipWorld, camera.position).normalize();
-      pointDir.copy(fingerDir).lerp(sightDir, 0.48).normalize();
+    // Screen-aligned sightline raycasting (universal across In-Situ, Overview, and Walk modes)
+    const rawScreenX = 1.0 - hand.filteredLandmarks[8].x;
+    const rawScreenY = hand.filteredLandmarks[8].y;
+    const targetNdcX = rawScreenX * 2.0 - 1.0;
+    const targetNdcY = -rawScreenY * 2.0 + 1.0;
+
+    if (!grab.aimNDCInit) {
+      grab.aimNDC.set(targetNdcX, targetNdcY);
+      grab.aimNDCInit = true;
     } else {
-      pointDir.subVectors(hand.indexTipWorld, camera.position).normalize();
+      const isPrePinch = (hand.pinchRatio < 0.54);
+      const ndcDelta = Math.hypot(targetNdcX - grab.aimNDC.x, targetNdcY - grab.aimNDC.y);
+      // Heavy stabilization during pre-pinch closure so closing fingers never throws the ray off!
+      const ndcAlpha = isPrePinch
+        ? 0.08
+        : (ndcDelta < 0.006 ? 0.14 : clamp(0.14 + ndcDelta * 2.5, 0.14, 0.86));
+      grab.aimNDC.x += (targetNdcX - grab.aimNDC.x) * ndcAlpha;
+      grab.aimNDC.y += (targetNdcY - grab.aimNDC.y) * ndcAlpha;
     }
-    const laserRay = new THREE.Ray(origin, pointDir);
+
+    // Unproject sightline through active camera
+    const unprojected = new THREE.Vector3(grab.aimNDC.x, grab.aimNDC.y, 0.5).unproject(camera);
+    pointDir.subVectors(unprojected, camera.position).normalize();
+    const laserRay = new THREE.Ray(camera.position, pointDir);
 
     let hitObj = null;
     let hitDist = Infinity;
-    const hitPt = new THREE.Vector3();
+    let hitPt = null;
     let hitNormal = new THREE.Vector3(0, 1, 0);
 
     if (!grab.heldObject) {
+      let bestScore = Infinity;
       for (const obj of pickables) {
         if (!obj || !obj.userData) continue;
         if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
 
-        const sphere = new THREE.Sphere(obj.position, (obj.userData.boundingRadius || 0.28) * 1.35);
-        const isect = new THREE.Vector3();
-        if (laserRay.intersectSphere(sphere, isect)) {
-          const d = origin.distanceTo(isect);
-          if (d < hitDist) {
-            hitDist = d;
+        const toObj = new THREE.Vector3().subVectors(obj.position, laserRay.origin);
+        const distAlongRay = laserRay.direction.dot(toObj);
+        if (distAlongRay <= 0.3) continue; // Behind camera
+
+        const distToRay = laserRay.distanceToPoint(obj.position);
+        const boundR = obj.userData.boundingRadius || 0.28;
+        // Cone tolerance + sticky hysteresis for currently locked candidate
+        const isSticky = (obj === grab.candidate || obj === grab.lastCandidate);
+        const coneTolerance = Math.max(boundR * 1.6, distAlongRay * 0.085) * (isSticky ? 1.75 : 1.0);
+
+        if (distToRay < coneTolerance) {
+          const score = distToRay + distAlongRay * 0.06;
+          if (score < bestScore) {
+            bestScore = score;
             hitObj = obj;
-            hitPt.copy(isect);
-            hitNormal.subVectors(isect, obj.position).normalize();
+            hitDist = distAlongRay;
+            hitPt = obj.position.clone();
+            hitNormal.set(0, 1, 0);
           }
         }
+      }
+
+      // PINCH INTENT LOCK (Pre-pinch & selection retention)
+      if (hitObj) {
+        grab.lastCandidate = hitObj;
+        grab.lastCandidateTime = nowMs;
+      } else if (grab.lastCandidate && (nowMs - grab.lastCandidateTime < 420)) {
+        hitObj = grab.lastCandidate;
+        hitPt = hitObj.position.clone();
+        hitDist = laserRay.direction.dot(new THREE.Vector3().subVectors(hitObj.position, laserRay.origin));
       }
     }
 
     if (grab.heldObject) {
       // Locked telekinesis tractor beam
-      const target = origin.clone().addScaledVector(pointDir, laserDistances[handKey]);
-      grab.heldObject.position.lerp(target, 0.92);
+      const target = camera.position.clone().addScaledVector(pointDir, laserDistances[handKey]);
+      grab.heldObject.position.lerp(target, 0.90);
       const halfY = grab.heldObject.userData?.halfY || 0.25;
       if (grab.heldObject.position.y < FLOOR_Y + halfY) {
         grab.heldObject.position.y = FLOOR_Y + halfY;
       }
       vrBeam.update(origin, grab.heldObject.position, null, 'LOCKED', nowSec);
-    } else if (hitObj) {
+    } else if (hitObj && hitPt) {
       candidate = hitObj;
       vrBeam.update(origin, hitPt, hitNormal, 'HOVER', nowSec);
     } else {
       // Floor intersection or far distance beam
       if (pointDir.y < -0.01) {
-        const t = (FLOOR_Y - origin.y) / pointDir.y;
-        if (t > 0 && t < 38) {
-          const floorHit = origin.clone().addScaledVector(pointDir, t);
+        const t = (FLOOR_Y - camera.position.y) / pointDir.y;
+        if (t > 0 && t < 45) {
+          const floorHit = camera.position.clone().addScaledVector(pointDir, t);
           vrBeam.update(origin, floorHit, new THREE.Vector3(0, 1, 0), 'IDLE', nowSec);
         } else {
-          const far = origin.clone().addScaledVector(pointDir, 22);
+          const far = origin.clone().addScaledVector(pointDir, 25);
           vrBeam.update(origin, far, null, 'IDLE', nowSec);
         }
       } else {
-        const far = origin.clone().addScaledVector(pointDir, 22);
+        const far = origin.clone().addScaledVector(pointDir, 25);
         vrBeam.update(origin, far, null, 'IDLE', nowSec);
       }
     }
   } else {
-    // Standard proximity grab
+    // Non-laser mode: wide spatial proximity magnetism
     vrBeam.hide();
 
     let bestDist = Infinity;
@@ -3175,12 +3234,18 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
         if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
 
         const d3d = obj.position.distanceTo(midWorld);
-        const boundR = obj.userData.boundingRadius || 0.18;
-        const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN;
+        const boundR = obj.userData.boundingRadius || 0.20;
+        const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN * (reachMultiplier * 0.65);
         if (d3d <= touchThreshold && d3d < bestDist) {
           bestDist = d3d;
           candidate = obj;
         }
+      }
+      if (candidate) {
+        grab.lastCandidate = candidate;
+        grab.lastCandidateTime = nowMs;
+      } else if (grab.lastCandidate && (nowMs - grab.lastCandidateTime < 420)) {
+        candidate = grab.lastCandidate;
       }
     }
   }
@@ -3191,24 +3256,25 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
   }
   grab.candidate = candidate;
 
-  // Handle pinch transitions
+  // Handle pinch transitions with pinch-slip immunity
   if (!grab.pinching && isPinchingNow) {
     grab.pinching = true;
-    if (candidate) {
-      grab.heldObject = candidate;
-      candidate.userData.held = true;
-      if (candidate.userData.velocity) {
-        candidate.userData.velocity.set(0, 0, 0);
+    const targetToGrab = candidate || (nowMs - grab.lastCandidateTime < 450 ? grab.lastCandidate : null);
+    if (targetToGrab && !targetToGrab.userData.held) {
+      grab.heldObject = targetToGrab;
+      targetToGrab.userData.held = true;
+      if (targetToGrab.userData.velocity) {
+        targetToGrab.userData.velocity.set(0, 0, 0);
       }
       if (laserPointerMode) {
-        laserDistances[handKey] = Math.max(1.2, candidate.position.distanceTo(origin));
+        laserDistances[handKey] = Math.max(1.5, pointDir.dot(new THREE.Vector3().subVectors(targetToGrab.position, camera.position)));
       } else {
-        grab.heldOffsetWorld.subVectors(candidate.position, midWorld);
+        grab.heldOffsetWorld.subVectors(targetToGrab.position, midWorld);
       }
-      setHighlight(candidate, true);
+      setHighlight(targetToGrab, true);
       playGrabSound();
     }
-  } else if (grab.pinching && !isPinchingNow) {
+  } else if (grab.pinching && !isPinchingNow && (hand.pinchRatio > PINCH_RATIO_RELEASE)) {
     grab.pinching = false;
     if (grab.heldObject) {
       releaseHeld(grab);
@@ -3763,21 +3829,7 @@ function animate() {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
-  if (running) {
-    const hands = processHands();
-
-    if (currentMode === 'PICK') {
-      // Both hands can pick and build simultaneously!
-      updatePickMode(hands, dt);
-    } else {
-      updateWalkMode(hands.left || hands.right, dt);
-    }
-
-    // VR Raycast beam update for mouse/desktop fallback when hands aren't in view
-    updateMouseLaser(now * 0.001);
-  }
-
-  // Camera positioning with smooth easing across modes (Wide-angle perspectives)
+  // 1. Synchronize camera position & world matrix FIRST so all raycasting and hand tracking have 100% accurate coordinates
   if (viewMode === 'OVERVIEW') {
     // Dynamic recalculation of overview camera position based on orbit distance & height
     const target = cameraRig.lookTarget || new THREE.Vector3(0, FLOOR_Y + 0.5, 1.4);
@@ -3803,6 +3855,22 @@ function animate() {
     const targetEyePos = new THREE.Vector3(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
     camera.position.lerp(targetEyePos, 0.35);
     camera.rotation.set(player.pitch || -0.16, player.yaw, 0, 'YXZ');
+  }
+  camera.updateMatrixWorld(true);
+
+  // 2. Hand tracking, dual-builder interactions, and tractor raycasting
+  if (running) {
+    const hands = processHands();
+
+    if (currentMode === 'PICK') {
+      // Both hands can pick and build simultaneously!
+      updatePickMode(hands, dt);
+    } else {
+      updateWalkMode(hands.left || hands.right, dt);
+    }
+
+    // VR Raycast beam update for mouse/desktop fallback when hands aren't in view
+    updateMouseLaser(now * 0.001);
   }
 
   updatePhysics(dt);
