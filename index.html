@@ -115,15 +115,19 @@
   #studioBox{
     position:fixed; top:16px; left:16px; z-index:35;
     max-width:440px; width:auto;
-    background:rgba(255, 255, 255, 0.94);
+    background:rgba(255, 255, 255, 0.95);
     border:1px solid rgba(0, 0, 0, 0.12);
     border-radius:20px;
-    box-shadow:0 12px 36px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
-    backdrop-filter:blur(18px);
+    box-shadow:0 14px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
+    backdrop-filter:blur(20px);
     overflow:hidden;
     pointer-events:auto;
     opacity:0; transform:translateY(-8px);
-    transition:all .28s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: max-width 0.40s cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 0.40s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.40s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.28s ease,
+                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     user-select:none;
   }
   #studioBox.show{ opacity:1; transform:translateY(0); }
@@ -132,10 +136,32 @@
   #studioBox.minimized{
     border-radius:999px;
     max-width:fit-content;
-    box-shadow:0 6px 20px rgba(15, 23, 42, 0.10);
+    box-shadow:0 6px 22px rgba(15, 23, 42, 0.10);
+  }
+
+  /* Smooth collapsible body wrapper using CSS Grid animation (zero popping or snapping) */
+  #studioBoxBodyWrap{
+    display:grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.28s ease;
+    opacity: 1;
+  }
+  #studioBox.minimized #studioBoxBodyWrap{
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #studioBoxBody{
+    min-height: 0;
+    overflow-y: auto;
+    max-height: calc(85vh - 60px);
+    padding: 0 14px 14px;
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(0);
   }
   #studioBox.minimized #studioBoxBody{
-    display:none;
+    transform: translateY(-8px);
   }
 
   /* Header / Tap bar */
@@ -143,7 +169,11 @@
     display:flex; align-items:center; gap:9px;
     padding:7px 14px;
     cursor:pointer;
-    transition:background .15s ease;
+    border-bottom: 1px solid transparent;
+    transition: background .15s ease, border-color .3s ease;
+  }
+  #studioBox:not(.minimized) #studioBoxHeader{
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
   #studioBoxHeader:hover{
     background:rgba(241, 245, 249, 0.85);
@@ -490,7 +520,8 @@
         <span id="modeIcon">🖐️</span>
         <span id="modeText">DUAL BUILDER</span>
       </div>
-      <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.0x</span>
+      <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.5x</span>
+      <button id="headTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#7c3aed; box-shadow:0 2px 6px rgba(124,58,237,0.35);" title="Toggle 6-DOF Physical Head Tracking (Hotkey: T | Recenter: C)">👤 Head: ON</button>
       <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
       <button id="quickAddBtn" type="button" class="quick-add-btn" title="Quickly spawn a concrete block (Hotkey: N)">+ Add Block</button>
       <div class="box-toggle-btn" id="boxToggleIndicator">
@@ -499,92 +530,96 @@
       </div>
     </div>
 
-    <!-- Maximized Panel (Revealed on tap) -->
-    <div id="studioBoxBody">
-      <div class="box-section-title">Mode Selection</div>
-      <div class="box-mode-row">
-        <button id="modeToggleBtn" type="button" class="tool-btn active" title="Dual Builder: Build with both hands right where you stand! (Hotkey: Space)">🖐️ Dual Builder</button>
-        <button id="viewWalkBtn" type="button" class="tool-btn" title="Room Walk: Walk freely using hand steering or WASD (Hotkey: Space)">🚶 Room Walk</button>
-      </div>
+    <!-- Maximized Panel Wrapper for buttery-smooth expansion / collapse -->
+    <div id="studioBoxBodyWrap">
+      <div id="studioBoxBody">
+        <div class="box-section-title">Mode Selection</div>
+        <div class="box-mode-row">
+          <button id="modeToggleBtn" type="button" class="tool-btn active" title="Dual Builder: Build with both hands right where you stand! (Hotkey: Space)">🖐️ Dual Builder</button>
+          <button id="viewWalkBtn" type="button" class="tool-btn" title="Room Walk: Walk freely using hand steering or WASD (Hotkey: Space)">🚶 Room Walk</button>
+        </div>
 
-      <!-- Concrete Block Spawner (+ Add Blocks) -->
-      <div class="box-section-title" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>🧱 Concrete Block Spawner (+ Add Blocks)</span>
-        <span id="blockCountBadge" style="font-size:10px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:1px 6px; border-radius:4px;">32 Blocks</span>
-      </div>
+        <!-- Concrete Block Spawner (+ Add Blocks) -->
+        <div class="box-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🧱 Concrete Block Spawner (+ Add Blocks)</span>
+          <span id="blockCountBadge" style="font-size:10px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:1px 6px; border-radius:4px;">32 Blocks</span>
+        </div>
 
-      <!-- Palette of Architectural Concrete Block Types -->
-      <div id="blockPaletteGrid" class="block-palette-grid">
-        <button type="button" class="palette-btn active" data-type="cast_grey" title="Spawn Standard Cast Grey Concrete with Tie-Holes">🧱 Cast Grey</button>
-        <button type="button" class="palette-btn" data-type="cinder_block" title="Spawn Split-Face CMU Masonry Concrete Block">🪨 CMU Block</button>
-        <button type="button" class="palette-btn" data-type="smooth_white" title="Spawn Fair-Faced White Architectural Concrete">🏢 White Precast</button>
-        <button type="button" class="palette-btn" data-type="charcoal_basalt" title="Spawn Basalt Charcoal Concrete">⬛ Charcoal</button>
-        <button type="button" class="palette-btn" data-type="board_formed" title="Spawn Board-Formed Timber Grain Concrete">🪵 Board-Formed</button>
-        <button type="button" class="palette-btn" data-type="terrazzo" title="Spawn Polished Terrazzo Aggregate Concrete">💎 Terrazzo</button>
-        <button type="button" class="palette-btn" data-type="sandstone_concrete" title="Spawn Warm Sandstone Architectural Concrete">🏛️ Sandstone</button>
-        <button type="button" class="palette-btn" data-type="fluted_ribbed" title="Spawn Fluted Ribbed Architectural Concrete">🏛️ Fluted Rib</button>
-        <button type="button" class="palette-btn" data-type="reinforced" title="Spawn Industrial Reinforced Concrete with Steel Plates">🏗️ Reinforced</button>
-        <button type="button" class="palette-btn" data-type="terracotta_concrete" title="Spawn Terracotta Pigmented Red Concrete">🧱 Terracotta</button>
-        <button type="button" class="palette-btn" data-type="aerated_aac" title="Spawn Lightweight Aerated AAC Concrete">🌫️ Aerated AAC</button>
-        <button type="button" class="palette-btn" data-type="weathered_patina" title="Spawn Weathered Brutalist Concrete with Patina">🌧️ Weathered</button>
-      </div>
+        <!-- Palette of Architectural Concrete Block Types -->
+        <div id="blockPaletteGrid" class="block-palette-grid">
+          <button type="button" class="palette-btn active" data-type="cast_grey" title="Spawn Standard Cast Grey Concrete with Tie-Holes">🧱 Cast Grey</button>
+          <button type="button" class="palette-btn" data-type="cinder_block" title="Spawn Split-Face CMU Masonry Concrete Block">🪨 CMU Block</button>
+          <button type="button" class="palette-btn" data-type="smooth_white" title="Spawn Fair-Faced White Architectural Concrete">🏢 White Precast</button>
+          <button type="button" class="palette-btn" data-type="charcoal_basalt" title="Spawn Basalt Charcoal Concrete">⬛ Charcoal</button>
+          <button type="button" class="palette-btn" data-type="board_formed" title="Spawn Board-Formed Timber Grain Concrete">🪵 Board-Formed</button>
+          <button type="button" class="palette-btn" data-type="terrazzo" title="Spawn Polished Terrazzo Aggregate Concrete">💎 Terrazzo</button>
+          <button type="button" class="palette-btn" data-type="sandstone_concrete" title="Spawn Warm Sandstone Architectural Concrete">🏛️ Sandstone</button>
+          <button type="button" class="palette-btn" data-type="fluted_ribbed" title="Spawn Fluted Ribbed Architectural Concrete">🏛️ Fluted Rib</button>
+          <button type="button" class="palette-btn" data-type="reinforced" title="Spawn Industrial Reinforced Concrete with Steel Plates">🏗️ Reinforced</button>
+          <button type="button" class="palette-btn" data-type="terracotta_concrete" title="Spawn Terracotta Pigmented Red Concrete">🧱 Terracotta</button>
+          <button type="button" class="palette-btn" data-type="aerated_aac" title="Spawn Lightweight Aerated AAC Concrete">🌫️ Aerated AAC</button>
+          <button type="button" class="palette-btn" data-type="weathered_patina" title="Spawn Weathered Brutalist Concrete with Patina">🌧️ Weathered</button>
+        </div>
 
-      <!-- Quick Spawner Action Row -->
-      <div class="spawn-action-row">
-        <button id="spawnSelectedBtn" type="button" class="spawn-main-btn" title="Spawn selected concrete block in front of you (Hotkey: N)">➕ Spawn Block</button>
-        <button id="cloneHeldBtn" type="button" class="spawn-sub-btn" title="Clone held or targeted block (Hotkey: C)">📋 Clone Held</button>
-        <button id="spawnBatchBtn" type="button" class="spawn-sub-btn" title="Spawn a 4x supply stack in staging bay">+4 Supply</button>
-      </div>
+        <!-- Quick Spawner Action Row -->
+        <div class="spawn-action-row">
+          <button id="spawnSelectedBtn" type="button" class="spawn-main-btn" title="Spawn selected concrete block in front of you (Hotkey: N)">➕ Spawn Block</button>
+          <button id="cloneHeldBtn" type="button" class="spawn-sub-btn" title="Clone held or targeted block (Hotkey: C)">📋 Clone Held</button>
+          <button id="spawnBatchBtn" type="button" class="spawn-sub-btn" title="Spawn a 4x supply stack in staging bay">+4 Supply</button>
+        </div>
 
-      <!-- Real-time Pinch Meter & 5-Pinch Shift -->
-      <div class="pinch-status-row">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span>Pinch:</span>
-          <div id="pinchMeterWrap" title="Pinch Strength">
-            <div id="pinchMeterBar"></div>
+        <!-- Real-time Pinch Meter & 5-Pinch Shift -->
+        <div class="pinch-status-row">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span>Pinch:</span>
+            <div id="pinchMeterWrap" title="Pinch Strength">
+              <div id="pinchMeterBar"></div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px;" title="5 rapid pinches in empty air switches mode">
+            <span style="font-size:10px; color:#64748b;">5x Shift:</span>
+            <div id="pinchCountDots">
+              <span class="pinch-dot" id="dot1"></span>
+              <span class="pinch-dot" id="dot2"></span>
+              <span class="pinch-dot" id="dot3"></span>
+              <span class="pinch-dot" id="dot4"></span>
+              <span class="pinch-dot" id="dot5"></span>
+            </div>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:4px;" title="5 rapid pinches in empty air switches mode">
-          <span style="font-size:10px; color:#64748b;">5x Shift:</span>
-          <div id="pinchCountDots">
-            <span class="pinch-dot" id="dot1"></span>
-            <span class="pinch-dot" id="dot2"></span>
-            <span class="pinch-dot" id="dot3"></span>
-            <span class="pinch-dot" id="dot4"></span>
-            <span class="pinch-dot" id="dot5"></span>
-          </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="box-section-title">Studio Tools</div>
+        <div class="box-action-grid">
+          <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
+          <button id="headTrackingBtn" type="button" class="tool-btn active" title="Toggle 6-DOF Physical Head Tracking: move close to camera to move close to objects! (Hotkey: T)">👤 Head Tracking: ON</button>
+          <button id="recenterHeadBtn" type="button" class="tool-btn" title="Recenter current head position as neutral reference (Hotkey: C)">🎯 Recenter Head</button>
+          <button id="overviewBtn" type="button" class="tool-btn" title="Toggle high-angle Studio Overview (Hotkey: O)">🏛️ Overview Cam</button>
+          <button id="zoomInBtn" type="button" class="tool-btn" title="Zoom camera in closer (Hotkey: + or Z)">🔍 Zoom In [+]</button>
+          <button id="zoomOutBtn" type="button" class="tool-btn" title="Zoom camera out wider (Hotkey: - or X)">🔍 Zoom Out [-]</button>
+          <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.5x</button>
+          <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Concrete Snap: ON</button>
+          <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Pavilion structure">🏛️ Starter Pavilion</button>
+          <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all concrete blocks to staging bays (Hotkey: R)">↺ Reset Blocks</button>
+          <button id="audioToggleBtn" type="button" class="tool-btn" title="Toggle sound effects">🔊 Sound: ON</button>
+          <button id="fullscreenBtn" type="button" class="tool-btn" title="Toggle Fullscreen mode (Hotkey: F)">⛶ Fullscreen</button>
+          <button id="camToggleBtn" type="button" class="tool-btn" title="Toggle camera preview box">📹 Webcam: ON</button>
+          <button id="depthToggleBtn" type="button" class="tool-btn" title="Toggle push/pull depth direction">↕ Push Forward</button>
         </div>
-      </div>
 
-      <!-- Quick Actions Grid -->
-      <div class="box-section-title">Studio Tools</div>
-      <div class="box-action-grid">
-        <button id="laserToggleBtn" type="button" class="tool-btn active" title="Toggle long-range Laser Pointer for distant grabbing (Hotkey: L)">🔦 Laser: ON</button>
-        <button id="overviewBtn" type="button" class="tool-btn" title="Toggle high-angle Studio Overview (Hotkey: O)">🏛️ Overview Cam</button>
-        <button id="zoomInBtn" type="button" class="tool-btn" title="Zoom camera in closer (Hotkey: + or Z)">🔍 Zoom In [+]</button>
-        <button id="zoomOutBtn" type="button" class="tool-btn" title="Zoom camera out wider (Hotkey: - or X)">🔍 Zoom Out [-]</button>
-        <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.0x</button>
-        <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Concrete Snap: ON</button>
-        <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Pavilion structure">🏛️ Starter Pavilion</button>
-        <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all concrete blocks to staging bays (Hotkey: R)">↺ Reset Blocks</button>
-        <button id="audioToggleBtn" type="button" class="tool-btn" title="Toggle sound effects">🔊 Sound: ON</button>
-        <button id="fullscreenBtn" type="button" class="tool-btn" title="Toggle Fullscreen mode (Hotkey: F)">⛶ Fullscreen</button>
-        <button id="camToggleBtn" type="button" class="tool-btn" title="Toggle camera preview box">📹 Webcam: ON</button>
-        <button id="depthToggleBtn" type="button" class="tool-btn" title="Toggle push/pull depth direction">↕ Push Forward</button>
-      </div>
+        <!-- Guidance instructions card -->
+        <div id="hudContent">
+          <b id="hudTitle">VR Set Life Experience:</b><br/>
+          • <b>👤 6-DOF Head Tracking:</b> Lean towards your camera to move physically close to blocks and inspect them in 3D! Lean back to pull away, and move sideways or stand up to peek in any direction without having to switch to Walk mode.<br/>
+          • <b>🔦 3D Laser Manipulation:</b> Move objects in all directions (X, Y, and inward/forward Z depth)! Push arm forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">W</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">S</kbd> / mouse wheel.<br/>
+          • <b>🖐️ Dual Builder Reach:</b> Grab, stack, and align modular concrete blocks simultaneously with both hands.<br/>
+          • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
+        </div>
 
-      <!-- Guidance instructions card -->
-      <div id="hudContent">
-        <b id="hudTitle">3D Architectural Concrete Studio:</b><br/>
-        • <b>🧱 Open Construction Center:</b> Blocks are neatly organized in Left, Right, &amp; Back staging depots so you have full open space to build in the center!<br/>
-        • <b>🔦 Long-Range Laser Pointer:</b> Tap Laser or press <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">L</kbd> to pick and move blocks from any distance across the site!<br/>
-        • <b>🔍 Dynamic Camera Zoom:</b> Use mouse wheel or <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">+</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">-</kbd> to zoom in close or pull back.<br/>
-        • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
-      </div>
-
-      <div class="box-footer">
-        <span>Tap header or press <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">H</kbd> to minimize</span>
-        <button id="boxCollapseBtn" type="button" class="box-collapse-btn">▲ Minimize Box</button>
+        <div class="box-footer">
+          <span>Tap header or press <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">H</kbd> to minimize</span>
+          <button id="boxCollapseBtn" type="button" class="box-collapse-btn">▲ Minimize Box</button>
+        </div>
       </div>
     </div>
   </div>
@@ -648,7 +683,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
 <script type="module">
-import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
+import { FilesetResolver, HandLandmarker, FaceDetector } from "@mediapipe/tasks-vision";
 
 // Gracefully handle benign Emscripten WebAssembly streaming compile fallback warnings
 const _origConsoleWarn = console.warn;
@@ -2187,12 +2222,224 @@ const zenBtn = document.getElementById('zenBtn');
 const fullscreenBtn = document.getElementById('fullscreenBtn') || zenBtn;
 const laserToggleBtn = document.getElementById('laserToggleBtn');
 const laserMiniBtn = document.getElementById('laserMiniBtn');
+const headTrackingBtn = document.getElementById('headTrackingBtn');
+const recenterHeadBtn = document.getElementById('recenterHeadBtn');
+const headTrackMiniBtn = document.getElementById('headTrackMiniBtn');
 const zoomInBtn = document.getElementById('zoomInBtn');
 const zoomOutBtn = document.getElementById('zoomOutBtn');
 const reachToggleBtn = document.getElementById('reachToggleBtn');
 const snapToggleBtn = document.getElementById('snapToggleBtn');
 const blueprintBtn = document.getElementById('blueprintBtn');
 const camToggleBtn = document.getElementById('camToggleBtn');
+
+// 6-DOF Physical Head Tracking (Lean to approach / pull back, peek around objects)
+let headTrackingEnabled = true;
+let headTrackingActive = false;
+let faceDetector = null;
+let faceDetectorReady = false;
+
+const neutralHead = {
+  x: 0.5,
+  y: 0.38,
+  size: 0.22,
+  initialized: false,
+  sampleCount: 0
+};
+
+const currentHead = {
+  x: 0.5,
+  y: 0.38,
+  size: 0.22,
+  confidence: 0
+};
+
+const headRawOffset = new THREE.Vector3();
+const headSmoothedOffset = new THREE.Vector3();
+
+// High-speed fallback optical face centroid detector
+const headCanvas = document.createElement('canvas');
+headCanvas.width = 64;
+headCanvas.height = 48;
+const headCtx = headCanvas.getContext('2d', { willReadFrequently: true });
+
+function trackHead() {
+  if (!camReady || !video || video.readyState < 2) return;
+  const now = performance.now();
+
+  let detectedX = null;
+  let detectedY = null;
+  let detectedSize = null;
+  let conf = 0;
+
+  // 1. Primary: MediaPipe BlazeFace FaceDetector if ready
+  if (faceDetectorReady && faceDetector) {
+    try {
+      const res = faceDetector.detectForVideo(video, now);
+      if (res && res.detections && res.detections.length > 0) {
+        const det = res.detections[0];
+        const box = det.boundingBox;
+        if (box && video.videoWidth && video.videoHeight) {
+          detectedX = (box.originX + box.width * 0.5) / video.videoWidth;
+          detectedY = (box.originY + box.height * 0.5) / video.videoHeight;
+          detectedSize = Math.max(box.width / video.videoWidth, box.height / video.videoHeight);
+          conf = det.categories?.[0]?.score || 0.95;
+        }
+      }
+    } catch (e) {
+      // Fall through to optical detector
+    }
+  }
+
+  // 2. High-speed optical centroid fallback / augmentation
+  if (detectedX === null) {
+    try {
+      headCtx.drawImage(video, 0, 0, 64, 48);
+      const img = headCtx.getImageData(0, 0, 64, 48).data;
+      let totalW = 0;
+      let sumX = 0;
+      let sumY = 0;
+      const maxRows = Math.floor(48 * 0.72);
+      for (let y = 3; y < maxRows; y++) {
+        for (let x = 4; x < 60; x++) {
+          const idx = (y * 64 + x) * 4;
+          const r = img[idx];
+          const g = img[idx + 1];
+          const b = img[idx + 2];
+          if (r > 55 && g > 35 && b > 20 && r > g && (r - g) > 6 && (r - b) > 6) {
+            totalW += 1.0;
+            sumX += x;
+            sumY += y;
+          }
+        }
+      }
+      if (totalW > 30) {
+        detectedX = (sumX / totalW) / 64;
+        detectedY = (sumY / totalW) / 48;
+        detectedSize = clamp(Math.sqrt(totalW / (64 * 48)) * 0.55, 0.08, 0.45);
+        conf = 0.75;
+      }
+    } catch (e) {}
+  }
+
+  if (detectedX !== null) {
+    currentHead.x = detectedX;
+    currentHead.y = detectedY;
+    currentHead.size = detectedSize;
+    currentHead.confidence = conf;
+    headTrackingActive = true;
+
+    // Auto-calibrate neutral head reference during first seconds
+    if (!neutralHead.initialized) {
+      neutralHead.sampleCount++;
+      if (neutralHead.sampleCount === 1) {
+        neutralHead.x = detectedX;
+        neutralHead.y = detectedY;
+        neutralHead.size = detectedSize;
+      } else {
+        neutralHead.x = neutralHead.x * 0.85 + detectedX * 0.15;
+        neutralHead.y = neutralHead.y * 0.85 + detectedY * 0.15;
+        neutralHead.size = neutralHead.size * 0.85 + detectedSize * 0.15;
+      }
+      if (neutralHead.sampleCount >= 20) {
+        neutralHead.initialized = true;
+      }
+    }
+  } else {
+    currentHead.confidence *= 0.85;
+    if (currentHead.confidence < 0.2) {
+      headTrackingActive = false;
+    }
+  }
+
+  // Calculate 6-DOF World Offset
+  if (headTrackingEnabled && headTrackingActive && neutralHead.initialized) {
+    // In mirrored webcam: user leans right -> face moves left in mirrored video (detectedX < neutralHead.x)
+    const physX = (neutralHead.x - currentHead.x);
+    // User stands up / raises head -> face moves up (detectedY < neutralHead.y)
+    const physY = (neutralHead.y - currentHead.y);
+    // User moves closer to camera -> face size increases
+    const sizeRatio = (currentHead.size - neutralHead.size) / Math.max(0.06, neutralHead.size);
+
+    // Gaze and camera orientation vectors
+    const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+    const up = new THREE.Vector3(0, 1, 0);
+
+    // Natural physical movement gains (in meters):
+    // Moving closer to camera: moves forward towards objects by up to ~4.5m
+    const forwardGain = 4.4;
+    // Moving left/right: strafes by up to ~3.6m
+    const lateralGain = 3.6;
+    // Standing up / ducking: moves up/down by up to ~2.2m
+    const verticalGain = 2.2;
+
+    headRawOffset.set(0, 0, 0)
+      .addScaledVector(fwd, sizeRatio * forwardGain)
+      .addScaledVector(right, physX * lateralGain)
+      .addScaledVector(up, physY * verticalGain);
+
+    // Filter tremors with smooth exponential lerp
+    headSmoothedOffset.lerp(headRawOffset, 0.14);
+  } else {
+    headSmoothedOffset.lerp(new THREE.Vector3(0, 0, 0), 0.10);
+  }
+}
+
+function recenterHeadTracking() {
+  initAudio();
+  if (currentHead.confidence > 0.3) {
+    neutralHead.x = currentHead.x;
+    neutralHead.y = currentHead.y;
+    neutralHead.size = currentHead.size;
+    neutralHead.initialized = true;
+    neutralHead.sampleCount = 30;
+    headSmoothedOffset.set(0, 0, 0);
+    headRawOffset.set(0, 0, 0);
+    showBanner('HEAD TRACKING RECENTERED (6-DOF ZEROED)', '🎯', 'pick');
+    playTone(880, 0.12, 'sine', 0.16);
+  } else {
+    showBanner('LOOK AT CAMERA TO RECENTER HEAD', '👤', 'pick');
+    playTone(440, 0.1, 'sine', 0.12);
+  }
+}
+
+function toggleHeadTracking() {
+  initAudio();
+  headTrackingEnabled = !headTrackingEnabled;
+  if (!headTrackingEnabled) {
+    headSmoothedOffset.set(0, 0, 0);
+  } else {
+    recenterHeadTracking();
+  }
+  updateHeadTrackingUI();
+  showBanner(
+    headTrackingEnabled ? 'HEAD TRACKING: ON (LEAN TO MOVE IN SCENE)' : 'HEAD TRACKING: OFF (STATIONARY CAM)',
+    '👤',
+    'pick'
+  );
+  playTone(headTrackingEnabled ? 760 : 420, 0.1, 'triangle', 0.15);
+}
+
+function updateHeadTrackingUI() {
+  if (headTrackingBtn) {
+    headTrackingBtn.textContent = headTrackingEnabled ? '👤 Head Tracking: ON' : '👤 Head Tracking: OFF';
+    headTrackingBtn.classList.toggle('active', headTrackingEnabled);
+  }
+  if (headTrackMiniBtn) {
+    headTrackMiniBtn.textContent = headTrackingEnabled ? '👤 Head: ON' : '👤 Head: OFF';
+    headTrackMiniBtn.classList.toggle('active', headTrackingEnabled);
+    headTrackMiniBtn.style.background = headTrackingEnabled ? '#7c3aed' : '#64748b';
+  }
+}
+
+if (headTrackingBtn) headTrackingBtn.addEventListener('click', toggleHeadTracking);
+if (recenterHeadBtn) recenterHeadBtn.addEventListener('click', recenterHeadTracking);
+if (headTrackMiniBtn) {
+  headTrackMiniBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleHeadTracking();
+  });
+}
 
 // Studio Control Hub Minimize / Maximize state
 function toggleStudioBox(forceState) {
@@ -2545,16 +2792,26 @@ window.addEventListener('keydown', (e) => {
     spawnBlockAtPlayer(selectedBlockType);
   } else if (e.code === 'KeyC') {
     e.preventDefault();
-    cloneHeldBlock();
+    if (leftGrab.heldObject || rightGrab.heldObject || (typeof mouseDragObj !== 'undefined' && mouseDragObj)) {
+      cloneHeldBlock();
+    } else {
+      recenterHeadTracking();
+    }
   } else if (e.code === 'KeyB') {
     e.preventDefault();
     spawnBatchSupply();
   } else if (e.code === 'KeyM') {
     e.preventDefault();
     cycleReachMultiplier();
-  } else if (e.code === 'KeyT' || e.code === 'KeyO') {
+  } else if (e.code === 'KeyT') {
+    e.preventDefault();
+    toggleHeadTracking();
+  } else if (e.code === 'KeyO') {
     e.preventDefault();
     toggleOverviewView();
+  } else if (e.code === 'KeyY') {
+    e.preventDefault();
+    recenterHeadTracking();
   } else if (e.code === 'KeyL') {
     e.preventDefault();
     toggleLaserPointer();
@@ -2718,6 +2975,7 @@ function releaseHeld(grab) {
 
   grab.heldObject = null;
   grab.pinchVelocity.set(0, 0, 0);
+  grab.prevHandZ = undefined;
   ghostSnapGuide.visible = false;
 }
 
@@ -2830,6 +3088,37 @@ async function loadLandmarker() {
     } else {
       throw new Error("Unable to create HandLandmarker from available model sources");
     }
+
+    // 3. Initialize FaceDetector for 6-DOF Natural Physical Head Tracking
+    try {
+      FaceDetector.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        minDetectionConfidence: 0.38
+      }).then(fd => {
+        faceDetector = fd;
+        faceDetectorReady = true;
+      }).catch(() => {
+        FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+            delegate: "CPU"
+          },
+          runningMode: "VIDEO",
+          minDetectionConfidence: 0.38
+        }).then(fd => {
+          faceDetector = fd;
+          faceDetectorReady = true;
+        }).catch(err => {
+          console.warn("FaceDetector optional initialization fallback notice:", err);
+        });
+      });
+    } catch(faceInitErr) {
+      console.warn("FaceDetector initialization catch notice:", faceInitErr);
+    }
   } catch(e) {
     console.warn("HandLandmarker initialization warning:", e);
     landmarkerReady = false;
@@ -2908,6 +3197,27 @@ function drawDualOverlay(leftHand, rightHand) {
   if (rightHand) {
     drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.9)', '#38bdf8', '👌 RIGHT: BUILDER');
   }
+  if (headTrackingEnabled && headTrackingActive) {
+    const hx = currentHead.x * overlay.width;
+    const hy = currentHead.y * overlay.height;
+    const hr = Math.max(14, currentHead.size * overlay.width * 0.45);
+    octx.save();
+    octx.strokeStyle = 'rgba(168, 85, 247, 0.85)';
+    octx.lineWidth = 1.5;
+    octx.setLineDash([4, 4]);
+    octx.beginPath();
+    octx.arc(hx, hy, hr, 0, Math.PI * 2);
+    octx.stroke();
+    octx.fillStyle = '#c084fc';
+    octx.beginPath();
+    octx.arc(hx, hy, 2.5, 0, Math.PI * 2);
+    octx.fill();
+    octx.font = 'bold 9px sans-serif';
+    octx.fillStyle = '#c084fc';
+    octx.textAlign = 'center';
+    octx.fillText('👤 HEAD TRACK', hx, Math.max(12, hy - hr - 4));
+    octx.restore();
+  }
 }
 
 /* ============================================================
@@ -2925,15 +3235,15 @@ function buildHandInfo(lm, handednessType, index) {
   const dy = (filteredLM[0].y - filteredLM[9].y);
   const span = Math.hypot(dx, dy) || 0.18;
 
-  // Expansive, progressive depth mapping without artificial brick-wall clamps
-  const normSpan = clamp((span - 0.10) / 0.22, 0, 1);
-  const curvedT = Math.pow(normSpan, 1.25);
-  // Full spatial range from -0.45m (close to chest) to -7.8m (across the entire pavilion and depot)
+  // Unbounded, progressive depth mapping without artificial ceiling clamps:
+  // Moving hand forward toward camera smoothly pushes deep into scene without getting stuck
+  const normSpan = Math.max(0, (span - 0.08) / 0.22);
+  const curvedT = Math.pow(normSpan, 1.20);
   const nearZ = DEPTH_PULLED_Z; // -0.45m
-  const farZ = DEPTH_PUSHED_Z * (reachMultiplier / 2.5); // scales dynamically with reach multiplier
+  const farZ = DEPTH_PUSHED_Z * (reachMultiplier / 2.0); // expansive depth reach
   const rawBaseZ = depthPushOnApproach
-    ? mapRange(curvedT, 0, 1, nearZ, farZ)
-    : mapRange(curvedT, 0, 1, farZ, nearZ);
+    ? (nearZ + curvedT * (farZ - nearZ))
+    : (farZ - curvedT * (farZ - nearZ));
 
   let baseZ;
   if (isLeft) {
@@ -3032,6 +3342,9 @@ function processHands() {
     rightHand.indexTipWorld = rightRig.joints[8].getWorldPosition(new THREE.Vector3());
     rightHand.wristWorld = rightRig.joints[0].getWorldPosition(new THREE.Vector3());
     rightHand.indexMCPWorld = rightRig.joints[5].getWorldPosition(new THREE.Vector3());
+    rightHand.wristLocal = rightRig.joints[0].position.clone();
+    rightHand.indexTipLocal = rightRig.joints[8].position.clone();
+    rightHand.thumbTipLocal = rightRig.joints[4].position.clone();
   } else {
     rightHandGroup.visible = false;
     rightReticle.visible = false;
@@ -3042,6 +3355,9 @@ function processHands() {
     leftHand.indexTipWorld = leftRig.joints[8].getWorldPosition(new THREE.Vector3());
     leftHand.wristWorld = leftRig.joints[0].getWorldPosition(new THREE.Vector3());
     leftHand.indexMCPWorld = leftRig.joints[5].getWorldPosition(new THREE.Vector3());
+    leftHand.wristLocal = leftRig.joints[0].position.clone();
+    leftHand.indexTipLocal = leftRig.joints[8].position.clone();
+    leftHand.thumbTipLocal = leftRig.joints[4].position.clone();
   } else {
     leftHandGroup.visible = false;
     leftReticle.visible = false;
@@ -3196,7 +3512,33 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     }
 
     if (grab.heldObject) {
-      // Locked telekinesis tractor beam
+      // Full 3D Multi-Directional Movement (Inward, Forward, Left, Right, Up, Down):
+      // 1. Physical Arm reach gesture: pushing hand forward toward camera pushes object deeper into world; pulling back pulls inward
+      const currentHandZ = hand.wristLocal ? hand.wristLocal.z : (hand.indexTipLocal ? hand.indexTipLocal.z : 0);
+      if (grab.prevHandZ !== undefined && dt > 0) {
+        const deltaHandZ = currentHandZ - grab.prevHandZ;
+        if (Math.abs(deltaHandZ) > 0.0003) {
+          const depthSpeed = depthPushOnApproach ? 5.2 : -5.2;
+          laserDistances[handKey] = THREE.MathUtils.clamp(
+            laserDistances[handKey] - deltaHandZ * depthSpeed,
+            0.8,
+            38.0
+          );
+        }
+      }
+      grab.prevHandZ = currentHandZ;
+
+      // 2. Keyboard depth push/pull when holding:
+      // 'E' pushes object forward/away into the scene
+      // 'Q' pulls object inward towards the player
+      if (keys['KeyE']) {
+        laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] + 7.5 * dt, 0.8, 38.0);
+      }
+      if (keys['KeyQ']) {
+        laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] - 7.5 * dt, 0.8, 38.0);
+      }
+
+      // Locked telekinesis tractor beam in full 3D space
       const target = camera.position.clone().addScaledVector(pointDir, laserDistances[handKey]);
       grab.heldObject.position.lerp(target, 0.90);
       const halfY = grab.heldObject.userData?.halfY || 0.25;
@@ -3267,7 +3609,8 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
         targetToGrab.userData.velocity.set(0, 0, 0);
       }
       if (laserPointerMode) {
-        laserDistances[handKey] = Math.max(1.5, pointDir.dot(new THREE.Vector3().subVectors(targetToGrab.position, camera.position)));
+        laserDistances[handKey] = Math.max(1.2, pointDir.dot(new THREE.Vector3().subVectors(targetToGrab.position, camera.position)));
+        grab.prevHandZ = hand.wristLocal ? hand.wristLocal.z : (hand.indexTipLocal ? hand.indexTipLocal.z : 0);
       } else {
         grab.heldOffsetWorld.subVectors(targetToGrab.position, midWorld);
       }
@@ -3829,6 +4172,9 @@ function animate() {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
+  // Process 6-DOF Natural Physical Head Tracking (Move closer/further, peek left/right/up/down)
+  trackHead();
+
   // 1. Synchronize camera position & world matrix FIRST so all raycasting and hand tracking have 100% accurate coordinates
   if (viewMode === 'OVERVIEW') {
     // Dynamic recalculation of overview camera position based on orbit distance & height
@@ -3837,6 +4183,9 @@ function animate() {
     const camY = FLOOR_Y + cameraRig.cameraHeight;
     const camZ = target.z + Math.cos(cameraRig.orbitAngle) * cameraRig.orbitDistance;
     TABLE_CAM_POS.set(camX, camY, camZ);
+    if (headTrackingEnabled && headTrackingActive) {
+      TABLE_CAM_POS.add(headSmoothedOffset);
+    }
     TABLE_CAM_LOOK.copy(target);
 
     if (Math.abs(camera.fov - currentFov) > 0.05) {
@@ -3847,12 +4196,16 @@ function animate() {
     smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.15);
     camera.lookAt(smoothedCameraLookAt);
   } else {
-    // In-Situ First-Person Perspective: Always remains directly at the player's walking position!
+    // In-Situ First-Person Perspective: Always remains directly at the player's walking position + Head Tracking offset!
     if (Math.abs(camera.fov - currentFov) > 0.05) {
       camera.fov += (currentFov - camera.fov) * 0.16;
       camera.updateProjectionMatrix();
     }
-    const targetEyePos = new THREE.Vector3(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
+    const targetEyePos = new THREE.Vector3(
+      player.pos.x + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.x : 0),
+      player.pos.y + CAMERA_EYE_Y + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.y : 0),
+      player.pos.z + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.z : 0)
+    );
     camera.position.lerp(targetEyePos, 0.35);
     camera.rotation.set(player.pitch || -0.16, player.yaw, 0, 'YXZ');
   }
