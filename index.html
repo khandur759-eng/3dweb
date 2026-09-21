@@ -859,11 +859,11 @@ const SPAN_FAR_CAM   = 0.10; // hand further from webcam
 let depthPushOnApproach = true; // true = hand closer pushes deeper into scene
 
 const PINCH_ON  = 0.045;   // world distance (4.5 cm) between fingertips to trigger pinch
-const PINCH_OFF = 0.075;   // hysteresis release (7.5 cm) - wide deadzone prevents accidental drops
-const PINCH_RATIO_GRAB = 0.38;    // Pinch ratio threshold to grab
-const PINCH_RATIO_RELEASE = 0.50; // Pinch ratio threshold to release (hysteresis)
-const PHYSICAL_GRAB_MARGIN = 0.85; // Expansive magnetic touch margin for effortless non-laser pickup
-const FOLLOW_LERP = 0.85;  // Butter-smooth, zero-lag follow interpolation
+const PINCH_OFF = 0.080;   // hysteresis release (8.0 cm) - wide deadzone prevents accidental drops
+const PINCH_RATIO_GRAB = 0.40;    // Pinch ratio threshold to grab
+const PINCH_RATIO_RELEASE = 0.54; // Pinch ratio threshold to release (hysteresis)
+const PHYSICAL_GRAB_MARGIN = 0.10; // Precise physical touch threshold: hand must physically touch or be right at the object surface
+const FOLLOW_LERP = 0.94;  // Butter-smooth, zero-lag follow interpolation synchronized with hand
 
 const FLOOR_Y = -1.15;
 const WORLD_RADIUS = 80.0;
@@ -2421,9 +2421,9 @@ function trackHeadAndEyes(dt = 0.016) {
 
         // 3D Face Angle (Head Pose Yaw & Pitch):
         // In mirrored selfie video:
-        // Turning face to your LEFT moves the nose towards the left of the image (noseX < midEarX) -> positive yaw (turns camera left)
-        // Turning face to your RIGHT moves the nose towards the right of the image (noseX > midEarX) -> negative yaw (turns camera right)
-        const rawFaceYaw = (midEarX - noseX) / (faceWidth * 0.38);
+        // Turning face to your LEFT moves the nose towards the left side of your body (increasing noseX relative to midEarX) -> positive yaw (turns camera left)
+        // Turning face to your RIGHT moves the nose towards the right side of your body (decreasing noseX relative to midEarX) -> negative yaw (turns camera right)
+        const rawFaceYaw = (noseX - midEarX) / (faceWidth * 0.38);
 
         // Tilting face UP moves nose and chin upward relative to face center -> positive pitch (tilts camera up)
         // Tilting face DOWN moves nose and chin downward -> negative pitch (tilts camera down)
@@ -2470,7 +2470,7 @@ function trackHeadAndEyes(dt = 0.016) {
             const eyeSpan = Math.abs(lx - rx) || 0.12;
 
             // Face Angle from keypoints:
-            const rawFaceYaw = (eyeMidX - nx) / (eyeSpan * 0.48);
+            const rawFaceYaw = (nx - eyeMidX) / (eyeSpan * 0.48);
             const rawFacePitch = -((ny - eyeMidY) - eyeSpan * 0.44) / (eyeSpan * 0.45);
 
             if (detGazeX === null) {
@@ -3332,6 +3332,7 @@ function releaseHeld(grab) {
   }
 
   grab.heldObject = null;
+  grab.isPhysicalTouch = false;
   grab.pinchVelocity.set(0, 0, 0);
   grab.prevHandZ = undefined;
   ghostSnapGuide.visible = false;
@@ -3546,7 +3547,19 @@ async function startCamera() {
   camReady = true;
 }
 
-function drawHandSkel(landmarks, strokeCol, pointCol, isLeft, isPinching = false) {
+function drawUnmirroredText(ctx, text, x, y, font = '600 8px system-ui, -apple-system, sans-serif', color = '#ffffff', align = 'center', baseline = 'middle') {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(-1, 1);
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+function drawHandSkel(landmarks, strokeCol, pointCol, isLeft, isPinching = false, allFingersTogether = false) {
   // Ultra-thin, minimalist luminous bone filaments
   octx.strokeStyle = strokeCol;
   octx.lineWidth = 1.2;
@@ -3576,17 +3589,32 @@ function drawHandSkel(landmarks, strokeCol, pointCol, isLeft, isPinching = false
     octx.fill();
   }
 
-  // Visual pinch spark if pinching
+  // Visual pinch / all-fingers-together grasp highlight
   if (isPinching && landmarks[4] && landmarks[8]) {
-    const midX = (landmarks[4].x + landmarks[8].x) * 0.5 * overlay.width;
-    const midY = (landmarks[4].y + landmarks[8].y) * 0.5 * overlay.height;
-    octx.beginPath();
-    octx.arc(midX, midY, 3.5, 0, Math.PI * 2);
-    octx.fillStyle = '#ffffff';
-    octx.fill();
+    if (allFingersTogether && landmarks[12]) {
+      // Elegant multi-finger cluster indicator
+      const cx = (landmarks[4].x + landmarks[8].x + landmarks[12].x) / 3 * overlay.width;
+      const cy = (landmarks[4].y + landmarks[8].y + landmarks[12].y) / 3 * overlay.height;
+      octx.beginPath();
+      octx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+      octx.fillStyle = '#ffffff';
+      octx.fill();
+      octx.beginPath();
+      octx.arc(cx, cy, 6.0, 0, Math.PI * 2);
+      octx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      octx.lineWidth = 1.0;
+      octx.stroke();
+    } else {
+      const midX = (landmarks[4].x + landmarks[8].x) * 0.5 * overlay.width;
+      const midY = (landmarks[4].y + landmarks[8].y) * 0.5 * overlay.height;
+      octx.beginPath();
+      octx.arc(midX, midY, 3.2, 0, Math.PI * 2);
+      octx.fillStyle = '#ffffff';
+      octx.fill();
+    }
   }
 
-  // Sleek, minimal wrist badge (e.g. "L" or "R")
+  // Sleek, minimal wrist badge (e.g. "L" or "R") with unmirrored text
   if (landmarks[0]) {
     const wx = landmarks[0].x * overlay.width;
     const wy = Math.min(overlay.height - 12, Math.max(12, landmarks[0].y * overlay.height + 12));
@@ -3599,12 +3627,8 @@ function drawHandSkel(landmarks, strokeCol, pointCol, isLeft, isPinching = false
     } else {
       octx.fillRect(wx - 7, wy - 6, 14, 12);
     }
-    octx.font = '600 8px system-ui, -apple-system, sans-serif';
-    octx.fillStyle = pointCol;
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    octx.fillText(isLeft ? 'L' : 'R', wx, wy);
     octx.restore();
+    drawUnmirroredText(octx, isLeft ? 'L' : 'R', wx, wy, '600 8px system-ui, -apple-system, sans-serif', pointCol);
   }
 }
 
@@ -3612,12 +3636,10 @@ function drawDualOverlay(leftHand, rightHand) {
   octx.clearRect(0, 0, overlay.width, overlay.height);
 
   if (leftHand) {
-    const isPinching = (leftHand.pinchRatio < PINCH_RATIO_GRAB);
-    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.75)', '#34d399', true, isPinching);
+    drawHandSkel(leftHand.rawLandmarks, 'rgba(16, 185, 129, 0.75)', '#34d399', true, leftHand.isGripTriggered, leftHand.allFingersTogether);
   }
   if (rightHand) {
-    const isPinching = (rightHand.pinchRatio < PINCH_RATIO_GRAB);
-    drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.75)', '#38bdf8', false, isPinching);
+    drawHandSkel(rightHand.rawLandmarks, 'rgba(56, 189, 248, 0.75)', '#38bdf8', false, rightHand.isGripTriggered, rightHand.allFingersTogether);
   }
 
   // Minimalist Face Angle / Look Tracking indicator
@@ -3654,7 +3676,7 @@ function drawDualOverlay(leftHand, rightHand) {
       octx.fill();
     }
 
-    // Discreet HUD Look badge in top-right corner
+    // Discreet HUD Look badge in top-right corner with unmirrored text
     const dirText = currentGaze.direction || 'CENTER';
     const badgeW = 74;
     const badgeH = 15;
@@ -3669,14 +3691,93 @@ function drawDualOverlay(leftHand, rightHand) {
     } else {
       octx.fillRect(badgeX, badgeY, badgeW, badgeH);
     }
-    octx.font = '600 8px system-ui, -apple-system, sans-serif';
-    octx.fillStyle = (dirText === 'CENTER') ? '#94a3b8' : '#c084fc';
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    octx.fillText(`LOOK: ${dirText}`, badgeX + badgeW * 0.5, badgeY + badgeH * 0.5);
+    const badgeCol = (dirText === 'CENTER') ? '#94a3b8' : '#c084fc';
+    drawUnmirroredText(octx, `LOOK: ${dirText}`, badgeX + badgeW * 0.5, badgeY + badgeH * 0.5, '600 8px system-ui, -apple-system, sans-serif', badgeCol);
 
     octx.restore();
   }
+}
+
+/* ============================================================
+   MULTI-FINGER TOUCH & PRECISION GRASP DETECTOR
+   Detects all 5 fingertips touching together, precision pinch,
+   or natural closed-hand grasp with rock-solid hysteresis
+   ============================================================ */
+function evaluateHandGrasp(filteredLM, vAspect, span) {
+  if (!filteredLM || filteredLM.length < 21) {
+    return {
+      pinchRatio: 1.0,
+      allFingersTogether: false,
+      precisionPinch: false,
+      isTriggered: false,
+      isReleased: true,
+      avgThumbToFingers: 1.0
+    };
+  }
+
+  // 3D euclidean distance in aspect-corrected camera space
+  const d3 = (a, b) => {
+    const dx = (filteredLM[a].x - filteredLM[b].x) * vAspect;
+    const dy = (filteredLM[a].y - filteredLM[b].y);
+    const dz = ((filteredLM[a].z || 0) - (filteredLM[b].z || 0));
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  };
+
+  const d4_8   = d3(4, 8);   // Thumb tip to index tip
+  const d4_12  = d3(4, 12);  // Thumb tip to middle tip
+  const d4_16  = d3(4, 16);  // Thumb tip to ring tip
+  const d4_20  = d3(4, 20);  // Thumb tip to pinky tip
+
+  const rThumbIndex  = d4_8 / span;
+  const rThumbMiddle = d4_12 / span;
+  const rThumbRing   = d4_16 / span;
+  const rThumbPinky  = d4_20 / span;
+
+  // Inter-fingertip clustering (distance between adjacent finger tips)
+  const d8_12  = d3(8, 12);  // Index to middle
+  const d12_16 = d3(12, 16); // Middle to ring
+  const d16_20 = d3(16, 20); // Ring to pinky
+  const avgInterCluster = (d8_12 + d12_16 + d16_20) / (3 * span);
+
+  // Average distance from thumb to all other 4 fingertips
+  const avgThumbToFingers = (rThumbIndex + rThumbMiddle + rThumbRing + rThumbPinky) * 0.25;
+  const maxThumbToFingers = Math.max(rThumbIndex, rThumbMiddle, rThumbRing, rThumbPinky);
+
+  // Finger curl towards palm root (wrist landmark 0)
+  const curlIndex  = d3(8, 0) / span;
+  const curlMiddle = d3(12, 0) / span;
+  const curlRing   = d3(16, 0) / span;
+  const curlPinky  = d3(20, 0) / span;
+  const avgCurl    = (curlIndex + curlMiddle + curlRing + curlPinky) * 0.25;
+
+  // 1. "When every finger is touched together" (conical pinch where all 5 fingertips meet)
+  const allFingersTogether = (avgThumbToFingers < 0.44 && maxThumbToFingers < 0.60) ||
+                             (avgInterCluster < 0.25 && avgThumbToFingers < 0.52);
+
+  // 2. Precision pinch (thumb to index or thumb to index+middle)
+  const precisionPinch = (rThumbIndex < 0.40) || (rThumbIndex < 0.46 && rThumbMiddle < 0.48);
+
+  // 3. Three-finger pinch (thumb + index + middle)
+  const threeFingerPinch = (rThumbIndex < 0.48 && rThumbMiddle < 0.48);
+
+  // 4. Closed fist / natural grasp
+  const fistGrip = (avgCurl < 0.82 && avgThumbToFingers < 0.65);
+
+  const isTriggered = allFingersTogether || precisionPinch || threeFingerPinch || fistGrip;
+
+  // Hysteresis release: fingers must clearly spread apart to drop
+  const isReleased = (rThumbIndex > 0.54) && (avgThumbToFingers > 0.56) && (avgInterCluster > 0.30) && (avgCurl > 0.88);
+
+  return {
+    pinchRatio: rThumbIndex,
+    allFingersTogether,
+    precisionPinch,
+    fistGrip,
+    isTriggered,
+    isReleased,
+    avgThumbToFingers,
+    avgInterCluster
+  };
 }
 
 /* ============================================================
@@ -3728,10 +3829,8 @@ function buildHandInfo(lm, handednessType, index) {
   }
   group.visible = true;
 
-  // Scale-invariant pinch ratio calculated from smoothed landmarks
-  const pdx = (filteredLM[4].x - filteredLM[8].x) * vAspect, pdy = filteredLM[4].y - filteredLM[8].y, pdz = ((filteredLM[4].z || 0) - (filteredLM[8].z || 0));
-  const pinchDist3D = Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
-  const pinchRatio = pinchDist3D / span;
+  // Comprehensive multi-finger grasp evaluation
+  const graspInfo = evaluateHandGrasp(filteredLM, vAspect, span);
 
   return {
     rawLandmarks: lm,
@@ -3743,7 +3842,12 @@ function buildHandInfo(lm, handednessType, index) {
     wristLocal: targetLocal[0],
     rig,
     group,
-    pinchRatio,
+    pinchRatio: graspInfo.pinchRatio,
+    allFingersTogether: graspInfo.allFingersTogether,
+    precisionPinch: graspInfo.precisionPinch,
+    isGripTriggered: graspInfo.isTriggered,
+    isGripReleased: graspInfo.isReleased,
+    avgThumbToFingers: graspInfo.avgThumbToFingers,
     isLeft
   };
 }
@@ -3894,16 +3998,40 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     reticle.position.copy(hand.indexTipLocal).lerp(hand.thumbTipLocal, 0.5);
   }
 
-  // Dual-threshold pinch hysteresis: requires confident pinch to grab, but generous opening to release
+  // Multi-finger grip detection: triggers if all fingers touch together, precision pinch, or closed fist
   const isPinchingNow = grab.pinching
-    ? ((hand.pinchRatio < PINCH_RATIO_RELEASE) || (dist < PINCH_OFF))
-    : ((hand.pinchRatio < PINCH_RATIO_GRAB) || (dist < PINCH_ON));
+    ? (!hand.isGripReleased && (dist < PINCH_OFF || hand.pinchRatio < PINCH_RATIO_RELEASE))
+    : (hand.isGripTriggered || (dist < PINCH_ON) || (hand.pinchRatio < PINCH_RATIO_GRAB));
 
   let candidate = null;
   let pointDir = new THREE.Vector3();
   const origin = hand.indexTipWorld ? hand.indexTipWorld.clone() : camera.position.clone();
   const nowSec = performance.now() * 0.001;
   const nowMs = performance.now();
+
+  // 1. Physical Touch Detection:
+  // Strict contact test: hand must physically reach the object surface (within PHYSICAL_GRAB_MARGIN = 0.10m)
+  let touchObj = null;
+  let touchDist = Infinity;
+  if (!grab.heldObject) {
+    for (const obj of pickables) {
+      if (!obj || !obj.userData) continue;
+      if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
+
+      const boundR = obj.userData.boundingRadius || 0.22;
+      const dMid = obj.position.distanceTo(midWorld);
+      const dIndex = hand.indexTipWorld ? obj.position.distanceTo(hand.indexTipWorld) : Infinity;
+      const dThumb = hand.thumbTipWorld ? obj.position.distanceTo(hand.thumbTipWorld) : Infinity;
+      const minD = Math.min(dMid, dIndex, dThumb);
+
+      // Contact threshold: hand physically touches or is within 10cm of object surface
+      const contactThreshold = boundR + PHYSICAL_GRAB_MARGIN;
+      if (minD <= contactThreshold && minD < touchDist) {
+        touchDist = minD;
+        touchObj = obj;
+      }
+    }
+  }
 
   if (laserPointerMode) {
     // Screen-aligned sightline raycasting (universal across In-Situ, Overview, and Walk modes)
@@ -3916,7 +4044,7 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
       grab.aimNDC.set(targetNdcX, targetNdcY);
       grab.aimNDCInit = true;
     } else {
-      const isPrePinch = (hand.pinchRatio < 0.54);
+      const isPrePinch = (hand.pinchRatio < 0.54) || hand.isGripTriggered;
       const ndcDelta = Math.hypot(targetNdcX - grab.aimNDC.x, targetNdcY - grab.aimNDC.y);
       // Heavy stabilization during pre-pinch closure so closing fingers never throws the ray off!
       const ndcAlpha = isPrePinch
@@ -3937,29 +4065,49 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     let hitNormal = new THREE.Vector3(0, 1, 0);
 
     if (!grab.heldObject) {
-      let bestScore = Infinity;
-      for (const obj of pickables) {
-        if (!obj || !obj.userData) continue;
-        if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
+      // 1. Native Three.js mesh raycasting for pixel-perfect ray hits
+      raycaster.setFromCamera(grab.aimNDC, camera);
+      const intersects = raycaster.intersectObjects(pickables, true);
+      for (const hit of intersects) {
+        let root = hit.object;
+        while (root.parent && root.parent !== scene && !root.userData?.blockId) {
+          root = root.parent;
+        }
+        if (root && root.userData?.blockId && !root.userData.held && otherGrab.heldObject !== root) {
+          hitObj = root;
+          hitPt = hit.point.clone();
+          if (hit.face) hitNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+          hitDist = hit.distance;
+          break;
+        }
+      }
 
-        const toObj = new THREE.Vector3().subVectors(obj.position, laserRay.origin);
-        const distAlongRay = laserRay.direction.dot(toObj);
-        if (distAlongRay <= 0.3) continue; // Behind camera
+      // 2. Near-miss cone fallback for effortless distant aiming
+      if (!hitObj) {
+        let bestScore = Infinity;
+        for (const obj of pickables) {
+          if (!obj || !obj.userData) continue;
+          if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
 
-        const distToRay = laserRay.distanceToPoint(obj.position);
-        const boundR = obj.userData.boundingRadius || 0.28;
-        // Cone tolerance + sticky hysteresis for currently locked candidate
-        const isSticky = (obj === grab.candidate || obj === grab.lastCandidate);
-        const coneTolerance = Math.max(boundR * 1.6, distAlongRay * 0.085) * (isSticky ? 1.75 : 1.0);
+          const toObj = new THREE.Vector3().subVectors(obj.position, laserRay.origin);
+          const distAlongRay = laserRay.direction.dot(toObj);
+          if (distAlongRay <= 0.3) continue; // Behind camera
 
-        if (distToRay < coneTolerance) {
-          const score = distToRay + distAlongRay * 0.06;
-          if (score < bestScore) {
-            bestScore = score;
-            hitObj = obj;
-            hitDist = distAlongRay;
-            hitPt = obj.position.clone();
-            hitNormal.set(0, 1, 0);
+          const distToRay = laserRay.distanceToPoint(obj.position);
+          const boundR = obj.userData.boundingRadius || 0.28;
+          // Cone tolerance + sticky hysteresis for currently locked candidate
+          const isSticky = (obj === grab.candidate || obj === grab.lastCandidate);
+          const coneTolerance = Math.max(boundR * 1.5, distAlongRay * 0.085) * (isSticky ? 1.75 : 1.0);
+
+          if (distToRay < coneTolerance) {
+            const score = distToRay + distAlongRay * 0.05;
+            if (score < bestScore) {
+              bestScore = score;
+              hitObj = obj;
+              hitDist = distAlongRay;
+              hitPt = obj.position.clone();
+              hitNormal.set(0, 1, 0);
+            }
           }
         }
       }
@@ -3976,40 +4124,53 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     }
 
     if (grab.heldObject) {
-      // Full 3D Multi-Directional Movement (Inward, Forward, Left, Right, Up, Down):
-      // 1. Physical Arm reach gesture: pushing hand forward toward camera pushes object deeper into world; pulling back pulls inward
-      const currentHandZ = hand.wristLocal ? hand.wristLocal.z : (hand.indexTipLocal ? hand.indexTipLocal.z : 0);
-      if (grab.prevHandZ !== undefined && dt > 0) {
-        const deltaHandZ = currentHandZ - grab.prevHandZ;
-        if (Math.abs(deltaHandZ) > 0.0003) {
-          const depthSpeed = depthPushOnApproach ? 5.2 : -5.2;
-          laserDistances[handKey] = THREE.MathUtils.clamp(
-            laserDistances[handKey] - deltaHandZ * depthSpeed,
-            0.8,
-            38.0
-          );
+      if (grab.isPhysicalTouch) {
+        // Physical touch grab: directly inside hand
+        vrBeam.hide();
+        grab.heldObject.position.lerp(midWorld, FOLLOW_LERP);
+        const halfY = grab.heldObject.userData?.halfY || 0.25;
+        if (grab.heldObject.position.y < FLOOR_Y + halfY) {
+          grab.heldObject.position.y = FLOOR_Y + halfY;
         }
-      }
-      grab.prevHandZ = currentHandZ;
+      } else {
+        // Laser telekinesis tractor beam in full 3D space:
+        // 1. Physical Arm reach gesture: pushing hand forward toward camera pushes object deeper into world; pulling back pulls inward
+        const currentHandZ = hand.wristLocal ? hand.wristLocal.z : (hand.indexTipLocal ? hand.indexTipLocal.z : 0);
+        if (grab.prevHandZ !== undefined && dt > 0) {
+          const deltaHandZ = currentHandZ - grab.prevHandZ;
+          if (Math.abs(deltaHandZ) > 0.0003) {
+            const depthSpeed = depthPushOnApproach ? 5.2 : -5.2;
+            laserDistances[handKey] = THREE.MathUtils.clamp(
+              laserDistances[handKey] - deltaHandZ * depthSpeed,
+              0.8,
+              38.0
+            );
+          }
+        }
+        grab.prevHandZ = currentHandZ;
 
-      // 2. Keyboard depth push/pull when holding:
-      // 'E' pushes object forward/away into the scene
-      // 'Q' pulls object inward towards the player
-      if (keys['KeyE']) {
-        laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] + 7.5 * dt, 0.8, 38.0);
-      }
-      if (keys['KeyQ']) {
-        laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] - 7.5 * dt, 0.8, 38.0);
-      }
+        // 2. Keyboard depth push/pull when holding:
+        // 'E' pushes object forward/away into the scene
+        // 'Q' pulls object inward towards the player
+        if (keys['KeyE']) {
+          laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] + 7.5 * dt, 0.8, 38.0);
+        }
+        if (keys['KeyQ']) {
+          laserDistances[handKey] = THREE.MathUtils.clamp(laserDistances[handKey] - 7.5 * dt, 0.8, 38.0);
+        }
 
-      // Locked telekinesis tractor beam in full 3D space
-      const target = camera.position.clone().addScaledVector(pointDir, laserDistances[handKey]);
-      grab.heldObject.position.lerp(target, 0.90);
-      const halfY = grab.heldObject.userData?.halfY || 0.25;
-      if (grab.heldObject.position.y < FLOOR_Y + halfY) {
-        grab.heldObject.position.y = FLOOR_Y + halfY;
+        const target = camera.position.clone().addScaledVector(pointDir, laserDistances[handKey]);
+        grab.heldObject.position.lerp(target, 0.90);
+        const halfY = grab.heldObject.userData?.halfY || 0.25;
+        if (grab.heldObject.position.y < FLOOR_Y + halfY) {
+          grab.heldObject.position.y = FLOOR_Y + halfY;
+        }
+        vrBeam.update(origin, grab.heldObject.position, null, 'LOCKED', nowSec);
       }
-      vrBeam.update(origin, grab.heldObject.position, null, 'LOCKED', nowSec);
+    } else if (touchObj) {
+      // Direct physical touch overrides distant laser beam
+      candidate = touchObj;
+      vrBeam.hide();
     } else if (hitObj && hitPt) {
       candidate = hitObj;
       vrBeam.update(origin, hitPt, hitNormal, 'HOVER', nowSec);
@@ -4030,27 +4191,15 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
       }
     }
   } else {
-    // Non-laser mode: wide spatial proximity magnetism
+    // Non-laser mode: strict physical touch (no ghost magnetic grabbing from afar)
     vrBeam.hide();
 
-    let bestDist = Infinity;
     if (!grab.heldObject) {
-      for (const obj of pickables) {
-        if (!obj || !obj.userData) continue;
-        if (otherGrab.heldObject === obj || (obj.userData.held && obj !== grab.heldObject)) continue;
-
-        const d3d = obj.position.distanceTo(midWorld);
-        const boundR = obj.userData.boundingRadius || 0.20;
-        const touchThreshold = boundR + PHYSICAL_GRAB_MARGIN * (reachMultiplier * 0.65);
-        if (d3d <= touchThreshold && d3d < bestDist) {
-          bestDist = d3d;
-          candidate = obj;
-        }
-      }
-      if (candidate) {
+      if (touchObj) {
+        candidate = touchObj;
         grab.lastCandidate = candidate;
         grab.lastCandidateTime = nowMs;
-      } else if (grab.lastCandidate && (nowMs - grab.lastCandidateTime < 420)) {
+      } else if (grab.lastCandidate && (nowMs - grab.lastCandidateTime < 250)) {
         candidate = grab.lastCandidate;
       }
     }
@@ -4062,26 +4211,32 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
   }
   grab.candidate = candidate;
 
-  // Handle pinch transitions with pinch-slip immunity
+  // Handle pinch / all-finger grasp transitions with release hysteresis
   if (!grab.pinching && isPinchingNow) {
     grab.pinching = true;
-    const targetToGrab = candidate || (nowMs - grab.lastCandidateTime < 450 ? grab.lastCandidate : null);
+    const targetToGrab = candidate || (nowMs - grab.lastCandidateTime < 350 ? grab.lastCandidate : null);
     if (targetToGrab && !targetToGrab.userData.held) {
       grab.heldObject = targetToGrab;
       targetToGrab.userData.held = true;
       if (targetToGrab.userData.velocity) {
         targetToGrab.userData.velocity.set(0, 0, 0);
       }
-      if (laserPointerMode) {
+
+      if (targetToGrab === touchObj || !laserPointerMode) {
+        // Physical touch grab: perfectly synchronized 1:1 directly in the hand's grasp!
+        grab.isPhysicalTouch = true;
+        grab.heldOffsetWorld.set(0, 0, 0);
+      } else {
+        // Laser ray grab: telekinesis tractor beam
+        grab.isPhysicalTouch = false;
         laserDistances[handKey] = Math.max(1.2, pointDir.dot(new THREE.Vector3().subVectors(targetToGrab.position, camera.position)));
         grab.prevHandZ = hand.wristLocal ? hand.wristLocal.z : (hand.indexTipLocal ? hand.indexTipLocal.z : 0);
-      } else {
-        grab.heldOffsetWorld.subVectors(targetToGrab.position, midWorld);
       }
+
       setHighlight(targetToGrab, true);
       playGrabSound();
     }
-  } else if (grab.pinching && !isPinchingNow && (hand.pinchRatio > PINCH_RATIO_RELEASE)) {
+  } else if (grab.pinching && !isPinchingNow && (hand.isGripReleased || hand.pinchRatio > PINCH_RATIO_RELEASE)) {
     grab.pinching = false;
     if (grab.heldObject) {
       releaseHeld(grab);
@@ -4090,8 +4245,7 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
 
   // Follow hand for proximity grab
   if (grab.heldObject && !laserPointerMode) {
-    const target = new THREE.Vector3().addVectors(midWorld, grab.heldOffsetWorld);
-    grab.heldObject.position.lerp(target, FOLLOW_LERP);
+    grab.heldObject.position.lerp(midWorld, FOLLOW_LERP);
 
     const halfY = grab.heldObject.userData?.halfY || 0.45;
     const minFloor = FLOOR_Y + halfY;
