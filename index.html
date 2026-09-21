@@ -530,6 +530,162 @@
     #studioBox{ left:8px; top:8px; max-width:calc(100vw - 16px); }
     #camWrap{ width:110px; height:82px; top:8px; right:8px; }
     #walkSteerOverlay{ bottom:50px; }
+    #gameTelemetryBar{ bottom:8px; left:8px; font-size:10px; padding:3px 8px; }
+    #psGlyphGuide{ display:none; }
+  }
+
+  /* ============================================================
+     PLAYSTATION 5 NEXT-GEN GAME HUD, TROPHIES & PHOTO MODE
+     ============================================================ */
+  /* PlayStation Trophy Banner */
+  #psTrophyBanner {
+    position: fixed; top: 20px; right: 20px; z-index: 10000;
+    display: flex; align-items: center; gap: 14px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 215, 0, 0.45);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65), 0 0 26px rgba(234, 179, 8, 0.3);
+    border-radius: 16px;
+    padding: 12px 18px;
+    backdrop-filter: blur(22px);
+    color: #ffffff;
+    transform: translateX(135%);
+    opacity: 0;
+    transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    pointer-events: none;
+    max-width: 380px;
+  }
+  #psTrophyBanner.show {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  .ps-trophy-badge {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, #facc15, #ca8a04);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 16px rgba(234, 179, 8, 0.55);
+    flex-shrink: 0;
+  }
+  .ps-trophy-content {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .ps-trophy-tag {
+    font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+    color: #facc15; display: flex; align-items: center; gap: 4px;
+  }
+  .ps-trophy-title {
+    font-size: 14px; font-weight: 700; color: #ffffff;
+    line-height: 1.2;
+  }
+  .ps-trophy-desc {
+    font-size: 11.5px; color: #94a3b8; line-height: 1.25;
+  }
+
+  /* Real-time Architectural Telemetry Bar */
+  #gameTelemetryBar {
+    position: fixed; bottom: 14px; left: 16px; z-index: 25;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    padding: 6px 14px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    color: #e2e8f0; font-size: 11.5px; font-weight: 600;
+    pointer-events: auto;
+  }
+  .telem-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .telem-val { color: #38bdf8; font-weight: 700; font-family: monospace; }
+  .telem-ps { color: #818cf8; font-weight: 700; }
+
+  /* PlayStation Action Glyphs Guide */
+  #psGlyphGuide {
+    position: fixed; bottom: 14px; right: 16px; z-index: 25;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 6px 16px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    color: #cbd5e1; font-size: 11px; font-weight: 600;
+  }
+  .ps-glyph-item {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .ps-glyph {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 17px; height: 17px; border-radius: 50%;
+    font-size: 10.5px; font-weight: 800; font-family: system-ui, sans-serif;
+    color: #ffffff;
+  }
+  .ps-cross { background: #3b82f6; }
+  .ps-circle { background: #ef4444; }
+  .ps-triangle { background: #10b981; }
+  .ps-square { background: #ec4899; }
+
+  /* Cinemascope Photo Mode Letterbox & Controls */
+  #photoModeOverlay {
+    display: none; position: fixed; inset: 0; z-index: 9990;
+    pointer-events: none;
+  }
+  #photoModeOverlay.active {
+    display: block;
+  }
+  .cinemascope-bar {
+    position: absolute; left: 0; right: 0; height: 64px;
+    background: #000000; z-index: 9991;
+    pointer-events: auto;
+  }
+  #cinemascopeTop { top: 0; }
+  #cinemascopeBottom { bottom: 0; }
+  #photoModeBar {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 9995; pointer-events: auto;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 16px 45px rgba(0,0,0,0.6);
+    border-radius: 999px;
+    padding: 8px 22px;
+    backdrop-filter: blur(20px);
+  }
+  .photo-action-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff; border: none; font-size: 12.5px; font-weight: 700;
+    padding: 8px 18px; border-radius: 999px; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+    display: flex; align-items: center; gap: 6px;
+    transition: transform .15s ease;
+  }
+  .photo-action-btn:hover { transform: scale(1.05); }
+  .photo-sub-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 12px; font-weight: 600; padding: 7px 14px;
+    border-radius: 999px; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .photo-sub-btn:hover { background: rgba(255, 255, 255, 0.22); }
+
+  /* Cinematic Lighting Atmosphere Grid */
+  .atmosphere-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 14px;
+  }
+  .atmos-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px;
+    padding: 7px 4px; font-size: 11px; font-weight: 700; color: #334155;
+    cursor: pointer; transition: all .15s ease;
+  }
+  .atmos-btn:hover { background: #f1f5f9; }
+  .atmos-btn.active {
+    background: #0f172a; color: #38bdf8; border-color: #38bdf8;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
   }
 </style>
 </head>
@@ -619,8 +775,31 @@
         </div>
 
         <!-- Quick Actions Grid -->
-        <div class="box-section-title">Studio Tools</div>
+        <div class="box-section-title">Cinematic Atmospheres (Hotkey: 1-4)</div>
+        <div class="atmosphere-grid" id="atmosGrid">
+          <button type="button" class="atmos-btn active" data-atmos="studio" title="Studio Gallery: Crisp neutral daylight architectural lighting (Hotkey: 4)">
+            <span>🏛️</span>
+            <span>Studio</span>
+          </button>
+          <button type="button" class="atmos-btn" data-atmos="sunset" title="Golden Sunset: Warm 2800K low sun with dramatic shadows & amber sky (Hotkey: 1)">
+            <span>🌅</span>
+            <span>Sunset</span>
+          </button>
+          <button type="button" class="atmos-btn" data-atmos="cyberpunk" title="Neo-Tokyo Night: Volumetric cyan & magenta architectural neon with deep indigo fog (Hotkey: 2)">
+            <span>🌌</span>
+            <span>Cyber</span>
+          </button>
+          <button type="button" class="atmos-btn" data-atmos="brutalist" title="Brutalist Mist: Moody overcast diffuse dawn with high contrast concrete (Hotkey: 3)">
+            <span>⛅</span>
+            <span>Mist</span>
+          </button>
+        </div>
+
+        <div class="box-section-title">Studio Tools &amp; PS5 Features</div>
         <div class="box-action-grid">
+          <button id="photoModeBtn" type="button" class="tool-btn" title="Cinematic 4K Photo Mode: Anamorphic letterbox, free camera & high-res capture (Hotkey: P)">📸 Photo Mode</button>
+          <button id="kineticBlastBtn" type="button" class="tool-btn" style="color:#ef4444; font-weight:700;" title="Trigger radial seismic impulse blast through the construction site (Hotkey: K)">💥 Kinetic Blast</button>
+          <button id="ambientAudioBtn" type="button" class="tool-btn active" title="Toggle cinematic generative background ambient soundscape">🎵 Ambient: ON</button>
           <button id="eyeTrackingBtn" type="button" class="tool-btn active" title="Toggle Face Look Tracking: turn face left, right, up, and down to look around! (Hotkey: G)">🧭 Face Look: ON</button>
           <button id="recenterEyeBtn" type="button" class="tool-btn" title="Recenter face look calibration to current forward sightline (Hotkey: Y)">🎯 Recenter Face</button>
           <button id="headTrackingBtn" type="button" class="tool-btn active" title="Toggle 6-DOF Physical Head Tracking: move close to camera to move close to objects! (Hotkey: T)">👤 Head Tracking: ON</button>
@@ -641,12 +820,12 @@
 
         <!-- Guidance instructions card -->
         <div id="hudContent">
-          <b id="hudTitle">VR Set Spatial Experience:</b><br/>
-          • <b>🧭 Face Look Tracking (Look Around):</b> Turn your face up, down, left, or right to look around naturally with zero camera drift (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">G</kbd> | Recenter: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Y</kbd>).<br/>
-          • <b>👤 6-DOF Head Tracking (Proximity):</b> Lean physically closer to camera to zoom into masonry and inspect concrete textures up close; peek sideways to parallax around pillars (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">T</kbd>).<br/>
-          • <b>🔦 3D Laser Manipulation:</b> Grab and move objects in full 3D (X, Y, and depth Z)! Push your hand forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">E</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Q</kbd> / mouse wheel (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">L</kbd>).<br/>
-          • <b>🖐️ Dual Builder Reach:</b> Grab, stack, and align modular concrete blocks simultaneously with both hands.<br/>
-          • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
+          <b id="hudTitle">PlayStation-Grade Spatial Studio:</b><br/>
+          • <b>🎮 Tactical Haptics:</b> Every block landing triggers DualSense-style sub-bass thudding and responsive camera micro-shake.<br/>
+          • <b>🏆 Trophy System:</b> Construct skyscrapers, throw blocks, and discover architectural milestones.<br/>
+          • <b>🌅 4 Atmospheres:</b> Switch between Studio Gallery, Golden Sunset, Cyber Night, and Brutalist Mist (<kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">1</kbd>-<kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">4</kbd>).<br/>
+          • <b>📸 Photo Mode:</b> Enter 2.39:1 Cinemascope widescreen mode &amp; capture 4K PNG screenshots (<kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">P</kbd>).<br/>
+          • <b>💥 Kinetic Playground:</b> Trigger epicenter seismic shockwaves to stress-test your architecture (<kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">K</kbd>).
         </div>
 
         <div class="box-footer">
@@ -675,6 +854,47 @@
   <div id="modeBanner" class="pick">
     <span id="bannerIcon">🖐️</span>
     <span id="bannerText">DUAL BUILDER ACTIVE</span>
+  </div>
+
+  <!-- PlayStation Trophy Notification Banner -->
+  <div id="psTrophyBanner" role="status" aria-live="polite">
+    <div class="ps-trophy-badge" id="psTrophyBadge">🏆</div>
+    <div class="ps-trophy-content">
+      <div class="ps-trophy-tag"><span>✦</span> PlayStation Trophy Unlocked</div>
+      <div class="ps-trophy-title" id="psTrophyTitle">The Monolith</div>
+      <div class="ps-trophy-desc" id="psTrophyDesc">Constructed a structure reaching 2.5m height</div>
+    </div>
+  </div>
+
+  <!-- Real-time Architectural Telemetry Bar -->
+  <div id="gameTelemetryBar">
+    <div class="telem-pill"><span style="color:#f59e0b;">📐</span> Height: <span class="telem-val" id="telemHeight">0.0m</span></div>
+    <div class="telem-pill"><span style="color:#38bdf8;">🧱</span> Blocks: <span class="telem-val" id="telemBlocks">32</span></div>
+    <div class="telem-pill"><span style="color:#10b981;">⚖️</span> Mass: <span class="telem-val" id="telemMass">9,600 kg</span></div>
+    <div class="telem-pill"><span style="color:#a855f7;">⚡</span> <span class="telem-val" id="telemFps">60</span> FPS</div>
+    <div class="telem-pill telem-ps">🎮 PS5 Core</div>
+  </div>
+
+  <!-- PlayStation Action Glyphs Guide -->
+  <div id="psGlyphGuide">
+    <div class="ps-glyph-item"><span class="ps-glyph ps-cross">✕</span> Grab/Drop</div>
+    <div class="ps-glyph-item"><span class="ps-glyph ps-circle">◯</span> Clone (C)</div>
+    <div class="ps-glyph-item"><span class="ps-glyph ps-triangle">△</span> Spawn (N)</div>
+    <div class="ps-glyph-item"><span class="ps-glyph ps-square">▢</span> Mode (Space)</div>
+    <div class="ps-glyph-item"><span style="font-size:12px;">💥</span> Blast (K)</div>
+    <div class="ps-glyph-item"><span style="font-size:12px;">📸</span> Photo (P)</div>
+  </div>
+
+  <!-- Cinemascope 4K Photo Mode Letterbox Overlay -->
+  <div id="photoModeOverlay">
+    <div class="cinemascope-bar" id="cinemascopeTop"></div>
+    <div class="cinemascope-bar" id="cinemascopeBottom"></div>
+    <div id="photoModeBar">
+      <button type="button" class="photo-action-btn" id="photoCaptureBtn">📸 Capture 4K Image</button>
+      <button type="button" class="photo-sub-btn" id="photoAtmosBtn">🌅 Sunset Mood</button>
+      <button type="button" class="photo-sub-btn" id="photoFovBtn">🔍 FOV: 82°</button>
+      <button type="button" class="photo-sub-btn" id="photoExitBtn">✕ Exit Photo Mode (Esc)</button>
+    </div>
   </div>
 
   <!-- Walk steering joystick overlay (only in Room Roam mode) -->
@@ -751,35 +971,218 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 /* ============================================================
-   AUDIO SYNTHESIZER (Web Audio API)
+   PLAYSTATION 5 NEXT-GEN AUDIO SYNTHESIZER (Web Audio API)
    ============================================================ */
 let audioCtx = null;
 let soundEnabled = true;
+let ambientAudioEnabled = true;
+let ambientDroneNode = null;
+let ambientGainNode = null;
 
 function initAudio() {
   if (!audioCtx) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext) audioCtx = new AudioContext();
+    if (AudioContext) {
+      audioCtx = new AudioContext();
+    }
   }
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
+  if (ambientAudioEnabled && !ambientDroneNode && audioCtx) {
+    startAtmosphereDrone();
+  }
 }
 
-function playTone(freq, duration = 0.1, type = 'sine', gainVal = 0.12) {
+function createPanner(pan = 0) {
+  if (!audioCtx || !audioCtx.createStereoPanner) return null;
+  try {
+    const panner = audioCtx.createStereoPanner();
+    panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), audioCtx.currentTime);
+    return panner;
+  } catch(e) {
+    return null;
+  }
+}
+
+function playTone(freq, duration = 0.1, type = 'sine', gainVal = 0.12, pan = 0) {
   if (!soundEnabled || !audioCtx) return;
   try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
+    const panner = createPanner(pan);
     osc.type = type;
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
     gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    
+    if (panner) {
+      osc.connect(gain);
+      gain.connect(panner);
+      panner.connect(audioCtx.destination);
+    } else {
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+    }
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
   } catch(e) {}
+}
+
+// DualSense-style Sub-Woofer Concrete Impact Thump
+function playSubBassThud(impactVelocity = 1.0, pan = 0) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    const panner = createPanner(pan);
+
+    const now = audioCtx.currentTime;
+    const dur = Math.min(0.35, 0.14 + impactVelocity * 0.05);
+    const vol = Math.min(0.42, 0.12 + impactVelocity * 0.06);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, now);
+    filter.frequency.exponentialRampToValueAtTime(35, now + dur);
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(68, now);
+    osc.frequency.exponentialRampToValueAtTime(24, now + dur);
+
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    if (panner) {
+      gain.connect(panner);
+      panner.connect(audioCtx.destination);
+    } else {
+      gain.connect(audioCtx.destination);
+    }
+    osc.start();
+    osc.stop(now + dur);
+  } catch(e) {}
+}
+
+// Crisp High-End Snap Acoustic Ping
+function playSnapSpark(pan = 0) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    playTone(1180, 0.045, 'triangle', 0.22, pan);
+    setTimeout(() => playTone(2140, 0.035, 'sine', 0.18, pan), 15);
+  } catch(e) {}
+}
+
+// PlayStation Signature Trophy Unlocked Arpeggio Fanfare
+function playTrophyUnlockSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 arpeggio
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        const vol = idx === 3 ? 0.32 : 0.22;
+        const dur = idx === 3 ? 0.9 : 0.24;
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      }, idx * 85);
+    });
+  } catch(e) {}
+}
+
+// Seismic Kinetic Blast Shockwave Sound
+function playKineticShockwaveSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    const now = audioCtx.currentTime;
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(260, now);
+    filter.frequency.exponentialRampToValueAtTime(30, now + 0.65);
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(22, now + 0.65);
+
+    gain.gain.setValueAtTime(0.40, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(now + 0.65);
+  } catch(e) {}
+}
+
+// Generative Architectural Ambient Drone Pad
+function startAtmosphereDrone() {
+  if (!audioCtx || ambientDroneNode) return;
+  try {
+    const master = audioCtx.createGain();
+    master.gain.setValueAtTime(0.045, audioCtx.currentTime);
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(320, audioCtx.currentTime);
+
+    // Warm detuned triad chords: F#2 (92.5), C#3 (138.6), F#3 (185.0)
+    const freqs = [92.5, 138.6, 185.0];
+    const oscs = freqs.map((f, i) => {
+      const o = audioCtx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f + (i * 0.4 - 0.4), audioCtx.currentTime);
+      o.connect(filter);
+      o.start();
+      return o;
+    });
+
+    filter.connect(master);
+    master.connect(audioCtx.destination);
+
+    ambientDroneNode = { oscs, master, filter };
+    ambientGainNode = master;
+  } catch(e) {}
+}
+
+function stopAtmosphereDrone() {
+  if (!ambientDroneNode) return;
+  try {
+    ambientDroneNode.oscs.forEach(o => {
+      try { o.stop(); o.disconnect(); } catch(e){}
+    });
+    ambientDroneNode = null;
+    ambientGainNode = null;
+  } catch(e) {}
+}
+
+function toggleAtmosphereAudio(forceState = null) {
+  ambientAudioEnabled = (typeof forceState === 'boolean') ? forceState : !ambientAudioEnabled;
+  if (ambientAudioEnabled) {
+    if (audioCtx) startAtmosphereDrone();
+  } else {
+    stopAtmosphereDrone();
+  }
+  const btn = document.getElementById('ambientAudioBtn');
+  if (btn) {
+    btn.textContent = ambientAudioEnabled ? '🎵 Ambient: ON' : '🎵 Ambient: OFF';
+    btn.classList.toggle('active', ambientAudioEnabled);
+  }
+  showBanner(ambientAudioEnabled ? 'AMBIENT ATMOSPHERE SOUNDSCAPE: ON' : 'AMBIENT SOUNDSCAPE MUTED', '🎵', 'pick');
 }
 
 function playPinchPip(step) {
@@ -796,11 +1199,11 @@ function playModeFanfare(toWalk) {
 }
 
 function playGrabSound() {
-  playTone(320, 0.12, 'sine', 0.15);
+  playTone(340, 0.11, 'sine', 0.16);
 }
 
 function playReleaseSound() {
-  playTone(480, 0.15, 'triangle', 0.12);
+  playTone(460, 0.13, 'triangle', 0.14);
 }
 
 function playHoverPip() {
@@ -808,11 +1211,7 @@ function playHoverPip() {
 }
 
 function playLegoSnapSound() {
-  if (!soundEnabled || !audioCtx) return;
-  try {
-    playTone(980, 0.035, 'triangle', 0.22);
-    setTimeout(() => playTone(1480, 0.045, 'sine', 0.25), 25);
-  } catch(e) {}
+  playSnapSpark(0);
 }
 
 function playPedestalChime() {
@@ -1093,6 +1492,568 @@ worldGroup.add(centerLbl);
 // Compatibility tableGroup (empty placeholder so no null reference errors occur)
 const tableGroup = new THREE.Group();
 worldGroup.add(tableGroup);
+
+/* ============================================================
+   PLAYSTATION NEXT-GEN VISUAL ATMOSPHERES & LIGHTING ENGINE
+   ============================================================ */
+const ATMOSPHERES = {
+  studio: {
+    key: 'studio',
+    name: 'Studio Gallery',
+    icon: '🏛️',
+    bg: 0x181e26,
+    fogNear: 25, fogFar: 95,
+    ambientColor: 0x94a3b8, ambientInt: 0.90,
+    sunColor: 0xffeedd, sunInt: 1.30, sunPos: [16, 32, 22],
+    fillColor: 0x475569, fillInt: 0.65,
+    overheadColor: 0x64748b, overheadInt: 0.45,
+    floorColor: 0x1e242d,
+    gridCenter: 0x38bdf8, gridLine: 0x334155,
+    moteColor: 0xe2e8f0
+  },
+  sunset: {
+    key: 'sunset',
+    name: 'Golden Sunset',
+    icon: '🌅',
+    bg: 0x231411,
+    fogNear: 20, fogFar: 90,
+    ambientColor: 0x783c26, ambientInt: 1.15,
+    sunColor: 0xff8c38, sunInt: 1.90, sunPos: [32, 14, 24],
+    fillColor: 0x4a2432, fillInt: 0.75,
+    overheadColor: 0x5a3036, overheadInt: 0.50,
+    floorColor: 0x251617,
+    gridCenter: 0xf97316, gridLine: 0x541c18,
+    moteColor: 0xfbbf24
+  },
+  cyberpunk: {
+    key: 'cyberpunk',
+    name: 'Neo-Tokyo Night',
+    icon: '🌌',
+    bg: 0x080b14,
+    fogNear: 18, fogFar: 85,
+    ambientColor: 0x1e1b4b, ambientInt: 1.35,
+    sunColor: 0x38bdf8, sunInt: 1.65, sunPos: [14, 26, 18],
+    fillColor: 0xd946ef, fillInt: 1.25,
+    overheadColor: 0x6366f1, overheadInt: 0.85,
+    floorColor: 0x0b0e18,
+    gridCenter: 0x06b6d4, gridLine: 0x1e1f3d,
+    moteColor: 0x38bdf8
+  },
+  brutalist: {
+    key: 'brutalist',
+    name: 'Brutalist Mist',
+    icon: '⛅',
+    bg: 0x1c2430,
+    fogNear: 18, fogFar: 75,
+    ambientColor: 0x64748b, ambientInt: 1.05,
+    sunColor: 0xe2e8f0, sunInt: 1.25, sunPos: [18, 30, 20],
+    fillColor: 0x334155, fillInt: 0.65,
+    overheadColor: 0x475569, overheadInt: 0.55,
+    floorColor: 0x181f28,
+    gridCenter: 0x38bdf8, gridLine: 0x263342,
+    moteColor: 0x94a3b8
+  }
+};
+
+let currentAtmosphereKey = 'studio';
+
+function setAtmosphere(key, showNotice = true) {
+  initAudio();
+  const atm = ATMOSPHERES[key];
+  if (!atm) return;
+  currentAtmosphereKey = key;
+
+  // Smoothly update scene sky & fog
+  scene.background.setHex(atm.bg);
+  if (scene.fog) {
+    scene.fog.color.setHex(atm.bg);
+    scene.fog.near = atm.fogNear;
+    scene.fog.far = atm.fogFar;
+  }
+
+  // Update lighting
+  ambientLight.color.setHex(atm.ambientColor);
+  ambientLight.intensity = atm.ambientInt;
+
+  sunLight.color.setHex(atm.sunColor);
+  sunLight.intensity = atm.sunInt;
+  sunLight.position.set(...atm.sunPos);
+
+  fillLight.color.setHex(atm.fillColor);
+  fillLight.intensity = atm.fillInt;
+
+  overheadLight.color.setHex(atm.overheadColor);
+  overheadLight.intensity = atm.overheadInt;
+
+  // Update floor & motes
+  floorMat.color.setHex(atm.floorColor);
+  if (ambientMotes && ambientMotes.material) {
+    ambientMotes.material.color.setHex(atm.moteColor);
+  }
+
+  // Update UI active buttons
+  const atmosBtns = document.querySelectorAll('.atmos-btn');
+  atmosBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-atmos') === key);
+  });
+
+  const photoAtmosBtn = document.getElementById('photoAtmosBtn');
+  if (photoAtmosBtn) {
+    photoAtmosBtn.textContent = `${atm.icon} ${atm.name}`;
+  }
+
+  if (showNotice) {
+    showBanner(`ATMOSPHERE: ${atm.name.toUpperCase()}`, atm.icon, 'pick');
+    playTone(680, 0.12, 'triangle', 0.15);
+  }
+
+  if (key === 'sunset') {
+    unlockTrophy('golden_hour');
+  }
+}
+
+/* ============================================================
+   PLAYSTATION NEXT-GEN PARTICLE SYSTEMS & GPU DUST ENGINE
+   ============================================================ */
+function createSoftParticleTexture() {
+  const cvs = document.createElement('canvas');
+  cvs.width = 64; cvs.height = 64;
+  const ctx = cvs.getContext('2d');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+  grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.75)');
+  grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.2)');
+  grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(cvs);
+  return tex;
+}
+const softParticleTex = createSoftParticleTexture();
+
+// 1. Concrete Impact Dust Puff Particle Pool (150 dynamic particles)
+const DUST_POOL_SIZE = 150;
+const dustParticles = [];
+const dustGeometry = new THREE.BufferGeometry();
+const dustPositions = new Float32Array(DUST_POOL_SIZE * 3);
+const dustColors = new Float32Array(DUST_POOL_SIZE * 3);
+
+for (let i = 0; i < DUST_POOL_SIZE; i++) {
+  dustPositions[i * 3] = 0;
+  dustPositions[i * 3 + 1] = -100; // start hidden
+  dustPositions[i * 3 + 2] = 0;
+  dustColors[i * 3] = 0.8;
+  dustColors[i * 3 + 1] = 0.8;
+  dustColors[i * 3 + 2] = 0.8;
+  dustParticles.push({
+    active: false,
+    life: 0,
+    maxLife: 1.0,
+    vel: new THREE.Vector3(),
+    size: 0.15
+  });
+}
+dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+
+const dustMaterial = new THREE.PointsMaterial({
+  size: 0.35,
+  map: softParticleTex,
+  transparent: true,
+  opacity: 0.75,
+  vertexColors: true,
+  depthWrite: false,
+  blending: THREE.NormalBlending
+});
+const dustPoints = new THREE.Points(dustGeometry, dustMaterial);
+scene.add(dustPoints);
+
+function spawnDustPuff(pos, count = 18, colorHex = 0x94a3b8) {
+  const col = new THREE.Color(colorHex);
+  let spawned = 0;
+  for (let i = 0; i < DUST_POOL_SIZE && spawned < count; i++) {
+    const p = dustParticles[i];
+    if (!p.active) {
+      p.active = true;
+      p.life = 0;
+      p.maxLife = 0.5 + Math.random() * 0.45;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.8 + Math.random() * 2.2;
+      p.vel.set(
+        Math.cos(angle) * speed,
+        0.3 + Math.random() * 1.2,
+        Math.sin(angle) * speed
+      );
+      dustPositions[i * 3] = pos.x + (Math.random() - 0.5) * 0.2;
+      dustPositions[i * 3 + 1] = pos.y + 0.04;
+      dustPositions[i * 3 + 2] = pos.z + (Math.random() - 0.5) * 0.2;
+
+      dustColors[i * 3] = col.r;
+      dustColors[i * 3 + 1] = col.g;
+      dustColors[i * 3 + 2] = col.b;
+      spawned++;
+    }
+  }
+  dustGeometry.attributes.position.needsUpdate = true;
+  dustGeometry.attributes.color.needsUpdate = true;
+}
+
+// 2. Cinematic Atmospheric Floating Motes / Embers (240 drifting particles)
+const MOTE_COUNT = 240;
+const moteGeometry = new THREE.BufferGeometry();
+const motePositions = new Float32Array(MOTE_COUNT * 3);
+for (let i = 0; i < MOTE_COUNT; i++) {
+  motePositions[i * 3] = (Math.random() - 0.5) * 44;
+  motePositions[i * 3 + 1] = FLOOR_Y + 0.3 + Math.random() * 7.5;
+  motePositions[i * 3 + 2] = (Math.random() - 0.5) * 44;
+}
+moteGeometry.setAttribute('position', new THREE.BufferAttribute(motePositions, 3));
+const moteMaterial = new THREE.PointsMaterial({
+  size: 0.18,
+  map: softParticleTex,
+  transparent: true,
+  opacity: 0.42,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  color: 0xe2e8f0
+});
+const ambientMotes = new THREE.Points(moteGeometry, moteMaterial);
+scene.add(ambientMotes);
+
+// 3. Snap Hologram Expanding Shockwave Rings Pool (6 rings)
+const shockwavePool = [];
+for (let i = 0; i < 6; i++) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.04, 0.18, 48),
+    new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.visible = false;
+  scene.add(ring);
+  shockwavePool.push({
+    mesh: ring,
+    active: false,
+    life: 0,
+    maxLife: 0.38,
+    targetScale: 2.2
+  });
+}
+
+function spawnSnapShockwave(pos, colorHex = 0x38bdf8, maxScale = 2.4) {
+  const item = shockwavePool.find(s => !s.active) || shockwavePool[0];
+  item.active = true;
+  item.life = 0;
+  item.maxLife = 0.36;
+  item.targetScale = maxScale;
+  item.mesh.position.copy(pos);
+  item.mesh.position.y += 0.015;
+  item.mesh.scale.set(1, 1, 1);
+  item.mesh.material.color.setHex(colorHex);
+  item.mesh.material.opacity = 0.95;
+  item.mesh.visible = true;
+}
+
+function updateParticles(dt, now) {
+  // Update dust particles
+  let dustNeedsUpdate = false;
+  for (let i = 0; i < DUST_POOL_SIZE; i++) {
+    const p = dustParticles[i];
+    if (p.active) {
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        p.active = false;
+        dustPositions[i * 3 + 1] = -100;
+        dustNeedsUpdate = true;
+      } else {
+        p.vel.y -= 2.2 * dt; // gravity
+        p.vel.x *= Math.pow(0.85, dt * 60);
+        p.vel.z *= Math.pow(0.85, dt * 60);
+
+        dustPositions[i * 3] += p.vel.x * dt;
+        dustPositions[i * 3 + 1] += p.vel.y * dt;
+        dustPositions[i * 3 + 2] += p.vel.z * dt;
+
+        if (dustPositions[i * 3 + 1] < FLOOR_Y + 0.02) {
+          dustPositions[i * 3 + 1] = FLOOR_Y + 0.02;
+          p.vel.set(0, 0, 0);
+        }
+        dustNeedsUpdate = true;
+      }
+    }
+  }
+  if (dustNeedsUpdate) {
+    dustGeometry.attributes.position.needsUpdate = true;
+  }
+
+  // Update floating motes
+  const pos = moteGeometry.attributes.position.array;
+  const timeSec = now * 0.001;
+  for (let i = 0; i < MOTE_COUNT; i++) {
+    pos[i * 3 + 1] += Math.sin(timeSec * 0.8 + i) * 0.002;
+    pos[i * 3] += Math.cos(timeSec * 0.5 + i) * 0.0015;
+    pos[i * 3 + 2] += Math.sin(timeSec * 0.6 + i * 1.5) * 0.0015;
+  }
+  moteGeometry.attributes.position.needsUpdate = true;
+
+  // Update shockwave rings
+  for (const sw of shockwavePool) {
+    if (sw.active) {
+      sw.life += dt;
+      const progress = sw.life / sw.maxLife;
+      if (progress >= 1.0) {
+        sw.active = false;
+        sw.mesh.visible = false;
+      } else {
+        const s = 1.0 + (sw.targetScale - 1.0) * Math.sin(progress * Math.PI * 0.5);
+        sw.mesh.scale.set(s, s, s);
+        sw.mesh.material.opacity = 0.95 * (1.0 - progress);
+      }
+    }
+  }
+}
+
+/* ============================================================
+   PLAYSTATION DUALSENSE DYNAMIC CAMERA SHAKE SYSTEM
+   ============================================================ */
+const cameraShake = {
+  intensity: 0,
+  offset: new THREE.Vector3(),
+  rotOffset: new THREE.Vector3()
+};
+
+function triggerCameraShake(strength = 0.10) {
+  cameraShake.intensity = Math.min(cameraShake.intensity + strength, 0.32);
+}
+
+/* ============================================================
+   PLAYSTATION TROPHY REWARD SYSTEM & CELEBRATIONS
+   ============================================================ */
+const TROPHIES = {
+  first_block: {
+    id: 'first_block',
+    title: 'First Mason',
+    desc: 'Placed or spawned your first architectural concrete block',
+    icon: '🧱',
+    unlocked: false
+  },
+  monolith: {
+    id: 'monolith',
+    title: 'The Monolith',
+    desc: 'Constructed a concrete tower reaching 2.5m in height',
+    icon: '🏛️',
+    unlocked: false
+  },
+  skyward: {
+    id: 'skyward',
+    title: 'Skyward Spire',
+    desc: 'Reached an ambitious 4.5m skyscraper elevation',
+    icon: '🗼',
+    unlocked: false
+  },
+  architect: {
+    id: 'architect',
+    title: 'Master Architect',
+    desc: 'Successfully assembled 10+ connected architectural blocks',
+    icon: '📐',
+    unlocked: false
+  },
+  materialist: {
+    id: 'materialist',
+    title: 'Material Connoisseur',
+    desc: 'Integrated 4 distinct concrete finishes into your construction',
+    icon: '💎',
+    unlocked: false
+  },
+  catapult: {
+    id: 'catapult',
+    title: 'Kinetic Catapult',
+    desc: 'Threw a concrete block with release velocity over 5.5 m/s',
+    icon: '🚀',
+    unlocked: false
+  },
+  golden_hour: {
+    id: 'golden_hour',
+    title: 'Golden Hour Visionary',
+    desc: 'Witnessed the cinematic Sunset architectural atmosphere',
+    icon: '🌅',
+    unlocked: false
+  },
+  dual_wielder: {
+    id: 'dual_wielder',
+    title: 'Dual Wielder',
+    desc: 'Manipulated blocks simultaneously with both hands in 3D',
+    icon: '🖐️',
+    unlocked: false
+  }
+};
+
+let trophyTimer = null;
+function unlockTrophy(trophyId) {
+  const trophy = TROPHIES[trophyId];
+  if (!trophy || trophy.unlocked) return;
+  trophy.unlocked = true;
+
+  playTrophyUnlockSound();
+
+  const banner = document.getElementById('psTrophyBanner');
+  const badge = document.getElementById('psTrophyBadge');
+  const title = document.getElementById('psTrophyTitle');
+  const desc = document.getElementById('psTrophyDesc');
+
+  if (banner && title && desc) {
+    if (badge) badge.textContent = trophy.icon || '🏆';
+    title.textContent = trophy.title;
+    desc.textContent = trophy.desc;
+    banner.classList.add('show');
+
+    if (trophyTimer) clearTimeout(trophyTimer);
+    trophyTimer = setTimeout(() => {
+      banner.classList.remove('show');
+    }, 4500);
+  }
+}
+
+/* ============================================================
+   ARCHITECTURAL TELEMETRY HUD & FPS MONITOR
+   ============================================================ */
+let lastFpsCheck = 0;
+let frameCount = 0;
+let currentFps = 60;
+
+function updateGameTelemetry(dt, now) {
+  frameCount++;
+  if (now - lastFpsCheck >= 500) {
+    currentFps = Math.round((frameCount * 1000) / (now - lastFpsCheck));
+    frameCount = 0;
+    lastFpsCheck = now;
+    const fpsEl = document.getElementById('telemFps');
+    if (fpsEl) fpsEl.textContent = currentFps;
+  }
+
+  // Calculate highest structural elevation
+  let highestY = FLOOR_Y;
+  const uniqueTypes = new Set();
+  for (const obj of pickables) {
+    if (!obj || !obj.position) continue;
+    const top = obj.position.y + (obj.userData?.halfY || BLOCK_SIZE / 2);
+    if (top > highestY) highestY = top;
+    if (obj.userData?.type) uniqueTypes.add(obj.userData.type);
+  }
+  const heightMeters = Math.max(0, highestY - FLOOR_Y);
+
+  const hEl = document.getElementById('telemHeight');
+  if (hEl) hEl.textContent = `${heightMeters.toFixed(1)}m`;
+
+  const bEl = document.getElementById('telemBlocks');
+  if (bEl) bEl.textContent = pickables.length;
+
+  const mEl = document.getElementById('telemMass');
+  if (mEl) mEl.textContent = `${(pickables.length * 300).toLocaleString()} kg`;
+
+  // Check achievement triggers
+  if (heightMeters >= 2.5) unlockTrophy('monolith');
+  if (heightMeters >= 4.5) unlockTrophy('skyward');
+  if (pickables.length >= 10) unlockTrophy('architect');
+  if (uniqueTypes.size >= 4) unlockTrophy('materialist');
+}
+
+/* ============================================================
+   KINETIC SHOCKWAVE BLAST ENGINE (HOTKEY: K)
+   ============================================================ */
+function triggerKineticBlast(epicenter = null, strength = 8.5) {
+  initAudio();
+  playKineticShockwaveSound();
+  triggerCameraShake(0.25);
+
+  const epic = epicenter || player.pos.clone().add(
+    new THREE.Vector3(-Math.sin(player.yaw) * 2.2, 0.4, -Math.cos(player.yaw) * 2.2)
+  );
+
+  spawnSnapShockwave(epic, 0xef4444, 4.5);
+  spawnDustPuff(epic, 32, 0xf97316);
+
+  let affected = 0;
+  for (const obj of pickables) {
+    if (!obj || !obj.userData || obj.userData.held) continue;
+    const diff = new THREE.Vector3().subVectors(obj.position, epic);
+    const dist = diff.length();
+    if (dist < 8.0 && dist > 0.05) {
+      affected++;
+      const dir = diff.normalize();
+      const falloff = Math.max(0.2, 1.0 - (dist / 8.0));
+      const impulse = dir.clone().multiplyScalar(strength * falloff);
+      impulse.y += strength * 0.5 * falloff;
+      if (obj.userData.velocity) {
+        obj.userData.velocity.add(impulse);
+      }
+      obj.userData.angularVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 6.0,
+        (Math.random() - 0.5) * 6.0,
+        (Math.random() - 0.5) * 6.0
+      );
+    }
+  }
+
+  showBanner(`💥 KINETIC BLAST: ${affected} BLOCKS DISPLACED`, '💥', 'pick');
+}
+
+/* ============================================================
+   CINEMATIC 4K PHOTO MODE (HOTKEY: P)
+   ============================================================ */
+let photoModeActive = false;
+
+function togglePhotoMode(forceState = null) {
+  initAudio();
+  photoModeActive = (typeof forceState === 'boolean') ? forceState : !photoModeActive;
+
+  const overlay = document.getElementById('photoModeOverlay');
+  if (overlay) overlay.classList.toggle('active', photoModeActive);
+
+  // Toggle studioBox visibility cleanly
+  const studioBox = document.getElementById('studioBox');
+  if (studioBox) {
+    studioBox.style.display = photoModeActive ? 'none' : 'block';
+  }
+  const telem = document.getElementById('gameTelemetryBar');
+  if (telem) telem.style.display = photoModeActive ? 'none' : 'flex';
+  const glyphs = document.getElementById('psGlyphGuide');
+  if (glyphs) glyphs.style.display = photoModeActive ? 'none' : 'flex';
+  const camWrap = document.getElementById('camWrap');
+  if (camWrap) camWrap.style.display = photoModeActive ? 'none' : (camViewerVisible ? 'block' : 'none');
+
+  if (photoModeActive) {
+    showBanner('📸 PHOTO MODE: CAPTURE PRISTINE 4K IMAGES', '📸', 'pick');
+    playTone(840, 0.12, 'sine', 0.16);
+  } else {
+    showBanner('PHOTO MODE EXITED', '🏛️', 'pick');
+    playTone(520, 0.08, 'sine', 0.12);
+  }
+}
+
+function captureScreenshot() {
+  initAudio();
+  playSnapSpark(0);
+  showBanner('📸 GENERATING 4K HIGH-RES RENDER…', '📸', 'pick');
+  setTimeout(() => {
+    try {
+      const dataUrl = renderer.domElement.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `VirtualPicker_PS5_${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      showBanner('📸 SCREENSHOT SAVED TO DOWNLOADS', '✅', 'pick');
+    } catch(e) {
+      console.warn("Screenshot capture error:", e);
+    }
+  }, 40);
+}
 
 /* ============================================================
    ARCHITECTURAL CONCRETE BLOCK ENGINE & MATERIAL FACTORY
@@ -1537,6 +2498,7 @@ function createConcreteBlock(type = 'cast_grey', initPos = new THREE.Vector3(0, 
     halfZ: half,
     boundingRadius: half * 1.732,
     velocity: new THREE.Vector3(),
+    angularVel: new THREE.Vector3(),
     held: false,
     initPos: initPos.clone(),
     materials: mats,
@@ -1545,6 +2507,7 @@ function createConcreteBlock(type = 'cast_grey', initPos = new THREE.Vector3(0, 
 
   scene.add(mesh);
   pickables.push(mesh);
+  unlockTrophy('first_block');
   updateBlockCountBadge();
   return mesh;
 }
@@ -1561,6 +2524,7 @@ function updateBlockCountBadge() {
   if (badge) {
     badge.textContent = `${pickables.length} Blocks`;
   }
+  updateGameTelemetry(0.016, performance.now());
 }
 
 // -------------------------------------------------------------
@@ -3197,6 +4161,75 @@ if (camToggleBtn) {
   });
 }
 
+// Ambient Audio Soundscape Toggle Button
+const ambientAudioBtn = document.getElementById('ambientAudioBtn');
+if (ambientAudioBtn) {
+  ambientAudioBtn.addEventListener('click', () => {
+    initAudio();
+    toggleAtmosphereAudio();
+  });
+}
+
+// Atmosphere Selection Grid Buttons
+const atmosButtons = document.querySelectorAll('.atmos-btn');
+atmosButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.getAttribute('data-atmos');
+    if (key) setAtmosphere(key);
+  });
+});
+
+// Kinetic Blast Button
+const kineticBlastBtn = document.getElementById('kineticBlastBtn');
+if (kineticBlastBtn) {
+  kineticBlastBtn.addEventListener('click', () => {
+    triggerKineticBlast();
+  });
+}
+
+// Cinematic Photo Mode Buttons
+const photoModeBtn = document.getElementById('photoModeBtn');
+const photoCaptureBtn = document.getElementById('photoCaptureBtn');
+const photoCloseBtn = document.getElementById('photoCloseBtn');
+const photoAtmosBtn = document.getElementById('photoAtmosBtn');
+const photoFovBtn = document.getElementById('photoFovBtn');
+
+if (photoModeBtn) {
+  photoModeBtn.addEventListener('click', () => {
+    togglePhotoMode(true);
+  });
+}
+if (photoCaptureBtn) {
+  photoCaptureBtn.addEventListener('click', () => {
+    captureScreenshot();
+  });
+}
+if (photoCloseBtn) {
+  photoCloseBtn.addEventListener('click', () => {
+    togglePhotoMode(false);
+  });
+}
+if (photoAtmosBtn) {
+  photoAtmosBtn.addEventListener('click', () => {
+    const keys = Object.keys(ATMOSPHERES);
+    const currIdx = keys.indexOf(currentAtmosphereKey);
+    const nextKey = keys[(currIdx + 1) % keys.length];
+    setAtmosphere(nextKey);
+  });
+}
+if (photoFovBtn) {
+  photoFovBtn.addEventListener('click', () => {
+    // Cycle between cinematic FOVs: 65mm (50°), 35mm (64°), 24mm (84°), 16mm (98°)
+    const fovs = [50, 64, 84, 98];
+    const curr = Math.round(currentFov);
+    const nextFov = fovs.find(f => f > curr + 2) || fovs[0];
+    currentFov = nextFov;
+    photoFovBtn.textContent = `🔍 ${nextFov}° Lens`;
+    showBanner(`PHOTO FOV: ${nextFov}° LENS`, '🔍', 'pick');
+    playTone(640, 0.08, 'sine', 0.14);
+  });
+}
+
 // Keyboard controls (Space toggles mode, T/O toggles overview, M cycles reach, F toggles zen, H toggles box, R resets, N spawns cube, C clones held)
 const keys = {};
 window.addEventListener('keydown', (e) => {
@@ -3231,6 +4264,24 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyL') {
     e.preventDefault();
     toggleLaserPointer();
+  } else if (e.code === 'KeyK') {
+    e.preventDefault();
+    triggerKineticBlast();
+  } else if (e.code === 'KeyP') {
+    e.preventDefault();
+    togglePhotoMode();
+  } else if (e.code === 'Digit1') {
+    e.preventDefault();
+    setAtmosphere('studio');
+  } else if (e.code === 'Digit2') {
+    e.preventDefault();
+    setAtmosphere('sunset');
+  } else if (e.code === 'Digit3') {
+    e.preventDefault();
+    setAtmosphere('cyberpunk');
+  } else if (e.code === 'Digit4') {
+    e.preventDefault();
+    setAtmosphere('brutalist');
   } else if (e.code === 'KeyZ' || e.code === 'Equal' || e.code === 'NumpadAdd') {
     e.preventDefault();
     adjustCameraZoom(-1); // Zoom in closer
@@ -3244,7 +4295,11 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     toggleStudioBox();
   } else if (e.code === 'Escape') {
-    toggleStudioBox(true);
+    if (photoModeActive) {
+      togglePhotoMode(false);
+    } else {
+      toggleStudioBox(true);
+    }
   } else if (e.code === 'KeyR') {
     resetWorldObjects();
   }
@@ -3315,6 +4370,13 @@ function updatePhysics(dt) {
     v.y -= GRAVITY * dt;
     obj.position.addScaledVector(v, dt);
 
+    // Dynamic angular tumbling when in flight
+    if (obj.userData.angularVel) {
+      obj.rotation.x += obj.userData.angularVel.x * dt;
+      obj.rotation.y += obj.userData.angularVel.y * dt;
+      obj.rotation.z += obj.userData.angularVel.z * dt;
+    }
+
     // 1. Studio Floor collision
     const halfY = obj.userData.halfY || (BLOCK_SIZE / 2);
     let effectiveFloor = FLOOR_Y + halfY;
@@ -3336,7 +4398,19 @@ function updatePhysics(dt) {
 
     // Resolve landing
     if (obj.position.y <= effectiveFloor) {
+      const impactSpeed = Math.abs(v.y);
       obj.position.y = effectiveFloor;
+
+      if (impactSpeed > 0.35) {
+        const pan = clamp(obj.position.x / 6.0, -1, 1);
+        playSubBassThud(impactSpeed, pan);
+        triggerCameraShake(Math.min(0.20, impactSpeed * 0.025));
+        spawnDustPuff(new THREE.Vector3(obj.position.x, effectiveFloor, obj.position.z), Math.min(24, Math.floor(impactSpeed * 5)), 0x94a3b8);
+        if (impactSpeed > 5.5) {
+          unlockTrophy('catapult');
+        }
+      }
+
       if (Math.abs(v.y) > 0.8) {
         v.y = -v.y * BOUNCE_DAMP;
       } else {
@@ -3344,6 +4418,14 @@ function updatePhysics(dt) {
       }
       v.x *= 0.75;
       v.z *= 0.75;
+
+      // Dampen angular velocity on ground contact
+      if (obj.userData.angularVel) {
+        obj.userData.angularVel.multiplyScalar(0.72);
+        if (obj.userData.angularVel.lengthSq() < 0.02) {
+          obj.userData.angularVel.set(0, 0, 0);
+        }
+      }
 
       // Physics sleep threshold: eliminates jitter in resting or stacked voxel cubes
       if (Math.abs(v.y) < 0.05) v.y = 0;
@@ -3379,13 +4461,27 @@ function releaseHeld(grab) {
     if (obj.userData && obj.userData.velocity) {
       obj.userData.velocity.set(0, 0, 0);
     }
+    if (obj.userData && obj.userData.angularVel) {
+      obj.userData.angularVel.set(0, 0, 0);
+    }
     playLegoSnapSound();
+    spawnSnapShockwave(snap.pos, 0x38bdf8, 2.0);
+    spawnDustPuff(snap.pos, 10, 0x38bdf8);
     snapped = true;
   }
 
   if (!snapped && obj.userData && obj.userData.velocity) {
     const throwScale = 0.65;
     obj.userData.velocity.copy(grab.pinchVelocity).multiplyScalar(throwScale);
+    const speed = obj.userData.velocity.length();
+    if (speed > 5.5) {
+      unlockTrophy('catapult');
+    }
+    obj.userData.angularVel = new THREE.Vector3(
+      (Math.random() - 0.5) * speed * 2.2,
+      (Math.random() - 0.5) * speed * 2.2,
+      (Math.random() - 0.5) * speed * 2.2
+    );
     playReleaseSound();
   }
 
@@ -4724,12 +5820,26 @@ window.addEventListener('pointerup', () => {
       if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
         mouseDragObj.userData.velocity.set(0, 0, 0);
       }
+      if (mouseDragObj.userData && mouseDragObj.userData.angularVel) {
+        mouseDragObj.userData.angularVel.set(0, 0, 0);
+      }
       playLegoSnapSound();
+      spawnSnapShockwave(snap.pos, 0x38bdf8, 2.0);
+      spawnDustPuff(snap.pos, 10, 0x38bdf8);
       snapped = true;
     }
 
     if (!snapped && mouseDragObj.userData && mouseDragObj.userData.velocity) {
       mouseDragObj.userData.velocity.copy(mouseVel).multiplyScalar(0.45);
+      const speed = mouseDragObj.userData.velocity.length();
+      if (speed > 5.5) {
+        unlockTrophy('catapult');
+      }
+      mouseDragObj.userData.angularVel = new THREE.Vector3(
+        (Math.random() - 0.5) * speed * 2.2,
+        (Math.random() - 0.5) * speed * 2.2,
+        (Math.random() - 0.5) * speed * 2.2
+      );
       playReleaseSound();
     }
     ghostSnapGuide.visible = false;
@@ -4940,6 +6050,27 @@ function animate() {
   }
 
   updatePhysics(dt);
+
+  // 3. Dynamic DualSense Camera Shake Impulse
+  if (cameraShake.intensity > 0.0005) {
+    const s = cameraShake.intensity;
+    cameraShake.offset.set(
+      (Math.random() - 0.5) * s * 0.35,
+      (Math.random() - 0.5) * s * 0.35,
+      (Math.random() - 0.5) * s * 0.35
+    );
+    camera.position.add(cameraShake.offset);
+    camera.rotation.x += (Math.random() - 0.5) * s * 0.04;
+    camera.rotation.y += (Math.random() - 0.5) * s * 0.04;
+    cameraShake.intensity *= Math.pow(0.12, dt * 5.0);
+  }
+
+  // 4. Update Next-Gen Particle Pool, Dust Puffs & Floating Motes
+  updateParticles(dt, now);
+
+  // 5. Update Real-Time Architectural Telemetry & Achievements
+  updateGameTelemetry(dt, now);
+
   renderer.render(scene, camera);
 }
 animate();
