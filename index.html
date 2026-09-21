@@ -811,7 +811,7 @@
           <button id="reachToggleBtn" type="button" class="tool-btn active" title="Cycle hand reach multiplier (Hotkey: M)">⚡ Reach: 2.5x</button>
           <button id="snapToggleBtn" type="button" class="tool-btn" title="Toggle metric grid snapping">📐 Concrete Snap: ON</button>
           <button id="blueprintBtn" type="button" class="tool-btn" title="Assemble Starter Pavilion structure">🏛️ Starter Pavilion</button>
-          <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset all concrete blocks to staging bays (Hotkey: R)">↺ Reset Blocks</button>
+          <button id="resetObjectsBtn" type="button" class="tool-btn" title="Reset and neatly organize all blocks to staging bays with zero tilt (Hotkey: R or C)">🧹 Clean & Organize</button>
           <button id="audioToggleBtn" type="button" class="tool-btn" title="Toggle sound effects">🔊 Sound: ON</button>
           <button id="fullscreenBtn" type="button" class="tool-btn" title="Toggle Fullscreen mode (Hotkey: F)">⛶ Fullscreen</button>
           <button id="camToggleBtn" type="button" class="tool-btn" title="Toggle camera preview box">📹 Webcam: ON</button>
@@ -1334,6 +1334,8 @@ const player = {
 camera.position.set(player.pos.x, player.pos.y + CAMERA_EYE_Y, player.pos.z);
 camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
 const smoothedCameraLookAt = new THREE.Vector3().copy(STUDIO_CAM_LOOK);
+let smoothedCamPitch = player.pitch || -0.16;
+let smoothedCamYaw = player.yaw || 0;
 
 // Soft Balanced Architectural Studio Lighting
 const ambientLight = new THREE.AmbientLight(0x94a3b8, 0.90);
@@ -3020,19 +3022,30 @@ function createVRBeam(defaultCoreColor, defaultGlowColor) {
     ringMat,
     dotMesh,
     dotMat,
+    smoothedOrigin: null,
+    smoothedTarget: null,
     update(origin, targetPoint, hitNormal, state, time) {
       group.visible = true;
       reticleGroup.visible = true;
 
-      // Position beam from origin looking at targetPoint
-      group.position.copy(origin);
-      group.lookAt(targetPoint);
-      const dist = Math.max(0.05, origin.distanceTo(targetPoint));
+      if (!this.smoothedOrigin) this.smoothedOrigin = origin.clone();
+      if (!this.smoothedTarget) this.smoothedTarget = targetPoint.clone();
+
+      // Fluid interpolation for buttery, non-twitchy laser guidance
+      const lerpOrigin = 0.35;
+      const lerpTarget = (state === 'LOCKED') ? 0.40 : 0.28;
+      this.smoothedOrigin.lerp(origin, lerpOrigin);
+      this.smoothedTarget.lerp(targetPoint, lerpTarget);
+
+      // Position beam from smoothedOrigin looking at smoothedTarget
+      group.position.copy(this.smoothedOrigin);
+      group.lookAt(this.smoothedTarget);
+      const dist = Math.max(0.05, this.smoothedOrigin.distanceTo(this.smoothedTarget));
       coreMesh.scale.set(1, 1, dist);
       glowMesh.scale.set(1, 1, dist);
 
-      // Position reticle at targetPoint
-      reticleGroup.position.copy(targetPoint);
+      // Position reticle at smoothedTarget
+      reticleGroup.position.copy(this.smoothedTarget);
       if (hitNormal) {
         reticleGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), hitNormal);
       } else {
@@ -3064,6 +3077,8 @@ function createVRBeam(defaultCoreColor, defaultGlowColor) {
     hide() {
       group.visible = false;
       reticleGroup.visible = false;
+      this.smoothedOrigin = null;
+      this.smoothedTarget = null;
     }
   };
 }
@@ -3343,6 +3358,24 @@ eyeCanvas.width = 64;
 eyeCanvas.height = 32;
 const eyeCtx = eyeCanvas.getContext('2d', { willReadFrequently: true });
 
+// Jitter Suppression & Smooth Deadband Utilities
+function adaptiveFilter(currentVal, targetVal, minAlpha = 0.08, maxAlpha = 0.38, threshold = 0.04) {
+  if (currentVal === null || currentVal === undefined || isNaN(currentVal)) return targetVal;
+  const delta = Math.abs(targetVal - currentVal);
+  const t = Math.min(1.0, delta / threshold);
+  const factor = t * t * (3 - 2 * t);
+  const alpha = minAlpha + (maxAlpha - minAlpha) * factor;
+  return currentVal + (targetVal - currentVal) * alpha;
+}
+
+function smoothDeadband(val, deadzone, ramp = 0.035) {
+  const abs = Math.abs(val);
+  if (abs <= deadzone) return 0;
+  const t = Math.min(1.0, (abs - deadzone) / ramp);
+  const factor = t * t * (3 - 2 * t);
+  return Math.sign(val) * (abs - deadzone) * factor;
+}
+
 function trackHeadAndEyes(dt = 0.016) {
   if (!camReady || !video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
   const now = performance.now();
@@ -3496,9 +3529,9 @@ function trackHeadAndEyes(dt = 0.016) {
 
   // 4. Update Head Tracking State
   if (detHeadX !== null) {
-    currentHead.x = detHeadX;
-    currentHead.y = detHeadY;
-    currentHead.size = detHeadSize;
+    currentHead.x = adaptiveFilter(currentHead.x, detHeadX, 0.06, 0.35, 0.05);
+    currentHead.y = adaptiveFilter(currentHead.y, detHeadY, 0.06, 0.35, 0.05);
+    currentHead.size = adaptiveFilter(currentHead.size, detHeadSize, 0.05, 0.30, 0.06);
     currentHead.confidence = headConf;
     headTrackingActive = true;
 
@@ -3528,14 +3561,10 @@ function trackHeadAndEyes(dt = 0.016) {
     let physY = (neutralHead.y - currentHead.y);
     let sizeRatio = (currentHead.size - neutralHead.size) / Math.max(0.06, neutralHead.size);
 
-    // Deadbands to eliminate seated breathing/tremor drift
-    const deadX = 0.022;
-    const deadY = 0.022;
-    const deadSize = 0.035;
-
-    physX = Math.abs(physX) < deadX ? 0 : (physX - Math.sign(physX) * deadX);
-    physY = Math.abs(physY) < deadY ? 0 : (physY - Math.sign(physY) * deadY);
-    sizeRatio = Math.abs(sizeRatio) < deadSize ? 0 : (sizeRatio - Math.sign(sizeRatio) * deadSize);
+    // Continuous smooth deadbands eliminate seated breathing/tremor drift
+    physX = smoothDeadband(physX, 0.024, 0.040);
+    physY = smoothDeadband(physY, 0.024, 0.040);
+    sizeRatio = smoothDeadband(sizeRatio, 0.035, 0.055);
 
     // When the user rotates their head to look left/right, attenuate depth ratio so yaw never causes false forward translation
     const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
@@ -3552,9 +3581,9 @@ function trackHeadAndEyes(dt = 0.016) {
     headLocalOffset.lateral = clamp(physX * lateralGain, -0.35, 0.35);
     headLocalOffset.vertical = clamp(physY * verticalGain, -0.30, 0.30);
 
-    headSmoothedLocalOffset.forward += (headLocalOffset.forward - headSmoothedLocalOffset.forward) * 0.16;
-    headSmoothedLocalOffset.lateral += (headLocalOffset.lateral - headSmoothedLocalOffset.lateral) * 0.16;
-    headSmoothedLocalOffset.vertical += (headLocalOffset.vertical - headSmoothedLocalOffset.vertical) * 0.16;
+    headSmoothedLocalOffset.forward += (headLocalOffset.forward - headSmoothedLocalOffset.forward) * 0.12;
+    headSmoothedLocalOffset.lateral += (headLocalOffset.lateral - headSmoothedLocalOffset.lateral) * 0.12;
+    headSmoothedLocalOffset.vertical += (headLocalOffset.vertical - headSmoothedLocalOffset.vertical) * 0.12;
 
     const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
     const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
@@ -3575,8 +3604,8 @@ function trackHeadAndEyes(dt = 0.016) {
 
   // 5. Update Eye Tracking / Gaze State
   if (detGazeX !== null && detGazeY !== null) {
-    currentGaze.x = detGazeX;
-    currentGaze.y = detGazeY;
+    currentGaze.x = adaptiveFilter(currentGaze.x, detGazeX, 0.06, 0.32, 0.08);
+    currentGaze.y = adaptiveFilter(currentGaze.y, detGazeY, 0.06, 0.32, 0.08);
     currentGaze.confidence = gazeConf;
     currentGaze.leftEye = leftEyePt || currentGaze.leftEye || { x: currentHead.x + 0.05, y: currentHead.y - 0.03 };
     currentGaze.rightEye = rightEyePt || currentGaze.rightEye || { x: currentHead.x - 0.05, y: currentHead.y - 0.03 };
@@ -3607,7 +3636,7 @@ function trackHeadAndEyes(dt = 0.016) {
 
     // Dual-speed filtering: ultra-stable at rest, dynamic zero-lag on active glances
     const diffMag = Math.hypot(rawDiffX - smoothedEyeGaze.x, rawDiffY - smoothedEyeGaze.y);
-    const alpha = diffMag > 0.08 ? 0.32 : 0.18;
+    const alpha = diffMag > 0.08 ? 0.28 : 0.14;
     smoothedEyeGaze.x += (rawDiffX - smoothedEyeGaze.x) * alpha;
     smoothedEyeGaze.y += (rawDiffY - smoothedEyeGaze.y) * alpha;
 
@@ -3633,26 +3662,26 @@ function trackHeadAndEyes(dt = 0.016) {
     else currentGaze.direction = 'CENTER';
 
     // Jitter Deadband: zero-shake when user looks straight forward at the screen
-    const deadband = 0.038;
+    const deadband = 0.045;
     let targetYaw = 0;
     let targetPitch = 0;
 
     if (gazeMag > deadband) {
-      const normFactor = (gazeMag - deadband) / (1.0 - deadband);
-      // Gentle non-linear response: small glances are rock-stable; wide glances rotate up to ~55° yaw, ~36° pitch
-      const curvedMag = Math.min(1.35, Math.pow(normFactor, 1.2));
-      const effGazeX = (smoothedEyeGaze.x / gazeMag) * curvedMag;
-      const effGazeY = (smoothedEyeGaze.y / gazeMag) * curvedMag;
+      const t = Math.min(1.0, (gazeMag - deadband) / 0.16);
+      const curved = t * t * (3 - 2 * t);
+      const effDist = (gazeMag - deadband) * curved * 1.15;
+      const dirX = smoothedEyeGaze.x / gazeMag;
+      const dirY = smoothedEyeGaze.y / gazeMag;
 
-      const maxGlanceYaw = 0.96;   // ~55 degrees natural glance
-      const maxGlancePitch = 0.62; // ~36 degrees natural vertical tilt
-      targetYaw = THREE.MathUtils.clamp(effGazeX * maxGlanceYaw, -maxGlanceYaw, maxGlanceYaw);
-      targetPitch = THREE.MathUtils.clamp(effGazeY * maxGlancePitch, -maxGlancePitch, maxGlancePitch);
+      const maxGlanceYaw = 0.88;   // ~50 degrees comfortable glance
+      const maxGlancePitch = 0.55; // ~31 degrees comfortable vertical glance
+      targetYaw = THREE.MathUtils.clamp(dirX * effDist * maxGlanceYaw, -maxGlanceYaw, maxGlanceYaw);
+      targetPitch = THREE.MathUtils.clamp(dirY * effDist * maxGlancePitch, -maxGlancePitch, maxGlancePitch);
     }
 
     // Butter-smooth interpolation towards target glance angles (drift-free, zero continuous spin!)
-    eyeLookOffset.yaw += (targetYaw - eyeLookOffset.yaw) * 0.25;
-    eyeLookOffset.pitch += (targetPitch - eyeLookOffset.pitch) * 0.25;
+    eyeLookOffset.yaw += (targetYaw - eyeLookOffset.yaw) * 0.14;
+    eyeLookOffset.pitch += (targetPitch - eyeLookOffset.pitch) * 0.14;
 
     // Update Minimalist Floating Focus Indicator on screen
     if (gazeFocalPoint) {
@@ -4300,7 +4329,8 @@ window.addEventListener('keydown', (e) => {
     } else {
       toggleStudioBox(true);
     }
-  } else if (e.code === 'KeyR') {
+  } else if (e.code === 'KeyR' || e.code === 'KeyC') {
+    e.preventDefault();
     resetWorldObjects();
   }
 });
@@ -4421,16 +4451,37 @@ function updatePhysics(dt) {
 
       // Dampen angular velocity on ground contact
       if (obj.userData.angularVel) {
-        obj.userData.angularVel.multiplyScalar(0.72);
-        if (obj.userData.angularVel.lengthSq() < 0.02) {
+        obj.userData.angularVel.multiplyScalar(0.48);
+        if (obj.userData.angularVel.lengthSq() < 0.04) {
           obj.userData.angularVel.set(0, 0, 0);
         }
+      }
+
+      // Smoothly upright block so pitch and roll snap to 0 and yaw aligns to grid!
+      const nearestYaw = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
+      const horizSpeed = Math.hypot(v.x, v.z);
+      if (horizSpeed < 1.2 && (!obj.userData.angularVel || obj.userData.angularVel.lengthSq() < 0.08)) {
+        obj.rotation.x += (0 - obj.rotation.x) * 0.25;
+        obj.rotation.z += (0 - obj.rotation.z) * 0.25;
+        obj.rotation.y += (nearestYaw - obj.rotation.y) * 0.20;
+
+        if (Math.abs(obj.rotation.x) < 0.008) obj.rotation.x = 0;
+        if (Math.abs(obj.rotation.z) < 0.008) obj.rotation.z = 0;
+        if (Math.abs(obj.rotation.y - nearestYaw) < 0.008) obj.rotation.y = nearestYaw;
       }
 
       // Physics sleep threshold: eliminates jitter in resting or stacked voxel cubes
       if (Math.abs(v.y) < 0.05) v.y = 0;
       if (Math.abs(v.x) < 0.02) v.x = 0;
       if (Math.abs(v.z) < 0.02) v.z = 0;
+
+      if (v.lengthSq() === 0) {
+        obj.rotation.x = 0;
+        obj.rotation.z = 0;
+        obj.rotation.y = nearestYaw;
+        obj.position.y = effectiveFloor;
+        if (obj.userData.angularVel) obj.userData.angularVel.set(0, 0, 0);
+      }
     }
 
     // Boundary bounce within vast 80m world
@@ -4457,7 +4508,7 @@ function releaseHeld(grab) {
   const snap = calculateSnapTarget(obj);
   if (snap && snapToLegoGrid) {
     obj.position.copy(snap.pos);
-    obj.rotation.y = snap.rotY;
+    obj.rotation.set(0, snap.rotY, 0);
     if (obj.userData && obj.userData.velocity) {
       obj.userData.velocity.set(0, 0, 0);
     }
@@ -5816,7 +5867,7 @@ window.addEventListener('pointerup', () => {
     const snap = calculateSnapTarget(mouseDragObj);
     if (snap && snapToLegoGrid) {
       mouseDragObj.position.copy(snap.pos);
-      mouseDragObj.rotation.y = snap.rotY;
+      mouseDragObj.rotation.set(0, snap.rotY, 0);
       if (mouseDragObj.userData && mouseDragObj.userData.velocity) {
         mouseDragObj.userData.velocity.set(0, 0, 0);
       }
@@ -6008,16 +6059,16 @@ function animate() {
     }
 
     if (Math.abs(camera.fov - currentFov) > 0.05) {
-      camera.fov += (currentFov - camera.fov) * 0.16;
+      camera.fov += (currentFov - camera.fov) * 0.12;
       camera.updateProjectionMatrix();
     }
-    camera.position.lerp(TABLE_CAM_POS, 0.18);
-    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.18);
+    camera.position.lerp(TABLE_CAM_POS, 0.12);
+    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.12);
     camera.lookAt(smoothedCameraLookAt);
   } else {
     // In-Situ First-Person Perspective: Always remains directly at the player's walking position + Head Tracking offset!
     if (Math.abs(camera.fov - currentFov) > 0.05) {
-      camera.fov += (currentFov - camera.fov) * 0.16;
+      camera.fov += (currentFov - camera.fov) * 0.12;
       camera.updateProjectionMatrix();
     }
     const targetEyePos = new THREE.Vector3(
@@ -6025,12 +6076,14 @@ function animate() {
       player.pos.y + CAMERA_EYE_Y + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.y : 0),
       player.pos.z + (headTrackingEnabled && headTrackingActive ? headSmoothedOffset.z : 0)
     );
-    camera.position.lerp(targetEyePos, 0.35);
+    camera.position.lerp(targetEyePos, 0.14);
 
-    // Apply eye gaze rotational look-around (up/down/left/right) to first-person view
-    const effectivePitch = clamp((player.pitch || -0.16) + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.pitch : 0), -1.15, 1.15);
-    const effectiveYaw = player.yaw + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.yaw : 0);
-    camera.rotation.set(effectivePitch, effectiveYaw, 0, 'YXZ');
+    // Apply eye gaze rotational look-around (up/down/left/right) with smooth cinematic damping
+    const targetPitch = clamp((player.pitch || -0.16) + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.pitch : 0), -1.15, 1.15);
+    const targetYaw = player.yaw + (eyeTrackingEnabled && eyeTrackingActive ? eyeLookOffset.yaw : 0);
+    smoothedCamPitch += (targetPitch - smoothedCamPitch) * 0.14;
+    smoothedCamYaw += (targetYaw - smoothedCamYaw) * 0.14;
+    camera.rotation.set(smoothedCamPitch, smoothedCamYaw, 0, 'YXZ');
   }
   camera.updateMatrixWorld(true);
 
