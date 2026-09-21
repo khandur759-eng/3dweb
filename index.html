@@ -642,9 +642,9 @@
         <!-- Guidance instructions card -->
         <div id="hudContent">
           <b id="hudTitle">VR Set Spatial Experience:</b><br/>
-          • <b>👁️ Eye Tracking (Look Around):</b> Move your eyes up, down, left, or right to angle your sightline effortlessly! Looking toward screen edges continuously pans your view in full 360°.<br/>
-          • <b>👤 6-DOF Head Tracking (Proximity):</b> Lean physically closer to camera to zoom forward into structures and inspect masonry up close; lean back to retreat; peek sideways to parallax around pillars.<br/>
-          • <b>🔦 3D Laser Manipulation:</b> Grab and move objects in full 3D (X, Y, and depth Z)! Push your hand forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">E</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Q</kbd> / mouse wheel.<br/>
+          • <b>🧭 Face Look Tracking (Look Around):</b> Turn your face up, down, left, or right to look around naturally with zero camera drift (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">G</kbd> | Recenter: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Y</kbd>).<br/>
+          • <b>👤 6-DOF Head Tracking (Proximity):</b> Lean physically closer to camera to zoom into masonry and inspect concrete textures up close; peek sideways to parallax around pillars (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">T</kbd>).<br/>
+          • <b>🔦 3D Laser Manipulation:</b> Grab and move objects in full 3D (X, Y, and depth Z)! Push your hand forward or pull back, or use <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">E</kbd> / <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">Q</kbd> / mouse wheel (Hotkey: <kbd style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">L</kbd>).<br/>
           • <b>🖐️ Dual Builder Reach:</b> Grab, stack, and align modular concrete blocks simultaneously with both hands.<br/>
           • <b>📐 36m Construction Site:</b> 0.5m modular concrete masonry grid with dynamic face and surface snapping.
         </div>
@@ -2344,6 +2344,10 @@ const currentHead = {
 const headRawOffset = new THREE.Vector3();
 const headSmoothedOffset = new THREE.Vector3();
 
+// Decoupled metric physical head offsets (in camera local frame: forward/back, left/right, up/down)
+const headLocalOffset = { forward: 0, lateral: 0, vertical: 0 };
+const headSmoothedLocalOffset = { forward: 0, lateral: 0, vertical: 0 };
+
 // Eye Tracking / Gaze Neutral Reference & Look Offsets
 const neutralGaze = {
   x: 0,
@@ -2398,7 +2402,7 @@ function trackHeadAndEyes(dt = 0.016) {
         const lm = res.faceLandmarks[0];
         // Key Facial Structure Points:
         // 234: left cheek / ear tragus, 454: right cheek / ear tragus
-        // 10: forehead center, 152: chin center, 1: nose tip
+        // 10: forehead top center, 152: chin center, 1: nose tip, 168: glabella bridge
         const earLeftX = lm[234].x, earLeftY = lm[234].y;
         const earRightX = lm[454].x, earRightY = lm[454].y;
         const foreY = lm[10].y, chinY = lm[152].y;
@@ -2407,32 +2411,45 @@ function trackHeadAndEyes(dt = 0.016) {
         const midEarX = (earLeftX + earRightX) * 0.5;
         const midEarY = (earLeftY + earRightY) * 0.5;
         const midFaceY = (foreY + chinY) * 0.5;
+        const glabellaX = lm[168] ? lm[168].x : midEarX;
+        const glabellaY = lm[168] ? lm[168].y : midFaceY;
 
         const faceWidth = Math.max(0.08, Math.abs(earRightX - earLeftX));
+        // Vertical face height is geometrically invariant when rotating head left and right
         const faceHeight = Math.max(0.10, Math.abs(chinY - foreY));
 
-        detHeadX = midEarX;
-        detHeadY = midFaceY;
-        detHeadSize = Math.max(faceWidth * 1.5, faceHeight);
+        // Use glabella bridge to prevent head translation offset when rotating around neck axis
+        detHeadX = glabellaX;
+        detHeadY = glabellaY;
+        // Invariant head physical size (meters depth estimation)
+        detHeadSize = faceHeight * 1.25;
         headConf = 0.99;
 
         leftEyePt = { x: lm[33].x, y: lm[159].y };
         rightEyePt = { x: lm[263].x, y: lm[386].y };
 
-        // 3D Face Angle (Head Pose Yaw & Pitch):
-        // In mirrored selfie video:
-        // Turning face to your LEFT moves the nose towards the left side of your body (increasing noseX relative to midEarX) -> positive yaw (turns camera left)
-        // Turning face to your RIGHT moves the nose towards the right side of your body (decreasing noseX relative to midEarX) -> negative yaw (turns camera right)
-        const rawFaceYaw = (noseX - midEarX) / (faceWidth * 0.38);
+        // 3D Head Pose Yaw & Pitch:
+        // 1. Planar nose displacement relative to ear midpoint
+        const xYaw = (noseX - midEarX) / (faceWidth * 0.36);
+        // 2. 3D landmark depth disparity between left and right temples/ears
+        let zYaw = 0;
+        if (lm[234].z !== undefined && lm[454].z !== undefined) {
+          zYaw = (lm[234].z - lm[454].z) * 3.6;
+        }
+        const rawFaceYaw = zYaw !== 0 ? (xYaw * 0.65 + zYaw * 0.35) : xYaw;
 
-        // Tilting face UP moves nose and chin upward relative to face center -> positive pitch (tilts camera up)
-        // Tilting face DOWN moves nose and chin downward -> negative pitch (tilts camera down)
+        // Pitch from vertical nose displacement & 3D tilt disparity (forehead vs chin depth)
         const baselineNoseY = faceHeight * 0.04;
-        const rawFacePitch = ((midFaceY - noseY) - baselineNoseY) / (faceHeight * 0.34);
+        const yPitch = ((midFaceY - noseY) - baselineNoseY) / (faceHeight * 0.32);
+        let zPitch = 0;
+        if (lm[10].z !== undefined && lm[152].z !== undefined) {
+          zPitch = (lm[10].z - lm[152].z) * 3.2;
+        }
+        const rawFacePitch = zPitch !== 0 ? (yPitch * 0.70 + zPitch * 0.30) : yPitch;
 
         detGazeX = clamp(rawFaceYaw, -1.8, 1.8);
         detGazeY = clamp(rawFacePitch, -1.8, 1.8);
-        gazeConf = 0.98;
+        gazeConf = 0.99;
       }
     } catch (e) {}
   }
@@ -2541,31 +2558,55 @@ function trackHeadAndEyes(dt = 0.016) {
     if (currentHead.confidence < 0.2) headTrackingActive = false;
   }
 
-  // Calculate 6-DOF Physical Head World Offset (Meters in 3D Scene)
+  // Calculate 6-DOF Physical Head Local Offsets (Meters in camera local space)
   if (headTrackingEnabled && headTrackingActive && neutralHead.initialized) {
-    // In mirrored webcam: user leans right -> face moves left in video (detHeadX < neutralHead.x)
-    const physX = (neutralHead.x - currentHead.x);
-    // User stands up / raises head -> face moves up in video (detHeadY < neutralHead.y)
-    const physY = (neutralHead.y - currentHead.y);
-    // User moves closer to camera -> face size increases
-    const sizeRatio = (currentHead.size - neutralHead.size) / Math.max(0.06, neutralHead.size);
+    let physX = (neutralHead.x - currentHead.x);
+    let physY = (neutralHead.y - currentHead.y);
+    let sizeRatio = (currentHead.size - neutralHead.size) / Math.max(0.06, neutralHead.size);
+
+    // Deadbands to eliminate seated breathing/tremor drift
+    const deadX = 0.022;
+    const deadY = 0.022;
+    const deadSize = 0.035;
+
+    physX = Math.abs(physX) < deadX ? 0 : (physX - Math.sign(physX) * deadX);
+    physY = Math.abs(physY) < deadY ? 0 : (physY - Math.sign(physY) * deadY);
+    sizeRatio = Math.abs(sizeRatio) < deadSize ? 0 : (sizeRatio - Math.sign(sizeRatio) * deadSize);
+
+    // When the user rotates their head to look left/right, attenuate depth ratio so yaw never causes false forward translation
+    const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
+    if (gazeMag > 0.10) {
+      sizeRatio *= clamp(1.0 - (gazeMag - 0.10) * 2.2, 0.15, 1.0);
+    }
+
+    // Comfortable, realistic parallax gains (max ~0.35m approach, ~0.25m lateral peek, ~0.20m posture)
+    const forwardGain = 0.90;
+    const lateralGain = 0.65;
+    const verticalGain = 0.50;
+
+    headLocalOffset.forward = clamp(sizeRatio * forwardGain, -0.45, 0.55);
+    headLocalOffset.lateral = clamp(physX * lateralGain, -0.35, 0.35);
+    headLocalOffset.vertical = clamp(physY * verticalGain, -0.30, 0.30);
+
+    headSmoothedLocalOffset.forward += (headLocalOffset.forward - headSmoothedLocalOffset.forward) * 0.16;
+    headSmoothedLocalOffset.lateral += (headLocalOffset.lateral - headSmoothedLocalOffset.lateral) * 0.16;
+    headSmoothedLocalOffset.vertical += (headLocalOffset.vertical - headSmoothedLocalOffset.vertical) * 0.16;
 
     const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
     const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const up = new THREE.Vector3(0, 1, 0);
 
-    const forwardGain = 4.4; // up to ~4.5m forward approach
-    const lateralGain = 3.6; // up to ~3.6m lateral peek
-    const verticalGain = 2.2; // up to ~2.2m vertical reach
-
     headRawOffset.set(0, 0, 0)
-      .addScaledVector(fwd, sizeRatio * forwardGain)
-      .addScaledVector(right, physX * lateralGain)
-      .addScaledVector(up, physY * verticalGain);
+      .addScaledVector(fwd, headSmoothedLocalOffset.forward)
+      .addScaledVector(right, headSmoothedLocalOffset.lateral)
+      .addScaledVector(up, headSmoothedLocalOffset.vertical);
 
-    headSmoothedOffset.lerp(headRawOffset, 0.14);
+    headSmoothedOffset.copy(headRawOffset);
   } else {
-    headSmoothedOffset.lerp(new THREE.Vector3(0, 0, 0), 0.10);
+    headSmoothedLocalOffset.forward *= 0.85;
+    headSmoothedLocalOffset.lateral *= 0.85;
+    headSmoothedLocalOffset.vertical *= 0.85;
+    headSmoothedOffset.lerp(new THREE.Vector3(0, 0, 0), 0.12);
   }
 
   // 5. Update Eye Tracking / Gaze State
@@ -2595,84 +2636,79 @@ function trackHeadAndEyes(dt = 0.016) {
     if (currentGaze.confidence < 0.2) eyeTrackingActive = false;
   }
 
-  // Calculate Spatial Gaze Look-Around Offsets & Panoramic Panning
+  // Calculate Spatial Gaze Look-Around Offsets (Natural Head Glance)
   if (eyeTrackingEnabled && eyeTrackingActive && neutralGaze.initialized) {
     const rawDiffX = currentGaze.x - neutralGaze.x;
     const rawDiffY = currentGaze.y - neutralGaze.y;
 
-    // Smooth filtering for steady, natural face look-around
-    smoothedEyeGaze.x = smoothedEyeGaze.x * 0.82 + rawDiffX * 0.18;
-    smoothedEyeGaze.y = smoothedEyeGaze.y * 0.82 + rawDiffY * 0.18;
+    // Dual-speed filtering: ultra-stable at rest, dynamic zero-lag on active glances
+    const diffMag = Math.hypot(rawDiffX - smoothedEyeGaze.x, rawDiffY - smoothedEyeGaze.y);
+    const alpha = diffMag > 0.08 ? 0.32 : 0.18;
+    smoothedEyeGaze.x += (rawDiffX - smoothedEyeGaze.x) * alpha;
+    smoothedEyeGaze.y += (rawDiffY - smoothedEyeGaze.y) * alpha;
+
+    // Slow neutral baseline drift-compensation when user is resting and looking forward
+    const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
+    if (gazeMag < 0.06) {
+      neutralGaze.x += (currentGaze.x - neutralGaze.x) * 0.002;
+      neutralGaze.y += (currentGaze.y - neutralGaze.y) * 0.002;
+    }
 
     // Classify Face Look Direction for HUD & Feedback
     let dirH = '';
-    if (smoothedEyeGaze.x > 0.14) dirH = 'LEFT';
-    else if (smoothedEyeGaze.x < -0.14) dirH = 'RIGHT';
+    if (smoothedEyeGaze.x > 0.09) dirH = 'LEFT';
+    else if (smoothedEyeGaze.x < -0.09) dirH = 'RIGHT';
 
     let dirV = '';
-    if (smoothedEyeGaze.y > 0.14) dirV = 'UP';
-    else if (smoothedEyeGaze.y < -0.14) dirV = 'DOWN';
+    if (smoothedEyeGaze.y > 0.09) dirV = 'UP';
+    else if (smoothedEyeGaze.y < -0.09) dirV = 'DOWN';
 
     if (dirV && dirH) currentGaze.direction = `${dirV}-${dirH}`;
     else if (dirH) currentGaze.direction = dirH;
     else if (dirV) currentGaze.direction = dirV;
     else currentGaze.direction = 'CENTER';
 
-    // Jitter Deadband: zero-shake when user looks straight forward
-    const deadband = 0.035;
-    const gazeMag = Math.hypot(smoothedEyeGaze.x, smoothedEyeGaze.y);
-    let effGazeX = 0;
-    let effGazeY = 0;
+    // Jitter Deadband: zero-shake when user looks straight forward at the screen
+    const deadband = 0.038;
+    let targetYaw = 0;
+    let targetPitch = 0;
+
     if (gazeMag > deadband) {
-      const factor = (gazeMag - deadband) / (1 - deadband);
-      effGazeX = (smoothedEyeGaze.x / gazeMag) * factor;
-      effGazeY = (smoothedEyeGaze.y / gazeMag) * factor;
+      const normFactor = (gazeMag - deadband) / (1.0 - deadband);
+      // Gentle non-linear response: small glances are rock-stable; wide glances rotate up to ~55° yaw, ~36° pitch
+      const curvedMag = Math.min(1.35, Math.pow(normFactor, 1.2));
+      const effGazeX = (smoothedEyeGaze.x / gazeMag) * curvedMag;
+      const effGazeY = (smoothedEyeGaze.y / gazeMag) * curvedMag;
+
+      const maxGlanceYaw = 0.96;   // ~55 degrees natural glance
+      const maxGlancePitch = 0.62; // ~36 degrees natural vertical tilt
+      targetYaw = THREE.MathUtils.clamp(effGazeX * maxGlanceYaw, -maxGlanceYaw, maxGlanceYaw);
+      targetPitch = THREE.MathUtils.clamp(effGazeY * maxGlancePitch, -maxGlancePitch, maxGlancePitch);
     }
 
-    // 1. Direct Glance Look-Angle from Face Angle:
-    // Face turned Left -> positive yaw (turns camera to the left)
-    // Face turned Right -> negative yaw (turns camera to the right)
-    // Face tilted Up -> positive pitch (tilts camera up)
-    // Face tilted Down -> negative pitch (tilts camera down)
-    const maxGlanceYaw = 0.76; // ~44 degrees natural look glance
-    const maxGlancePitch = 0.52; // ~30 degrees natural vertical tilt
-    eyeLookOffset.yaw = effGazeX * maxGlanceYaw;
-    eyeLookOffset.pitch = effGazeY * maxGlancePitch;
+    // Butter-smooth interpolation towards target glance angles (drift-free, zero continuous spin!)
+    eyeLookOffset.yaw += (targetYaw - eyeLookOffset.yaw) * 0.25;
+    eyeLookOffset.pitch += (targetPitch - eyeLookOffset.pitch) * 0.25;
 
-    // 2. Continuous Edge Panning (Full 360° panoramic navigation):
-    // Turning and holding face toward periphery smoothly rotates sightline
-    const panThreshold = 0.32;
-    if (Math.abs(smoothedEyeGaze.x) > panThreshold && dt > 0) {
-      const panSign = Math.sign(smoothedEyeGaze.x);
-      const panNorm = (Math.abs(smoothedEyeGaze.x) - panThreshold) / (1.0 - panThreshold);
-      player.yaw += panSign * panNorm * 1.85 * dt;
-    }
-    const tiltThreshold = 0.38;
-    if (Math.abs(smoothedEyeGaze.y) > tiltThreshold && dt > 0) {
-      const tiltSign = Math.sign(smoothedEyeGaze.y);
-      const tiltNorm = (Math.abs(smoothedEyeGaze.y) - tiltThreshold) / (1.0 - tiltThreshold);
-      player.pitch = clamp((player.pitch || -0.16) + tiltSign * tiltNorm * 0.95 * dt, -0.95, 0.95);
-    }
-
-    // 3. Update Minimalist Floating Focus Indicator
+    // Update Minimalist Floating Focus Indicator on screen
     if (gazeFocalPoint) {
-      const screenX = window.innerWidth * (0.5 + clamp(smoothedEyeGaze.x, -0.92, 0.92) * 0.44);
+      const screenX = window.innerWidth * (0.5 - clamp(smoothedEyeGaze.x, -0.92, 0.92) * 0.44);
       const screenY = window.innerHeight * (0.5 - clamp(smoothedEyeGaze.y, -0.92, 0.92) * 0.44);
       gazeFocalPoint.style.left = `${screenX}px`;
       gazeFocalPoint.style.top = `${screenY}px`;
-      gazeFocalPoint.style.opacity = gazeMag > deadband ? '0.75' : '0.25';
+      gazeFocalPoint.style.opacity = gazeMag > deadband ? '0.75' : '0.20';
       gazeFocalPoint.style.display = 'block';
     }
   } else {
-    eyeLookOffset.yaw *= 0.88;
-    eyeLookOffset.pitch *= 0.88;
+    eyeLookOffset.yaw *= 0.85;
+    eyeLookOffset.pitch *= 0.85;
     if (gazeFocalPoint) gazeFocalPoint.style.display = 'none';
   }
 }
 
 const trackHead = () => trackHeadAndEyes(0.016);
 
-function recenterHeadTracking() {
+function recenterHeadTracking(silent = false) {
   initAudio();
   if (currentHead.confidence > 0.25) {
     neutralHead.x = currentHead.x;
@@ -2680,19 +2716,29 @@ function recenterHeadTracking() {
     neutralHead.size = currentHead.size;
     neutralHead.initialized = true;
     neutralHead.sampleCount = 30;
+    headLocalOffset.forward = 0;
+    headLocalOffset.lateral = 0;
+    headLocalOffset.vertical = 0;
+    headSmoothedLocalOffset.forward = 0;
+    headSmoothedLocalOffset.lateral = 0;
+    headSmoothedLocalOffset.vertical = 0;
     headSmoothedOffset.set(0, 0, 0);
     headRawOffset.set(0, 0, 0);
-    showBanner('HEAD TRACKING RECENTERED (6-DOF ZEROED)', '👤', 'pick');
-    playTone(880, 0.12, 'sine', 0.16);
+    if (!silent) {
+      showBanner('HEAD TRACKING RECENTERED (6-DOF ZEROED)', '👤', 'pick');
+      playTone(880, 0.12, 'sine', 0.16);
+    }
   } else {
-    showBanner('LOOK AT CAMERA TO RECENTER HEAD', '👤', 'pick');
-    playTone(440, 0.1, 'sine', 0.12);
+    if (!silent) {
+      showBanner('LOOK AT CAMERA TO RECENTER HEAD', '👤', 'pick');
+      playTone(440, 0.1, 'sine', 0.12);
+    }
   }
 }
 
-function recenterEyeTracking() {
+function recenterEyeTracking(silent = false) {
   initAudio();
-  if (currentGaze.confidence > 0.25) {
+  if (currentGaze.confidence > 0.20) {
     neutralGaze.x = currentGaze.x;
     neutralGaze.y = currentGaze.y;
     neutralGaze.initialized = true;
@@ -2701,19 +2747,30 @@ function recenterEyeTracking() {
     smoothedEyeGaze.y = 0;
     eyeLookOffset.yaw = 0;
     eyeLookOffset.pitch = 0;
-    showBanner('FACE LOOK RECENTERED (ZEROED FORWARD SIGHTLINE)', '🧭', 'pick');
-    playTone(920, 0.12, 'triangle', 0.16);
+    if (!silent) {
+      showBanner('FACE LOOK RECENTERED (ZEROED FORWARD SIGHTLINE)', '🧭', 'pick');
+      playTone(920, 0.12, 'triangle', 0.16);
+    }
   } else {
-    showBanner('LOOK FORWARD AT SCREEN TO RECENTER SIGHTLINE', '🧭', 'pick');
-    playTone(480, 0.1, 'sine', 0.12);
+    neutralGaze.initialized = false;
+    neutralGaze.sampleCount = 0;
+    smoothedEyeGaze.x = 0;
+    smoothedEyeGaze.y = 0;
+    eyeLookOffset.yaw = 0;
+    eyeLookOffset.pitch = 0;
+    if (!silent) {
+      showBanner('LOOK FORWARD AT SCREEN TO RECENTER SIGHTLINE', '🧭', 'pick');
+      playTone(480, 0.1, 'sine', 0.12);
+    }
   }
 }
 
 function recenterHeadAndEyes() {
   initAudio();
-  recenterHeadTracking();
-  recenterEyeTracking();
-  showBanner('HEAD & FACE LOOK RECENTERED', '🎯', 'pick');
+  recenterHeadTracking(true);
+  recenterEyeTracking(true);
+  showBanner('HEAD & FACE LOOK RECENTERED (SIGHTLINE ZEROED)', '🎯', 'pick');
+  playTone(920, 0.14, 'triangle', 0.18);
 }
 
 function toggleHeadTracking() {
@@ -2941,6 +2998,13 @@ function toggleOverviewView() {
     playTone(580, 0.1, 'sine', 0.14);
   } else {
     viewMode = 'OVERVIEW';
+    const target = cameraRig.lookTarget || new THREE.Vector3(0, FLOOR_Y + 0.5, 1.4);
+    const relX = player.pos.x - target.x;
+    const relZ = player.pos.z - target.z;
+    if (Math.hypot(relX, relZ) > 0.8) {
+      cameraRig.orbitAngle = Math.atan2(relX, relZ);
+    }
+    smoothedCameraLookAt.copy(target);
     if (overviewBtn) {
       overviewBtn.textContent = '🏛️ In-Person Cam';
       overviewBtn.classList.add('active');
@@ -3024,10 +3088,8 @@ function adjustCameraZoom(delta) {
     showBanner(`OVERVIEW DISTANCE: ${cameraRig.orbitDistance.toFixed(1)}M`, '🔍', 'pick');
     playTone(delta < 0 ? 740 : 520, 0.08, 'sine', 0.12);
   } else {
-    // In in-situ mode, adjust FOV
-    currentFov = clamp(currentFov + delta * 8.0, 45, 105);
-    camera.fov = currentFov;
-    camera.updateProjectionMatrix();
+    // In in-situ mode, smoothly adjust FOV target
+    currentFov = clamp(currentFov + delta * 7.0, 48, 102);
     showBanner(`CAMERA FOV: ${Math.round(currentFov)}°`, '🔍', 'pick');
     playTone(delta < 0 ? 740 : 520, 0.08, 'sine', 0.12);
   }
@@ -3147,11 +3209,7 @@ window.addEventListener('keydown', (e) => {
     spawnBlockAtPlayer(selectedBlockType);
   } else if (e.code === 'KeyC') {
     e.preventDefault();
-    if (leftGrab.heldObject || rightGrab.heldObject || (typeof mouseDragObj !== 'undefined' && mouseDragObj)) {
-      cloneHeldBlock();
-    } else {
-      recenterHeadTracking();
-    }
+    cloneHeldBlock();
   } else if (e.code === 'KeyB') {
     e.preventDefault();
     spawnBatchSupply();
@@ -3161,7 +3219,7 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyT') {
     e.preventDefault();
     toggleHeadTracking();
-  } else if (e.code === 'KeyE') {
+  } else if (e.code === 'KeyG') {
     e.preventDefault();
     toggleEyeTracking();
   } else if (e.code === 'KeyO') {
@@ -4531,6 +4589,14 @@ async function attemptStart() {
   if (studioBox) studioBox.classList.add('show');
   if (camWrap) camWrap.classList.add('show');
   running = true;
+  neutralHead.initialized = false;
+  neutralHead.sampleCount = 0;
+  neutralGaze.initialized = false;
+  neutralGaze.sampleCount = 0;
+  smoothedEyeGaze.x = 0;
+  smoothedEyeGaze.y = 0;
+  eyeLookOffset.yaw = 0;
+  eyeLookOffset.pitch = 0;
   updateHUDForMode();
   if (!landmarkerReady) {
     showBanner('HAND TRACKING INITIALIZING IN BACKGROUND (MOUSE & KEYS READY)', 'ℹ️', 'pick');
@@ -4814,22 +4880,29 @@ function animate() {
     const camY = FLOOR_Y + cameraRig.cameraHeight;
     const camZ = target.z + Math.cos(cameraRig.orbitAngle) * cameraRig.orbitDistance;
     TABLE_CAM_POS.set(camX, camY, camZ);
+
     if (headTrackingEnabled && headTrackingActive) {
-      TABLE_CAM_POS.add(headSmoothedOffset);
+      // 6-DOF parallax relative to active overview camera vantage point:
+      const camDir = new THREE.Vector3().subVectors(target, TABLE_CAM_POS).normalize();
+      const camRight = new THREE.Vector3(Math.cos(cameraRig.orbitAngle), 0, -Math.sin(cameraRig.orbitAngle));
+      TABLE_CAM_POS.addScaledVector(camDir, headSmoothedLocalOffset.forward * 1.5);
+      TABLE_CAM_POS.addScaledVector(camRight, headSmoothedLocalOffset.lateral);
+      TABLE_CAM_POS.y += headSmoothedLocalOffset.vertical;
     }
+
     TABLE_CAM_LOOK.copy(target);
     if (eyeTrackingEnabled && eyeTrackingActive) {
       const right = new THREE.Vector3(Math.cos(cameraRig.orbitAngle), 0, -Math.sin(cameraRig.orbitAngle));
-      TABLE_CAM_LOOK.addScaledVector(right, -eyeLookOffset.yaw * 1.6);
-      TABLE_CAM_LOOK.y += eyeLookOffset.pitch * 1.2;
+      TABLE_CAM_LOOK.addScaledVector(right, -eyeLookOffset.yaw * 1.5);
+      TABLE_CAM_LOOK.y += eyeLookOffset.pitch * 1.1;
     }
 
     if (Math.abs(camera.fov - currentFov) > 0.05) {
       camera.fov += (currentFov - camera.fov) * 0.16;
       camera.updateProjectionMatrix();
     }
-    camera.position.lerp(TABLE_CAM_POS, 0.15);
-    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.15);
+    camera.position.lerp(TABLE_CAM_POS, 0.18);
+    smoothedCameraLookAt.lerp(TABLE_CAM_LOOK, 0.18);
     camera.lookAt(smoothedCameraLookAt);
   } else {
     // In-Situ First-Person Perspective: Always remains directly at the player's walking position + Head Tracking offset!
