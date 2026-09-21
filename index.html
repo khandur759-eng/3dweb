@@ -948,27 +948,56 @@ import * as THREE from "three";
 window.THREE = window.THREE || THREE;
 import { FilesetResolver, HandLandmarker, FaceDetector, FaceLandmarker } from "@mediapipe/tasks-vision";
 
-// Gracefully handle benign Emscripten WebAssembly streaming compile fallback warnings
+// Gracefully handle benign Emscripten WebAssembly & TensorFlow Lite informational messages
 const _origConsoleWarn = console.warn;
 const _origConsoleError = console.error;
+const _origConsoleInfo = console.info || console.log;
+
+function isBenignWasmOrTFLiteLog(msg) {
+  if (!msg) return false;
+  const str = typeof msg === 'string' ? msg : (msg.message || (msg.reason ? (msg.reason.message || String(msg.reason)) : String(msg)));
+  return (
+    str.includes('INFO: Created TensorFlow Lite') ||
+    str.includes('XNNPACK delegate') ||
+    str.includes('Created TensorFlow Lite XNNPACK') ||
+    str.includes('wasm streaming compile') ||
+    str.includes('falling back to ArrayBuffer') ||
+    str.includes('Response body loading was aborted') ||
+    (str.startsWith('INFO:') && str.includes('delegate'))
+  );
+}
+
 console.warn = (...args) => {
-  if (args[0] && typeof args[0] === 'string' && (args[0].includes('wasm streaming compile') || args[0].includes('falling back to ArrayBuffer'))) {
+  if (isBenignWasmOrTFLiteLog(args[0])) {
     return;
   }
   _origConsoleWarn.apply(console, args);
 };
+
 console.error = (...args) => {
-  if (args[0] && typeof args[0] === 'string' && (args[0].includes('wasm streaming compile') || args[0].includes('falling back to ArrayBuffer'))) {
+  if (isBenignWasmOrTFLiteLog(args[0])) {
+    // Route benign TensorFlow Lite / XNNPACK info logs to console.info so dev environment doesn't flag them as fatal app crashes
+    _origConsoleInfo.apply(console, ['[TFLite Info]', ...args]);
     return;
   }
   _origConsoleError.apply(console, args);
 };
 
-window.addEventListener('unhandledrejection', (e) => {
-  if (e?.reason && (String(e.reason).includes('wasm streaming compile') || String(e.reason).includes('Response body loading was aborted'))) {
+window.addEventListener('error', (e) => {
+  if (e && isBenignWasmOrTFLiteLog(e.message || e.error)) {
     e.preventDefault();
+    e.stopImmediatePropagation();
+    return true;
   }
-});
+}, true);
+
+window.addEventListener('unhandledrejection', (e) => {
+  if (e && isBenignWasmOrTFLiteLog(e.reason)) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return true;
+  }
+}, true);
 
 /* ============================================================
    PLAYSTATION 5 NEXT-GEN AUDIO SYNTHESIZER (Web Audio API)
