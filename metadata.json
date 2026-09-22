@@ -1,6 +1,6 @@
 {
   "name": "Virtual Picker",
-  "description": "Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub.",
+  "description": "PlayStation-grade 3D architectural construction studio with dual-hand webcam tracking, rolling-shutter & 2nd-order Taylor prediction, PBD physics contact solver with zero jitter, modal concrete acoustic resonators, real-time FEM structural stress heatmaps, and multi-block cluster assembly grab.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

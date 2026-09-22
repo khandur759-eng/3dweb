@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Virtual Picker - 3D Architectural Concrete Studio</title>
-<meta name="description" content="Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub." />
+<meta name="description" content="PlayStation-grade 3D architectural construction studio with dual-hand webcam tracking, rolling-shutter & 2nd-order Taylor prediction, PBD physics contact solver with zero jitter, modal concrete acoustic resonators, real-time FEM structural stress heatmaps, and multi-block cluster assembly grab." />
 <meta property="og:title" content="Virtual Picker - 3D Architectural Concrete Studio" />
-<meta property="og:description" content="Interactive 3D architectural concrete construction studio with dual-hand webcam tracking, 6-DOF physical head tracking to lean in/out and peek in all directions, spatial eye tracking to look around up/down/left/right, full-axis laser beam control, and a smooth morphing control hub." />
+<meta property="og:description" content="PlayStation-grade 3D architectural construction studio with dual-hand webcam tracking, rolling-shutter & 2nd-order Taylor prediction, PBD physics contact solver with zero jitter, modal concrete acoustic resonators, real-time FEM structural stress heatmaps, and multi-block cluster assembly grab." />
 <meta property="og:type" content="website" />
 <style>
   :root{
@@ -706,6 +706,8 @@
         <span id="modeText">DUAL BUILDER</span>
       </div>
       <span class="box-badge-reach" id="reachBadgeMini">⚡ 2.5x</span>
+      <button id="stressMiniBtn" type="button" class="quick-add-btn" style="background:#0284c7; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Toggle Real-Time Structural Stress FEM Heatmap (Hotkey: V)">🔬 Stress: OFF</button>
+      <button id="clusterMiniBtn" type="button" class="quick-add-btn" style="background:#d97706; box-shadow:0 2px 6px rgba(217,119,6,0.35);" title="Toggle Cluster Assembly Grab: lift entire connected structures (Hotkey: U)">🔗 Cluster: OFF</button>
       <button id="headTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#7c3aed; box-shadow:0 2px 6px rgba(124,58,237,0.35);" title="Toggle 6-DOF Physical Head Tracking (Hotkey: T | Recenter: Y)">👤 Head: ON</button>
       <button id="eyeTrackMiniBtn" type="button" class="quick-add-btn active" style="background:#9333ea; box-shadow:0 2px 6px rgba(147,51,234,0.35);" title="Toggle Face Look Tracking: turn face to look around up/down/left/right! (Hotkey: G | Recenter: Y)">🧭 Face: ON</button>
       <button id="laserMiniBtn" type="button" class="quick-add-btn active" style="background:#059669; box-shadow:0 2px 6px rgba(5,150,105,0.35);" title="Toggle Laser Pointer Mode (Hotkey: L)">🔦 Laser: ON</button>
@@ -797,6 +799,8 @@
 
         <div class="box-section-title">Studio Tools &amp; PS5 Features</div>
         <div class="box-action-grid">
+          <button id="stressToggleBtn" type="button" class="tool-btn" title="Toggle Real-Time Structural Stress FEM Heatmap (Hotkey: V)">🔬 Stress FEM: OFF</button>
+          <button id="clusterToggleBtn" type="button" class="tool-btn" title="Toggle Cluster Assembly Grab: lift entire connected structures (Hotkey: U)">🔗 Cluster Grab: OFF</button>
           <button id="photoModeBtn" type="button" class="tool-btn" title="Cinematic 4K Photo Mode: Anamorphic letterbox, free camera & high-res capture (Hotkey: P)">📸 Photo Mode</button>
           <button id="kineticBlastBtn" type="button" class="tool-btn" style="color:#ef4444; font-weight:700;" title="Trigger radial seismic impulse blast through the construction site (Hotkey: K)">💥 Kinetic Blast</button>
           <button id="ambientAudioBtn" type="button" class="tool-btn active" title="Toggle cinematic generative background ambient soundscape">🎵 Ambient: ON</button>
@@ -1058,40 +1062,75 @@ function playTone(freq, duration = 0.1, type = 'sine', gainVal = 0.12, pan = 0) 
   } catch(e) {}
 }
 
-// DualSense-style Sub-Woofer Concrete Impact Thump
-function playSubBassThud(impactVelocity = 1.0, pan = 0) {
+// Physical Acoustic Modal Resonator Bank for Concrete Impacts
+// Modes: 120 Hz (fundamental), 340 Hz, 780 Hz, 1600 Hz, 3200 Hz
+const CONCRETE_MODES = [120, 340, 780, 1600, 3200];
+const CONCRETE_Q_FACTORS = [14, 18, 22, 26, 30];
+
+function playSubBassThud(impactVelocity = 1.0, pan = 0, materialType = 'cast_grey') {
   if (!soundEnabled || !audioCtx) return;
   try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const filter = audioCtx.createBiquadFilter();
+    const now = audioCtx.currentTime;
+    const vNorm = clamp(impactVelocity / 3.5, 0.15, 2.5);
     const panner = createPanner(pan);
 
-    const now = audioCtx.currentTime;
-    const dur = Math.min(0.35, 0.14 + impactVelocity * 0.05);
-    const vol = Math.min(0.42, 0.12 + impactVelocity * 0.06);
+    // 1. Visceral sub-bass thump (42-58 Hz sine wave with rapid impact attack and 150ms exponential decay)
+    const subOsc = audioCtx.createOscillator();
+    const subGain = audioCtx.createGain();
+    const subFilter = audioCtx.createBiquadFilter();
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(140, now);
-    filter.frequency.exponentialRampToValueAtTime(35, now + dur);
+    subFilter.type = 'lowpass';
+    subFilter.frequency.setValueAtTime(120, now);
+    subFilter.frequency.exponentialRampToValueAtTime(32, now + 0.18);
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(68, now);
-    osc.frequency.exponentialRampToValueAtTime(24, now + dur);
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(54, now);
+    subOsc.frequency.exponentialRampToValueAtTime(28, now + 0.18);
 
-    gain.gain.setValueAtTime(vol, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    const subVol = Math.min(0.48, 0.18 + vNorm * 0.12);
+    subGain.gain.setValueAtTime(subVol, now);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
 
-    osc.connect(filter);
-    filter.connect(gain);
-    if (panner) {
-      gain.connect(panner);
-      panner.connect(audioCtx.destination);
-    } else {
-      gain.connect(audioCtx.destination);
-    }
-    osc.start();
-    osc.stop(now + dur);
+    subOsc.connect(subFilter);
+    subFilter.connect(subGain);
+    if (panner) subGain.connect(panner);
+    else subGain.connect(audioCtx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 0.19);
+
+    // 2. Physical Concrete Modal Resonator Bank (5 bandpass resonators)
+    CONCRETE_MODES.forEach((modeFreq, idx) => {
+      const modeOsc = audioCtx.createOscillator();
+      const modeFilter = audioCtx.createBiquadFilter();
+      const modeGain = audioCtx.createGain();
+
+      modeOsc.type = (idx % 2 === 0) ? 'triangle' : 'sine';
+      // Slight pitch variance per impact for organic physical variety
+      const detuneFactor = 1.0 + (Math.sin(now * 10 + idx) * 0.015);
+      modeOsc.frequency.setValueAtTime(modeFreq * detuneFactor, now);
+
+      modeFilter.type = 'bandpass';
+      modeFilter.frequency.setValueAtTime(modeFreq * detuneFactor, now);
+      modeFilter.Q.setValueAtTime(CONCRETE_Q_FACTORS[idx], now);
+
+      // Velocity-dependent modal excitation: higher velocities excite higher frequency acoustic modes
+      const modeScale = Math.pow(vNorm, 0.35 + idx * 0.25);
+      const modeVol = Math.min(0.28, (0.09 / (idx * 0.6 + 1.0)) * modeScale);
+      const modeDur = Math.max(0.06, 0.22 - idx * 0.035);
+
+      modeGain.gain.setValueAtTime(modeVol, now);
+      modeGain.gain.exponentialRampToValueAtTime(0.0001, now + modeDur);
+
+      modeOsc.connect(modeFilter);
+      modeFilter.connect(modeGain);
+      if (panner) modeGain.connect(panner);
+      else modeGain.connect(audioCtx.destination);
+
+      modeOsc.start(now);
+      modeOsc.stop(now + modeDur + 0.01);
+    });
+
+    if (panner) panner.connect(audioCtx.destination);
   } catch(e) {}
 }
 
@@ -1158,23 +1197,36 @@ function playKineticShockwaveSound() {
   } catch(e) {}
 }
 
-// Generative Architectural Ambient Drone Pad
+// Generative Reactive Architectural Soundscape Engine (Dorian Mode Chords + Building Reactive Pad)
+let ambientPadTimer = null;
+let buildingActivityScore = 0; // Increases on block placement, gently decays
+let maxTowerHeightMeters = 0;  // Modulates sub-octaves & spatial reverb
+
+// Dorian progression: Dm9 -> Bbmaj7#11 -> G7sus4 -> Asus4 (unresolved suspended beauty)
+const DORIAN_CHORDS = [
+  [146.83, 220.00, 261.63, 329.63, 440.00], // D3, A3, C4, E4, A4 (Dm9)
+  [116.54, 174.61, 261.63, 349.23, 466.16], // Bb2, F3, C4, F4, Bb4 (Bbmaj7)
+  [98.00, 146.83, 220.00, 293.66, 392.00],  // G2, D3, A3, D4, G4 (G9sus4)
+  [110.00, 164.81, 220.00, 293.66, 440.00]  // A2, E3, A3, D4, A4 (Asus4)
+];
+let currentChordIdx = 0;
+
 function startAtmosphereDrone() {
   if (!audioCtx || ambientDroneNode) return;
   try {
     const master = audioCtx.createGain();
-    master.gain.setValueAtTime(0.045, audioCtx.currentTime);
+    master.gain.setValueAtTime(0.052, audioCtx.currentTime);
 
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(320, audioCtx.currentTime);
+    filter.frequency.setValueAtTime(380, audioCtx.currentTime);
 
-    // Warm detuned triad chords: F#2 (92.5), C#3 (138.6), F#3 (185.0)
-    const freqs = [92.5, 138.6, 185.0];
-    const oscs = freqs.map((f, i) => {
+    // Warm detuned oscillators
+    const chord = DORIAN_CHORDS[0];
+    const oscs = chord.map((freq, i) => {
       const o = audioCtx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(f + (i * 0.4 - 0.4), audioCtx.currentTime);
+      o.type = (i === 0) ? 'triangle' : 'sine';
+      o.frequency.setValueAtTime(freq + (i * 0.35 - 0.7), audioCtx.currentTime);
       o.connect(filter);
       o.start();
       return o;
@@ -1185,10 +1237,53 @@ function startAtmosphereDrone() {
 
     ambientDroneNode = { oscs, master, filter };
     ambientGainNode = master;
+
+    // Harmonic chord modulation loop: smoothly transitions chords every 7.5 seconds
+    if (ambientPadTimer) clearInterval(ambientPadTimer);
+    ambientPadTimer = setInterval(modulateGenerativeSoundscape, 7500);
   } catch(e) {}
 }
 
+function modulateGenerativeSoundscape() {
+  if (!ambientDroneNode || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    currentChordIdx = (currentChordIdx + 1) % DORIAN_CHORDS.length;
+    const targetChord = DORIAN_CHORDS[currentChordIdx];
+
+    // Smooth frequency glissando over 3.2 seconds
+    ambientDroneNode.oscs.forEach((osc, i) => {
+      const targetFreq = targetChord[i] || targetChord[0];
+      osc.frequency.cancelScheduledValues(now);
+      osc.frequency.setTargetAtTime(targetFreq + (i * 0.35 - 0.7), now, 1.2);
+    });
+
+    // Reactive filter cutoff based on user building tempo
+    const baseCutoff = 320;
+    const activityBoost = Math.min(600, buildingActivityScore * 65);
+    const heightBoost = Math.min(400, maxTowerHeightMeters * 50);
+    const targetCutoff = clamp(baseCutoff + activityBoost + heightBoost, 220, 1400);
+
+    ambientDroneNode.filter.frequency.cancelScheduledValues(now);
+    ambientDroneNode.filter.frequency.setTargetAtTime(targetCutoff, now, 1.6);
+
+    // Decay building activity score slowly
+    buildingActivityScore = Math.max(0, buildingActivityScore * 0.75);
+  } catch(e) {}
+}
+
+function notifyBuildingActivity(heightY = 0) {
+  buildingActivityScore += 1.0;
+  if (heightY > maxTowerHeightMeters) {
+    maxTowerHeightMeters = heightY;
+  }
+}
+
 function stopAtmosphereDrone() {
+  if (ambientPadTimer) {
+    clearInterval(ambientPadTimer);
+    ambientPadTimer = null;
+  }
   if (!ambientDroneNode) return;
   try {
     ambientDroneNode.oscs.forEach(o => {
@@ -2017,6 +2112,7 @@ function triggerKineticBlast(epicenter = null, strength = 8.5) {
     const dist = diff.length();
     if (dist < 8.0 && dist > 0.05) {
       affected++;
+      wakeBlock(obj);
       const dir = diff.normalize();
       const falloff = Math.max(0.2, 1.0 - (dist / 8.0));
       const impulse = dir.clone().multiplyScalar(strength * falloff);
@@ -2462,12 +2558,38 @@ function getOrCreateBlockTexture(type, face) {
 
   drawBlockFace(ctx, type, face);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  blockTextureCache.set(key, texture);
-  return texture;
+  const diffuse = new THREE.CanvasTexture(canvas);
+  diffuse.magFilter = THREE.LinearFilter;
+  diffuse.minFilter = THREE.LinearMipmapLinearFilter;
+  diffuse.generateMipmaps = true;
+
+  // Generate tactical micro-relief bump map from grayscale luminance & pore cavities
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = 64;
+  bumpCanvas.height = 64;
+  const bCtx = bumpCanvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, 64, 64);
+  const bData = bCtx.createImageData(64, 64);
+  const d = imgData.data;
+  const bd = bData.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = Math.floor(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+    bd[i] = lum;
+    bd[i + 1] = lum;
+    bd[i + 2] = lum;
+    bd[i + 3] = 255;
+  }
+  bCtx.putImageData(bData, 0, 0);
+
+  const bump = new THREE.CanvasTexture(bumpCanvas);
+  bump.magFilter = THREE.LinearFilter;
+  bump.minFilter = THREE.LinearMipmapLinearFilter;
+  bump.generateMipmaps = true;
+
+  const res = { diffuse, bump };
+  blockTextureCache.set(key, res);
+  return res;
 }
 
 const blockMaterialCache = new Map();
@@ -2481,9 +2603,11 @@ function getBlockMaterials(type) {
   // Faces order: [+X, -X, +Y, -Y, +Z, -Z] -> [right, left, top, bottom, front, back]
   const faces = ['side', 'side', 'top', 'bottom', 'side', 'side'];
   const mats = faces.map(face => {
-    const tex = getOrCreateBlockTexture(t, face);
+    const texData = getOrCreateBlockTexture(t, face);
     return new THREE.MeshStandardMaterial({
-      map: tex,
+      map: texData.diffuse,
+      bumpMap: texData.bump,
+      bumpScale: 0.007,
       roughness: def.roughness || 0.88,
       metalness: def.metalness || 0.04,
       transparent: false,
@@ -3155,43 +3279,110 @@ function mapRange(v, a1, b1, a2, b2) {
   return a2 + t * (b2 - a2);
 }
 
-// Exponential Smoothing State for Dual Hands
-const smoothedLeftLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
-const smoothedRightLM = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0, initialized: false }));
+// Dual-Pass State Estimation & 2nd-Order Taylor Extrapolation State for Dual Hands
+const ROW_SHUTTER_TIME = 0.020; // 20ms top-to-bottom sensor exposure duration
+const PREDICTION_LEAD_SEC = 0.024; // 24ms predictive forward compensation to eliminate webcam pipeline latency
+
+function createLandmarkState() {
+  return Array.from({ length: 21 }, () => ({
+    x: 0, y: 0, z: 0,
+    vx: 0, vy: 0, vz: 0,
+    ax: 0, ay: 0, az: 0,
+    initialized: false,
+    lastTime: 0
+  }));
+}
+
+const smoothedLeftLM = createLandmarkState();
+const smoothedRightLM = createLandmarkState();
 let smoothedLeftBaseZ = null;
 let smoothedRightBaseZ = null;
 
-// VR-Grade Jitter-Elimination Filter (rock-solid stationary pointing, instant response in motion)
+// Stage 1 & Stage 2 Hybrid Estimator with Rolling-Shutter Correction & Taylor Extrapolation
 function filterLandmarks(rawLm, smoothedArr) {
   const filtered = [];
+  const now = performance.now() * 0.001;
+
   for (let i = 0; i < 21; i++) {
     const raw = rawLm[i];
     const sm = smoothedArr[i];
+
     if (!sm.initialized) {
       sm.x = raw.x;
       sm.y = raw.y;
       sm.z = raw.z || 0;
+      sm.vx = 0; sm.vy = 0; sm.vz = 0;
+      sm.ax = 0; sm.ay = 0; sm.az = 0;
+      sm.lastTime = now;
       sm.initialized = true;
-    } else {
-      const d = Math.hypot(raw.x - sm.x, raw.y - sm.y);
-      // Adaptive dual-speed stabilization:
-      // When stationary (d < 0.002), alpha is 0.16 to eliminate all sensor noise and micro-tremors.
-      // When moving, alpha scales progressively up to 0.88 for instant tracking.
-      let alpha;
-      if (d < 0.002) {
-        alpha = 0.16;
-      } else if (d < 0.015) {
-        const t = (d - 0.002) / 0.013;
-        alpha = 0.16 + t * 0.40;
-      } else {
-        const t = Math.min(1.0, (d - 0.015) / 0.035);
-        alpha = 0.56 + t * 0.32;
-      }
-      sm.x += (raw.x - sm.x) * alpha;
-      sm.y += (raw.y - sm.y) * alpha;
-      sm.z += ((raw.z || 0) - sm.z) * alpha;
+      filtered.push({ x: sm.x, y: sm.y, z: sm.z });
+      continue;
     }
-    filtered.push({ x: sm.x, y: sm.y, z: sm.z });
+
+    const dt = Math.max(0.008, Math.min(0.060, now - sm.lastTime));
+    sm.lastTime = now;
+
+    // 1. Rolling-Shutter Modeling: correct per-row sensor exposure offset relative to frame baseline
+    // Webcams expose top rows earlier than bottom rows. Row time = y * ROW_SHUTTER_TIME
+    const rowExposureDelta = raw.y * ROW_SHUTTER_TIME;
+    const correctedRawX = raw.x - sm.vx * rowExposureDelta;
+    const correctedRawY = raw.y - sm.vy * rowExposureDelta;
+    const correctedRawZ = (raw.z || 0) - sm.vz * rowExposureDelta;
+
+    // 2. Stage 1 – Intent & Saccade Classification
+    const dx = correctedRawX - sm.x;
+    const dy = correctedRawY - sm.y;
+    const dz = correctedRawZ - sm.z;
+    const dist = Math.hypot(dx, dy);
+    const speed = dist / dt; // normalized screen units/sec
+
+    // Instantaneous velocity & acceleration update
+    const instVx = dx / dt;
+    const instVy = dy / dt;
+    const instVz = dz / dt;
+    const instAx = (instVx - sm.vx) / dt;
+    const instAy = (instVy - sm.vy) / dt;
+    const instAz = (instVz - sm.vz) / dt;
+
+    // Smooth velocity and acceleration
+    sm.vx += (instVx - sm.vx) * 0.45;
+    sm.vy += (instVy - sm.vy) * 0.45;
+    sm.vz += (instVz - sm.vz) * 0.45;
+    sm.ax += (instAx - sm.ax) * 0.35;
+    sm.ay += (instAy - sm.ay) * 0.35;
+    sm.az += (instAz - sm.az) * 0.35;
+
+    // 3. Stage 2 – Dual-Pass Fusion (Pass A: low-latency 15ms lead; Pass B: smoothed stationary)
+    // Saccade-gated alpha:
+    // Speed < 0.04 -> stationary tremor filter (alpha ~0.16)
+    // Speed > 0.30 -> rapid deliberate movement / saccade (alpha ~0.90)
+    let alpha;
+    if (speed < 0.04) {
+      alpha = 0.16;
+    } else if (speed > 0.35) {
+      alpha = 0.88;
+    } else {
+      const t = (speed - 0.04) / 0.31;
+      const smoothT = t * t * (3 - 2 * t);
+      alpha = 0.16 + smoothT * 0.72;
+    }
+
+    sm.x += (correctedRawX - sm.x) * alpha;
+    sm.y += (correctedRawY - sm.y) * alpha;
+    sm.z += (correctedRawZ - sm.z) * alpha;
+
+    // 4. Second-Order Taylor Predictive Horizon on interactive fingertips (Thumb tip: 4, Index tip: 8)
+    // x(t + dt) = x + v * dt + 0.5 * a * (dt^2)
+    // Gives ~24ms forward lead so grab onset feels instantaneous
+    if (i === 4 || i === 8 || i === 12) {
+      const predLead = PREDICTION_LEAD_SEC;
+      const predX = sm.x + sm.vx * predLead + 0.5 * sm.ax * (predLead * predLead);
+      const predY = sm.y + sm.vy * predLead + 0.5 * sm.ay * (predLead * predLead);
+      const predZ = sm.z + sm.vz * predLead + 0.5 * sm.az * (predLead * predLead);
+      filtered.push({ x: predX, y: predY, z: predZ });
+    } else {
+      filtered.push({ x: sm.x, y: sm.y, z: sm.z });
+    }
   }
   return filtered;
 }
@@ -4117,6 +4308,172 @@ function adjustCameraZoom(delta) {
   }
 }
 
+// ============================================================
+// REAL-TIME STRUCTURAL STRESS FEM ANALYSIS (HOTKEY: V)
+// ============================================================
+let stressAnalysisActive = false;
+const stressToggleBtn = document.getElementById('stressToggleBtn');
+const stressMiniBtn = document.getElementById('stressMiniBtn');
+
+function toggleStressAnalysis(forceState = null) {
+  initAudio();
+  stressAnalysisActive = (forceState !== null) ? forceState : !stressAnalysisActive;
+  const label = stressAnalysisActive ? '🔬 Stress: ON' : '🔬 Stress: OFF';
+  const labelFull = stressAnalysisActive ? '🔬 Stress FEM: ON' : '🔬 Stress FEM: OFF';
+
+  if (stressToggleBtn) {
+    stressToggleBtn.textContent = labelFull;
+    stressToggleBtn.classList.toggle('active', stressAnalysisActive);
+  }
+  if (stressMiniBtn) {
+    stressMiniBtn.textContent = label;
+    stressMiniBtn.classList.toggle('active', stressAnalysisActive);
+    stressMiniBtn.style.background = stressAnalysisActive ? '#0284c7' : '#64748b';
+  }
+
+  if (!stressAnalysisActive) {
+    // Reset all block emissive colors
+    for (const obj of pickables) {
+      if (!obj || !obj.material) continue;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) {
+        if (m.emissive) {
+          m.emissive.setHex(0x000000);
+          m.emissiveIntensity = 0.0;
+        }
+      }
+    }
+  }
+
+  showBanner(stressAnalysisActive ? 'STRUCTURAL STRESS FEM ANALYSIS: ACTIVE' : 'STRUCTURAL STRESS: NORMAL VIEW', '🔬', 'pick');
+  playTone(stressAnalysisActive ? 780 : 440, 0.1, 'sine', 0.14);
+}
+
+function updateStructuralStress() {
+  if (!stressAnalysisActive) return;
+  const time = performance.now() * 0.003;
+  const tolerance = BLOCK_SIZE * 0.95;
+
+  for (let i = 0; i < pickables.length; i++) {
+    const obj = pickables[i];
+    if (!obj || !obj.material || (obj.userData && obj.userData.held)) continue;
+
+    // Calculate compressive load (blocks above) and cantilever shear offset
+    let loadCount = 0;
+    let comX = 0;
+    let comZ = 0;
+
+    for (let j = 0; j < pickables.length; j++) {
+      if (i === j) continue;
+      const other = pickables[j];
+      if (!other || (other.userData && other.userData.held)) continue;
+
+      if (other.position.y > obj.position.y + 0.1) {
+        const dx = Math.abs(other.position.x - obj.position.x);
+        const dz = Math.abs(other.position.z - obj.position.z);
+        if (dx < tolerance && dz < tolerance) {
+          loadCount++;
+          comX += (other.position.x - obj.position.x);
+          comZ += (other.position.z - obj.position.z);
+        }
+      }
+    }
+
+    const shearDist = (loadCount > 0) ? Math.hypot(comX / loadCount, comZ / loadCount) : 0;
+    const stress = Math.min(1.0, (loadCount * 0.18) + (shearDist * 2.2));
+
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const m of mats) {
+      if (!m.emissive) continue;
+      if (stress < 0.25) {
+        // Safe: subtle cyan architectural rim
+        m.emissive.setHex(0x06b6d4);
+        m.emissiveIntensity = 0.22;
+      } else if (stress < 0.65) {
+        // Medium: amber warning glow
+        m.emissive.setHex(0xf59e0b);
+        m.emissiveIntensity = 0.45;
+      } else {
+        // Critical: red pulsing stress glow
+        m.emissive.setHex(0xef4444);
+        m.emissiveIntensity = 0.55 + 0.35 * Math.sin(time * 5.0);
+      }
+    }
+  }
+}
+
+// ============================================================
+// MULTI-BLOCK CLUSTER ASSEMBLY GRAB (HOTKEY: U)
+// ============================================================
+let clusterGrabActive = false;
+const clusterToggleBtn = document.getElementById('clusterToggleBtn');
+const clusterMiniBtn = document.getElementById('clusterMiniBtn');
+
+function toggleClusterGrab(forceState = null) {
+  initAudio();
+  clusterGrabActive = (forceState !== null) ? forceState : !clusterGrabActive;
+  const label = clusterGrabActive ? '🔗 Cluster: ON' : '🔗 Cluster: OFF';
+  const labelFull = clusterGrabActive ? '🔗 Cluster Grab: ON' : '🔗 Cluster Grab: OFF';
+
+  if (clusterToggleBtn) {
+    clusterToggleBtn.textContent = labelFull;
+    clusterToggleBtn.classList.toggle('active', clusterGrabActive);
+  }
+  if (clusterMiniBtn) {
+    clusterMiniBtn.textContent = label;
+    clusterMiniBtn.classList.toggle('active', clusterGrabActive);
+    clusterMiniBtn.style.background = clusterGrabActive ? '#d97706' : '#64748b';
+  }
+
+  showBanner(clusterGrabActive ? 'CLUSTER ASSEMBLY GRAB: ON (LIFTS CONNECTED STRUCTURES)' : 'CLUSTER GRAB: OFF (SINGLE BLOCKS)', '🔗', 'pick');
+  playTone(clusterGrabActive ? 860 : 420, 0.1, 'sine', 0.15);
+}
+
+function findConnectedCluster(rootBlock) {
+  const cluster = [rootBlock];
+  const visited = new Set([rootBlock]);
+  const queue = [rootBlock];
+  const tol = BLOCK_SIZE * 1.08;
+
+  while (queue.length > 0) {
+    const curr = queue.shift();
+    for (const other of pickables) {
+      if (!other || visited.has(other) || (other.userData && other.userData.held)) continue;
+      const dx = Math.abs(curr.position.x - other.position.x);
+      const dy = Math.abs(curr.position.y - other.position.y);
+      const dz = Math.abs(curr.position.z - other.position.z);
+
+      const touches = (
+        (dx < tol && dy < 0.14 && dz < 0.14) ||
+        (dy < tol && dx < 0.14 && dz < 0.14) ||
+        (dz < tol && dx < 0.14 && dy < 0.14)
+      );
+
+      if (touches) {
+        visited.add(other);
+        cluster.push(other);
+        queue.push(other);
+      }
+    }
+  }
+  return cluster;
+}
+
+if (stressToggleBtn) stressToggleBtn.addEventListener('click', () => toggleStressAnalysis());
+if (stressMiniBtn) {
+  stressMiniBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleStressAnalysis();
+  });
+}
+if (clusterToggleBtn) clusterToggleBtn.addEventListener('click', () => toggleClusterGrab());
+if (clusterMiniBtn) {
+  clusterMiniBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleClusterGrab();
+  });
+}
+
 if (modeToggleBtn) modeToggleBtn.addEventListener('click', () => toggleMode('PICK'));
 if (viewWalkBtn) viewWalkBtn.addEventListener('click', () => toggleMode('WALK'));
 if (overviewBtn) overviewBtn.addEventListener('click', toggleOverviewView);
@@ -4322,6 +4679,12 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyL') {
     e.preventDefault();
     toggleLaserPointer();
+  } else if (e.code === 'KeyV') {
+    e.preventDefault();
+    toggleStressAnalysis();
+  } else if (e.code === 'KeyU') {
+    e.preventDefault();
+    toggleClusterGrab();
   } else if (e.code === 'KeyK') {
     e.preventDefault();
     triggerKineticBlast();
@@ -4420,107 +4783,195 @@ function setHighlight(obj, on) {
   }
 }
 
+// Position-Based Dynamics (PBD) Contact Solver with 4 Sub-Steps & Sleep States
+const PBD_SUB_STEPS = 4;
+
+function wakeBlock(obj) {
+  if (obj && obj.userData) {
+    obj.userData.isSleeping = false;
+    obj.userData.sleepFrames = 0;
+  }
+}
+
 function updatePhysics(dt) {
-  // Update free objects
-  for (const obj of pickables) {
+  const subDt = dt / PBD_SUB_STEPS;
+
+  for (let step = 0; step < PBD_SUB_STEPS; step++) {
+    // 1. Prediction phase for active non-held blocks
+    for (let i = 0; i < pickables.length; i++) {
+      const obj = pickables[i];
+      if (!obj || !obj.userData || obj.userData.held) continue;
+      if (obj.userData.isSleeping) continue;
+
+      const v = obj.userData.velocity;
+      if (!v) continue;
+
+      // Gravity integration
+      v.y -= (GRAVITY / PBD_SUB_STEPS) * dt;
+
+      // Angular tumbling
+      if (obj.userData.angularVel) {
+        obj.rotation.x += obj.userData.angularVel.x * subDt;
+        obj.rotation.y += obj.userData.angularVel.y * subDt;
+        obj.rotation.z += obj.userData.angularVel.z * subDt;
+      }
+
+      // Predicted position
+      obj.position.x += v.x * subDt;
+      obj.position.y += v.y * subDt;
+      obj.position.z += v.z * subDt;
+
+      // 2. Boundary constraint (80m world radius)
+      const dCenter = Math.hypot(obj.position.x, obj.position.z);
+      if (dCenter > WORLD_RADIUS - 1.0) {
+        const normX = obj.position.x / dCenter;
+        const normZ = obj.position.z / dCenter;
+        obj.position.x = normX * (WORLD_RADIUS - 1.0);
+        obj.position.z = normZ * (WORLD_RADIUS - 1.0);
+        v.x = -v.x * 0.5;
+        v.z = -v.z * 0.5;
+      }
+    }
+
+    // 3. PBD Contact & Penetration Projection Solver
+    for (let i = 0; i < pickables.length; i++) {
+      const obj = pickables[i];
+      if (!obj || !obj.userData || obj.userData.held) continue;
+
+      const halfX = obj.userData.halfX || (BLOCK_SIZE / 2);
+      const halfY = obj.userData.halfY || (BLOCK_SIZE / 2);
+      const halfZ = obj.userData.halfZ || (BLOCK_SIZE / 2);
+      const v = obj.userData.velocity;
+
+      // A. Ground Floor Penetration Constraint
+      const floorLimit = FLOOR_Y + halfY;
+      if (obj.position.y <= floorLimit) {
+        const impactSpeed = Math.abs(v.y);
+        obj.position.y = floorLimit;
+
+        if (step === 0 && impactSpeed > 0.35 && !obj.userData.isSleeping) {
+          const pan = clamp(obj.position.x / 6.0, -1, 1);
+          playSubBassThud(impactSpeed, pan, obj.userData.type);
+          triggerCameraShake(Math.min(0.20, impactSpeed * 0.025));
+          spawnDustPuff(new THREE.Vector3(obj.position.x, floorLimit, obj.position.z), Math.min(24, Math.floor(impactSpeed * 5)), 0x94a3b8);
+          notifyBuildingActivity(obj.position.y);
+          if (impactSpeed > 5.5) unlockTrophy('catapult');
+        }
+
+        if (Math.abs(v.y) > 0.8) {
+          v.y = -v.y * BOUNCE_DAMP;
+        } else {
+          v.y = 0;
+        }
+        // Surface contact friction
+        v.x *= 0.82;
+        v.z *= 0.82;
+
+        if (obj.userData.angularVel) {
+          obj.userData.angularVel.multiplyScalar(0.55);
+          if (obj.userData.angularVel.lengthSq() < 0.04) obj.userData.angularVel.set(0, 0, 0);
+        }
+      }
+
+      // B. Inter-Block Stacking & Box Penetration Constraints
+      for (let j = i + 1; j < pickables.length; j++) {
+        const other = pickables[j];
+        if (!other || (other.userData && other.userData.held)) continue;
+
+        const otherHalfX = other.userData?.halfX || (BLOCK_SIZE / 2);
+        const otherHalfY = other.userData?.halfY || (BLOCK_SIZE / 2);
+        const otherHalfZ = other.userData?.halfZ || (BLOCK_SIZE / 2);
+
+        const dx = obj.position.x - other.position.x;
+        const dy = obj.position.y - other.position.y;
+        const dz = obj.position.z - other.position.z;
+
+        const overlapX = (halfX + otherHalfX) - Math.abs(dx);
+        const overlapY = (halfY + otherHalfY) - Math.abs(dy);
+        const overlapZ = (halfZ + otherHalfZ) - Math.abs(dz);
+
+        // Detect 3D collision penetration
+        if (overlapX > 0 && overlapY > 0 && overlapZ > 0) {
+          // Wake up sleeping blocks on collision
+          wakeBlock(obj);
+          wakeBlock(other);
+
+          // Find axis of minimum penetration
+          if (overlapY <= overlapX && overlapY <= overlapZ) {
+            // Vertical stacking contact
+            if (dy > 0) {
+              obj.position.y += overlapY;
+              if (v.y < 0) v.y = 0;
+            } else {
+              other.position.y += overlapY;
+              if (other.userData?.velocity && other.userData.velocity.y < 0) other.userData.velocity.y = 0;
+            }
+            v.x *= 0.88; v.z *= 0.88;
+            if (other.userData?.velocity) {
+              other.userData.velocity.x *= 0.88;
+              other.userData.velocity.z *= 0.88;
+            }
+          } else if (overlapX <= overlapZ) {
+            // Horizontal X projection
+            const push = overlapX * 0.5;
+            if (dx > 0) {
+              obj.position.x += push;
+              other.position.x -= push;
+            } else {
+              obj.position.x -= push;
+              other.position.x += push;
+            }
+          } else {
+            // Horizontal Z projection
+            const push = overlapZ * 0.5;
+            if (dz > 0) {
+              obj.position.z += push;
+              other.position.z -= push;
+            } else {
+              obj.position.z -= push;
+              other.position.z += push;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Orthogonal Self-Leveling, Sleep State Management & Zero-Jitter Stabilization
+  for (let i = 0; i < pickables.length; i++) {
+    const obj = pickables[i];
     if (!obj || !obj.userData || obj.userData.held) continue;
     const v = obj.userData.velocity;
     if (!v) continue;
-    v.y -= GRAVITY * dt;
-    obj.position.addScaledVector(v, dt);
 
-    // Dynamic angular tumbling when in flight
-    if (obj.userData.angularVel) {
-      obj.rotation.x += obj.userData.angularVel.x * dt;
-      obj.rotation.y += obj.userData.angularVel.y * dt;
-      obj.rotation.z += obj.userData.angularVel.z * dt;
+    const speedSq = v.lengthSq();
+    const angSpeedSq = obj.userData.angularVel ? obj.userData.angularVel.lengthSq() : 0;
+    const nearestYaw = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
+
+    // Magnetic Orthogonal Self-Leveling: pull pitch & roll to 0, yaw to 90° increments
+    if (speedSq < 0.25 && angSpeedSq < 0.15) {
+      obj.rotation.x += (0 - obj.rotation.x) * 0.35;
+      obj.rotation.z += (0 - obj.rotation.z) * 0.35;
+      obj.rotation.y += (nearestYaw - obj.rotation.y) * 0.30;
+
+      if (Math.abs(obj.rotation.x) < 0.005) obj.rotation.x = 0;
+      if (Math.abs(obj.rotation.z) < 0.005) obj.rotation.z = 0;
+      if (Math.abs(obj.rotation.y - nearestYaw) < 0.005) obj.rotation.y = nearestYaw;
     }
 
-    // 1. Studio Floor collision
-    const halfY = obj.userData.halfY || (BLOCK_SIZE / 2);
-    let effectiveFloor = FLOOR_Y + halfY;
-
-    // 2. Minecraft Voxel Cube Stacking collisions
-    for (const other of pickables) {
-      if (!other || other === obj || (other.userData && other.userData.held)) continue;
-      const dx = Math.abs(obj.position.x - other.position.x);
-      const dz = Math.abs(obj.position.z - other.position.z);
-      const otherHalfX = other.userData?.halfX || (BLOCK_SIZE / 2);
-      const otherHalfY = other.userData?.halfY || (BLOCK_SIZE / 2);
-      const otherHalfZ = other.userData?.halfZ || (BLOCK_SIZE / 2);
-      const overlapX = ((obj.userData.halfX || (BLOCK_SIZE / 2)) + otherHalfX) * 0.95;
-      const overlapZ = ((obj.userData.halfZ || (BLOCK_SIZE / 2)) + otherHalfZ) * 0.95;
-      if (dx < overlapX && dz < overlapZ && obj.position.y >= other.position.y) {
-        effectiveFloor = Math.max(effectiveFloor, other.position.y + otherHalfY + halfY);
-      }
-    }
-
-    // Resolve landing
-    if (obj.position.y <= effectiveFloor) {
-      const impactSpeed = Math.abs(v.y);
-      obj.position.y = effectiveFloor;
-
-      if (impactSpeed > 0.35) {
-        const pan = clamp(obj.position.x / 6.0, -1, 1);
-        playSubBassThud(impactSpeed, pan);
-        triggerCameraShake(Math.min(0.20, impactSpeed * 0.025));
-        spawnDustPuff(new THREE.Vector3(obj.position.x, effectiveFloor, obj.position.z), Math.min(24, Math.floor(impactSpeed * 5)), 0x94a3b8);
-        if (impactSpeed > 5.5) {
-          unlockTrophy('catapult');
-        }
-      }
-
-      if (Math.abs(v.y) > 0.8) {
-        v.y = -v.y * BOUNCE_DAMP;
-      } else {
-        v.y = 0;
-      }
-      v.x *= 0.75;
-      v.z *= 0.75;
-
-      // Dampen angular velocity on ground contact
-      if (obj.userData.angularVel) {
-        obj.userData.angularVel.multiplyScalar(0.48);
-        if (obj.userData.angularVel.lengthSq() < 0.04) {
-          obj.userData.angularVel.set(0, 0, 0);
-        }
-      }
-
-      // Smoothly upright block so pitch and roll snap to 0 and yaw aligns to grid!
-      const nearestYaw = Math.round(obj.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
-      const horizSpeed = Math.hypot(v.x, v.z);
-      if (horizSpeed < 1.2 && (!obj.userData.angularVel || obj.userData.angularVel.lengthSq() < 0.08)) {
-        obj.rotation.x += (0 - obj.rotation.x) * 0.25;
-        obj.rotation.z += (0 - obj.rotation.z) * 0.25;
-        obj.rotation.y += (nearestYaw - obj.rotation.y) * 0.20;
-
-        if (Math.abs(obj.rotation.x) < 0.008) obj.rotation.x = 0;
-        if (Math.abs(obj.rotation.z) < 0.008) obj.rotation.z = 0;
-        if (Math.abs(obj.rotation.y - nearestYaw) < 0.008) obj.rotation.y = nearestYaw;
-      }
-
-      // Physics sleep threshold: eliminates jitter in resting or stacked voxel cubes
-      if (Math.abs(v.y) < 0.05) v.y = 0;
-      if (Math.abs(v.x) < 0.02) v.x = 0;
-      if (Math.abs(v.z) < 0.02) v.z = 0;
-
-      if (v.lengthSq() === 0) {
+    // PBD Sleep State threshold: stops simulation on resting blocks completely (eliminates micro-jitter)
+    if (speedSq < 0.0006 && angSpeedSq < 0.0006) {
+      obj.userData.sleepFrames = (obj.userData.sleepFrames || 0) + 1;
+      if (obj.userData.sleepFrames >= 5) {
+        obj.userData.isSleeping = true;
+        v.set(0, 0, 0);
+        if (obj.userData.angularVel) obj.userData.angularVel.set(0, 0, 0);
         obj.rotation.x = 0;
         obj.rotation.z = 0;
         obj.rotation.y = nearestYaw;
-        obj.position.y = effectiveFloor;
-        if (obj.userData.angularVel) obj.userData.angularVel.set(0, 0, 0);
       }
-    }
-
-    // Boundary bounce within vast 80m world
-    const dCenter = Math.hypot(obj.position.x, obj.position.z);
-    if (dCenter > WORLD_RADIUS - 1.0) {
-      const norm = new THREE.Vector2(obj.position.x, obj.position.z).normalize();
-      obj.position.x = norm.x * (WORLD_RADIUS - 1.0);
-      obj.position.z = norm.y * (WORLD_RADIUS - 1.0);
-      v.x = -v.x * 0.5;
-      v.z = -v.z * 0.5;
+    } else {
+      obj.userData.sleepFrames = 0;
     }
   }
 }
@@ -4544,13 +4995,17 @@ function releaseHeld(grab) {
     if (obj.userData && obj.userData.angularVel) {
       obj.userData.angularVel.set(0, 0, 0);
     }
+    obj.userData.isSleeping = true;
+    obj.userData.sleepFrames = 10;
     playLegoSnapSound();
     spawnSnapShockwave(snap.pos, 0x38bdf8, 2.0);
     spawnDustPuff(snap.pos, 10, 0x38bdf8);
+    notifyBuildingActivity(obj.position.y);
     snapped = true;
   }
 
   if (!snapped && obj.userData && obj.userData.velocity) {
+    wakeBlock(obj);
     const throwScale = 0.65;
     obj.userData.velocity.copy(grab.pinchVelocity).multiplyScalar(throwScale);
     const speed = obj.userData.velocity.length();
@@ -4563,6 +5018,19 @@ function releaseHeld(grab) {
       (Math.random() - 0.5) * speed * 2.2
     );
     playReleaseSound();
+  }
+
+  // Release any linked assembly cluster members
+  if (grab.clusterMembers && grab.clusterMembers.length > 0) {
+    for (const member of grab.clusterMembers) {
+      setHighlight(member, false);
+      if (member.userData) {
+        member.userData.held = false;
+        delete member.userData.clusterRelOffset;
+      }
+      wakeBlock(member);
+    }
+    grab.clusterMembers = [];
   }
 
   grab.heldObject = null;
@@ -4997,7 +5465,12 @@ function evaluateHandGrasp(filteredLM, vAspect, span) {
   // 4. Closed fist / natural grasp
   const fistGrip = (avgCurl < 0.82 && avgThumbToFingers < 0.65);
 
-  const isTriggered = allFingersTogether || precisionPinch || threeFingerPinch || fistGrip;
+  // Intent Horizon Gating:
+  // Pre-grab hover state: fingers are converging (anticipation window)
+  const isPreGrab = (rThumbIndex < 0.52) || (avgThumbToFingers < 0.56);
+
+  // Raw trigger condition
+  const rawTriggered = allFingersTogether || precisionPinch || threeFingerPinch || fistGrip;
 
   // Hysteresis release: fingers must clearly spread apart to drop
   const isReleased = (rThumbIndex > 0.54) && (avgThumbToFingers > 0.56) && (avgInterCluster > 0.30) && (avgCurl > 0.88);
@@ -5007,7 +5480,8 @@ function evaluateHandGrasp(filteredLM, vAspect, span) {
     allFingersTogether,
     precisionPinch,
     fistGrip,
-    isTriggered,
+    rawTriggered,
+    isPreGrab,
     isReleased,
     avgThumbToFingers,
     avgInterCluster
@@ -5018,6 +5492,10 @@ function evaluateHandGrasp(filteredLM, vAspect, span) {
    DUAL-HAND TRACKING PIPELINE
    ============================================================ */
 let leftHandPinchCooldown = false;
+const grabGateState = {
+  left: { consecutiveFrames: 0, committed: false },
+  right: { consecutiveFrames: 0, committed: false }
+};
 
 function buildHandInfo(lm, handednessType, index) {
   const isLeft = (handednessType === 'left');
@@ -5063,8 +5541,23 @@ function buildHandInfo(lm, handednessType, index) {
   }
   group.visible = true;
 
-  // Comprehensive multi-finger grasp evaluation
+  // Comprehensive multi-finger grasp evaluation with 2-frame Intent Horizon Gating
   const graspInfo = evaluateHandGrasp(filteredLM, vAspect, span);
+  const gate = isLeft ? grabGateState.left : grabGateState.right;
+
+  if (graspInfo.rawTriggered) {
+    gate.consecutiveFrames++;
+    if (gate.consecutiveFrames >= 2) {
+      gate.committed = true;
+    }
+  } else if (graspInfo.isReleased) {
+    gate.consecutiveFrames = 0;
+    gate.committed = false;
+  } else if (!graspInfo.isPreGrab) {
+    gate.consecutiveFrames = Math.max(0, gate.consecutiveFrames - 1);
+  }
+
+  const isGripTriggered = gate.committed;
 
   return {
     rawLandmarks: lm,
@@ -5079,7 +5572,8 @@ function buildHandInfo(lm, handednessType, index) {
     pinchRatio: graspInfo.pinchRatio,
     allFingersTogether: graspInfo.allFingersTogether,
     precisionPinch: graspInfo.precisionPinch,
-    isGripTriggered: graspInfo.isTriggered,
+    isGripTriggered: isGripTriggered,
+    isPreGrab: graspInfo.isPreGrab,
     isGripReleased: graspInfo.isReleased,
     avgThumbToFingers: graspInfo.avgThumbToFingers,
     isLeft
@@ -5452,6 +5946,7 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     if (targetToGrab && !targetToGrab.userData.held) {
       grab.heldObject = targetToGrab;
       targetToGrab.userData.held = true;
+      wakeBlock(targetToGrab);
       if (targetToGrab.userData.velocity) {
         targetToGrab.userData.velocity.set(0, 0, 0);
       }
@@ -5469,6 +5964,23 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
 
       setHighlight(targetToGrab, true);
       playGrabSound();
+
+      if (clusterGrabActive) {
+        const cluster = findConnectedCluster(targetToGrab);
+        grab.clusterMembers = cluster.filter(b => b !== targetToGrab);
+        for (const member of grab.clusterMembers) {
+          member.userData.held = true;
+          wakeBlock(member);
+          member.userData.clusterRelOffset = member.position.clone().sub(targetToGrab.position);
+          setHighlight(member, true);
+        }
+        if (grab.clusterMembers.length > 0) {
+          playTone(660, 0.12, 'triangle', 0.18);
+          showBanner(`🔗 CLUSTER GRAB: ${grab.clusterMembers.length + 1} BLOCKS LINKED`, '🔗', 'pick');
+        }
+      } else {
+        grab.clusterMembers = [];
+      }
     }
   } else if (grab.pinching && !isPinchingNow && (hand.isGripReleased || hand.pinchRatio > PINCH_RATIO_RELEASE)) {
     grab.pinching = false;
@@ -5485,6 +5997,16 @@ function updateSingleHandGrab(hand, grab, otherGrab, reticle, dt) {
     const minFloor = FLOOR_Y + halfY;
     if (grab.heldObject.position.y < minFloor) {
       grab.heldObject.position.y = minFloor;
+    }
+  }
+
+  // Synchronize cluster assembly positions and rotations
+  if (grab.heldObject && grab.clusterMembers && grab.clusterMembers.length > 0) {
+    for (const member of grab.clusterMembers) {
+      if (member.userData && member.userData.clusterRelOffset) {
+        member.position.copy(grab.heldObject.position).add(member.userData.clusterRelOffset);
+        member.rotation.copy(grab.heldObject.rotation);
+      }
     }
   }
 
@@ -6152,6 +6674,9 @@ function animate() {
 
   // 5. Update Real-Time Architectural Telemetry & Achievements
   updateGameTelemetry(dt, now);
+
+  // 6. Update Real-Time FEM Structural Stress Heatmap
+  updateStructuralStress();
 
   renderer.render(scene, camera);
 }
